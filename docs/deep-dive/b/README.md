@@ -73,3 +73,24 @@ Each deep dive uses the `DEE-11` shared template:
 8. **Test coverage** — Playwright spec lines that exercise this; otherwise "manual / not covered"
 
 Vendored files get a shorter form: purpose, upstream URL + version, how it is loaded, and any local fork / patch notes.
+
+## Acceptance criteria coverage
+
+For each of the 18 files in scope (4 B1 + 14 B2), the corresponding doc covers:
+
+- ✅ Purpose, public surface, and how the file is loaded
+- ✅ IPC / global side-effects (or explicit "none")
+- ✅ In/out dependencies pinned to importer call-sites
+- ✅ Invariants & gotchas with line-number citations where the source carries hidden contracts
+- ✅ Known TODOs — `// todo:` / `// FIXME` markers quoted verbatim, plus higher-level debt (worker-pool cap, listener leaks, env-var honoured only in `deepnest.js`)
+- ✅ Extension points
+- ✅ Test coverage status (E2E only via `tests/index.spec.ts`; no unit tests below the UI layer)
+- ✅ Cross-references between Group B docs and to sibling groups (D services, J tests)
+- ✅ Vendored vs first-party explicitly stated; vendored files use the shorter "purpose / upstream / version / load order / local-fork notes" form
+
+## Status
+
+- **Author**: Paige (tech-writer agent), full-redo per [DEE-11 board directive](../../../) → DEE-34.
+- **Branch**: `chore/dee-11-iso/group-b` (Paperclip-managed worktree off `chore/bmad-method-setup`).
+- **Source-grounded**: every doc was written against the current source tree in this worktree (no carry-over from prior `chore/dee-11/group-b` attempts).
+- **Completion timestamp**: 2026-04-26.
