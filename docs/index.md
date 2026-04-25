@@ -110,9 +110,16 @@ Scope: the five renderer-side services in `main/ui/services/`. See [docs/deep-di
 - [`main/ui/services/export.service.ts`](./deep-dive/d/main__ui__services__export.service.md) — SVG / DXF / JSON export of nesting results. Builds the SVG document in DOM, optionally line-merges via `SvgParser`, optionally POSTs to the conversion server for DXF.
 - [`main/ui/services/nesting.service.ts`](./deep-dive/d/main__ui__services__nesting.service.md) — UI ↔ GA / NFP background bridge. Owns view-switch, NFP cache wipe, `background-stop` IPC, and the result-focus heuristic.
 
+### Group J — Tests ([DEE-42](/DEE/issues/DEE-42), complete 2026-04-26)
+
+Scope: the Playwright E2E suite under `tests/`. See [docs/deep-dive/j/README.md](./deep-dive/j/README.md). Inventory matches DEE-11 — one spec file, two SVG fixture assets, no subdirectories. Group J's step map is the **source of truth** for "covered by `tests/index.spec.ts` / not covered" claims that appear in every other group's `Test coverage status` section.
+
+- [`tests/index.spec.ts`](./deep-dive/j/tests__index.spec.ts.md) — single `test("Nest", …)` Playwright spec. Boots Electron, drives Config → Import → Sheet → Nest → Export, attaches video / SVG / JSON / console artefacts. Step-by-step map with preconditions / actions / assertions / known flake risks.
+- [`tests/assets/`](./deep-dive/j/tests__assets.md) — `henny-penny.svg` (70 200 bytes, 36 closed sub-paths) and `mrs-saint-delafield.svg` (26 281 bytes, 44 closed sub-paths). Static fixtures that exercise the SVG parser and produce `54/54` placements.
+
 ### Pending groups
 
-Groups H, J — in progress on rev-3 isolated children ([DEE-40](/DEE/issues/DEE-40), [DEE-42](/DEE/issues/DEE-42)). Each lands here as its child completes and its `chore/dee-11-iso/group-<x>` branch is merged into the integration branch.
+Group H — in progress on rev-3 isolated child ([DEE-40](/DEE/issues/DEE-40)). Lands here as the child completes and its `chore/dee-11-iso/group-h` branch is merged into the integration branch.
 
 ## Existing Documentation (already in repo)
 
