@@ -1,237 +1,133 @@
-# `main/ui/utils/dom-utils.ts` — Deep Dive
+# Deep dive — `main/ui/utils/dom-utils.ts`
 
-**Generated:** 2026-04-25 by Paige (Tech Writer) for [DEE-17](/DEE/issues/DEE-17) (parent: [DEE-11](/DEE/issues/DEE-11)).
-**Group:** F — UI utilities.
-**File:** `main/ui/utils/dom-utils.ts` (500 LOC, TypeScript, strict).
-**Mode:** Exhaustive deep-dive.
+> Group F · `DEE-38` (replaces DEE-27/DEE-1f) · parent issue [DEE-11](../../../). Authored fresh from source per the board's full-redo directive.
 
-## Overview
+## Purpose
 
-Type-safe wrapper layer over the browser DOM API used by every TypeScript module in `main/ui/`. The module is a leaf in the renderer dependency graph — it imports nothing from this codebase and depends only on the standard `Document`/`Element`/`SVGElement` lib types.
+Type-safe wrappers around the browser DOM API used everywhere in `main/ui/**`. The module is a **pure leaf** — it imports nothing — and centralises the conventions the rest of the renderer relies on:
 
-It is a **pure helper module**: every export is a stand-alone function, every function is side-effect-only against the element it receives, and there is no shared state. The module exists so that components can swap raw `document.querySelector` / `setAttribute` calls for typed wrappers and avoid the legacy `page.js` jQuery-via-window pattern.
+- One canonical `SVG_NAMESPACE` constant so callers never embed the raw XMLNS string.
+- Generic helpers (`getElement<T>`, `createSvgElement<K>`, `addListener<K>`) that propagate the right element / event subtype to the call site, eliminating most `as` casts in components.
+- A small surface for class/attribute/style mutation that mirrors the underscore-DOM idioms the JS modules used pre-migration, so TS components can be ported with mechanical refactors.
 
-The module also intentionally does **not** wrap or know about Ractive — components that render with Ractive still go through Ractive APIs, and only reach for `dom-utils` when they need to touch DOM that Ractive does not own (modals outside the template root, the side nav, IPC-driven snapshots).
+The whole file is ~500 lines; every export is a one-to-three-line wrapper. It's not a framework — it's a **convention layer**.
 
 ## Public surface
 
-The module has 30 exports. Grouped by purpose:
+`main/ui/utils/dom-utils.ts` exports one constant and 30 functions. Categorised:
 
-| Group | Exports |
+| Group | Symbols (line) |
 |---|---|
-| Constants | `SVG_NAMESPACE` |
-| Lifecycle | `documentReady` |
-| Selection | `getElement`, `getElements`, `getElementById` |
-| Element creation | `createSvgElement` (overloaded), `createHtmlElement` |
-| Class manipulation | `addClass`, `removeClass`, `toggleClass`, `hasClass` |
-| Attributes | `setAttributes`, `removeAttribute`, `getDataAttribute`, `setDataAttribute` |
-| SVG serialization / cloning | `serializeSvg`, `cloneSvgElement`, `cloneSvgElementDeep` |
-| Tree mutation | `clearChildren`, `removeFromParent` |
-| Visibility / style | `setVisible`, `setStyle`, `setStyles`, `getComputedStyleValue` |
-| Events | `addListener`, `removeListener`, `preventEvent` |
-| Inner content | `setInnerHtml`, `setInnerText` |
-| SVG transform / viewBox helpers | `createViewBox`, `createTranslate`, `createCssTransform` |
+| Constant | `SVG_NAMESPACE` (10) |
+| Document lifecycle | `documentReady` (16) |
+| Selectors | `getElement<T>` (34), `getElements<T>` (51), `getElementById<T>` (66) |
+| Element creation | `createSvgElement<K>` (87, with overloaded signatures at 83 and 86), `createHtmlElement<K>` (100) |
+| Class manipulation | `addClass` (114), `removeClass` (126), `toggleClass` (141), `hasClass` (158) |
+| Attribute manipulation | `setAttributes` (175), `removeAttribute` (192), `getDataAttribute` (208), `setDataAttribute` (224) |
+| SVG-specific | `serializeSvg` (241), `cloneSvgElement<T>` (282), `cloneSvgElementDeep<T>` (294), `createViewBox` (458), `createTranslate` (476), `createCssTransform` (490) |
+| Tree mutation | `clearChildren` (252), `removeFromParent` (266) |
+| Visibility / styles | `setVisible` (308), `setStyle` (326), `setStyles` (347), `getComputedStyleValue` (440) |
+| Events | `addListener<K>` (365), `removeListener<K>` (383), `preventEvent` (401) |
+| Inner content | `setInnerHtml` (415), `setInnerText` (427) |
 
-### Selection helpers (most-used)
+The signatures the rest of the codebase relies on most:
 
-```ts
-function getElement<T extends Element = Element>(
-  selector: string,
-  parent?: Document | Element
-): T | null;
+- `getElement<T extends Element = Element>(selector, parent = document): T | null` — every call site MUST guard the return value (see "Invariants").
+- `createSvgElement<K extends keyof SVGElementTagNameMap>(tagName: K): SVGElementTagNameMap[K]` — the overload (lines 83-86) preserves the concrete subtype (`SVGRectElement`, `SVGGElement`, …) when the tag is a string literal.
+- `addListener<K extends keyof HTMLElementEventMap>(element, eventType: K, handler: (event: HTMLElementEventMap[K]) => void, options?)` — handler parameter is precisely typed via the `K` lookup.
 
-function getElements<T extends Element = Element>(
-  selector: string,
-  parent?: Document | Element
-): NodeListOf<T>;
+## IPC / global side-effects
 
-function getElementById<T extends HTMLElement = HTMLElement>(
-  id: string
-): T | null;
-```
+None directly — there is no `ipcRenderer` access in this file.
 
-- `getElement` and `getElements` accept an **optional parent**; default is `document`. Components that want scoped queries (Group E nest-view, parts-view) pass an SVG `<g>` root or a modal element.
-- `getElementById` is a thin wrapper that always queries `document`. Currently **unused outside the module** — every importer goes through `getElement('#…')` instead.
-- All three return `null` (or an empty NodeList) when no match exists; nothing throws. Call sites are expected to null-check, and most do (see `navigation.ts` lines 156–198).
+Module-scope side-effect on import: **none.** All exports are pure functions; no top-level statements other than the `SVG_NAMESPACE` constant.
 
-### When selectors return null
+Runtime side-effects when the functions are *called*:
 
-`getElement` returns `null` whenever `parent.querySelector` would. The wrapper does **not** validate the selector or log misses. Common reasons for `null` in this codebase:
+| Function | Side-effect surface |
+|---|---|
+| `documentReady` | Adds a `DOMContentLoaded` listener on `document` (line 20). Does **not** track-or-remove the listener, so multiple calls register multiple handlers. |
+| `serializeSvg` | Instantiates a fresh `XMLSerializer()` per call (line 242). Cheap — but worth knowing for hot loops. |
+| `getComputedStyleValue` | Calls `window.getComputedStyle(...)` (line 444), which forces layout if the page has pending DOM mutations. |
+| `setInnerHtml` | Writes `element.innerHTML = html` (line 416). HTML is parsed and replaces children; **XSS-vulnerable** if `html` is user-controlled (see Invariants). |
+| `setStyle` / `setStyles` | Mutate `element.style.*`. `setStyles` uses `Object.assign(element.style, styles)` (line 351), which silently ignores invalid property names. |
+| `addListener` / `removeListener` | Wrap `addEventListener` / `removeEventListener` 1:1 — the same handler reference must be passed to both for removal. |
 
-- The renderer fired before the DOM was fully populated (`window.config` IPC bridge had not yet replaced placeholder markup).
-- A modal’s root was removed from `document.body` after dialog close. `getElement` against the detached root still works as long as the caller kept the reference; against `document` it returns `null`.
-- The id/class is wrong (typo, or the HTML in `main/index.html` was renamed without updating the selector). The wrapper has no protection against this — silent `null` is the worst-case outcome and the reason every component double-guards (`if (!el) return;`).
+Globals read: `document`, `window`, `XMLSerializer`. The module assumes a renderer-process Electron context — would not run in the main process or a Node-only worker.
 
-### `createSvgElement` overloads
+## Dependencies
 
-```ts
-function createSvgElement<K extends keyof SVGElementTagNameMap>(
-  tagName: K
-): SVGElementTagNameMap[K];
-function createSvgElement(tagName: string): SVGElement;
-```
-
-The string overload is the SVG escape-hatch. Pass `"foreignObject"`, `"use"`, `"symbol"`, or any custom-namespaced element and the wrapper still binds the SVG namespace via `document.createElementNS(SVG_NAMESPACE, tagName)`. The typed overload is preferred — `createSvgElement("rect")` infers `SVGRectElement`.
-
-The DOM API requires SVG elements to be created with `createElementNS` (not `createElement`); using the wrong factory silently produces an HTML element that **renders blank inside an `<svg>`**. This is the core reason this helper exists.
-
-### Class helpers
-
-```ts
-function addClass(element: Element, className: string): void;
-function removeClass(element: Element, className: string): void;
-function toggleClass(element: Element, className: string, force?: boolean): boolean;
-function hasClass(element: Element, className: string): boolean;
-```
-
-All four are 1:1 wrappers around `element.classList`. They are preferred over direct `className` writes because `className = "active"` clears every other class on the element (see the deliberate use in `navigation.ts` — that file mixes both styles and is documented in [main__ui__components__navigation.md](../e/main__ui__components__navigation.md)).
-
-### Attributes
-
-`setAttributes(el, { foo: '1', bar: '2' })` is the bulk setter; useful for fresh SVG nodes (`createSvgElement('rect')` followed by `setAttributes(rect, { x: '0', y: '0', width: '10', height: '10' })`).
-
-`getDataAttribute(el, 'config')` returns the value of `data-config` (with the prefix prepended internally — pass the bare key). `setDataAttribute(el, 'config', 'units')` likewise. **Currently unused outside the module** — `index.ts` reads `data-config` and `data-conversion` via the native `getAttribute("data-config")` directly, not through this helper. Adopting the helper consistently is a low-risk follow-up.
-
-### SVG serialization & clone
-
-```ts
-function serializeSvg(svg: SVGElement): string;          // XMLSerializer
-function cloneSvgElement<T extends SVGElement>(el: T): T;       // shallow
-function cloneSvgElementDeep<T extends SVGElement>(el: T): T;   // deep
-```
-
-`serializeSvg` is the canonical SVG → string path used by `parts-view.ts` and `nest-view.ts` for export. It uses the browser’s `XMLSerializer`, so the output may include the `xmlns` attribute the browser adds for the root element only.
-
-The two clone helpers cast the `Node` returned by `cloneNode` back to the original `T`. They are exported but **not used outside the module**. Prefer the deep variant for SVG groups that wrap geometry — shallow clones drop child paths.
-
-### Style / visibility
-
-`setVisible(el, true|false, displayValue?)` toggles `style.display` between `displayValue` (default `"block"`) and `"none"`. **Currently unused** — modals in this codebase toggle a visibility class instead.
-
-`setStyle` / `setStyles` are typed wrappers over `element.style.*` writes. `setStyle` uses an `as any` cast so it accepts both camelCase (`backgroundColor`) and kebab-via-camel (`backgroundColor`) keys — the underlying `CSSStyleDeclaration` only accepts camelCase, so don’t pass `"background-color"`. Both are **unused outside the module** today.
-
-### Event helpers
-
-`addListener` / `removeListener` are typed pass-throughs to `addEventListener` / `removeEventListener`, with a third `AddEventListenerOptions` arg on `addListener`. **Both currently unused outside the module** — every importer uses `element.addEventListener` directly.
-
-`preventEvent(event)` does both `preventDefault()` AND `stopPropagation()` in a single call. **Currently unused outside the module.**
-
-### Inner content
-
-`setInnerHtml(el, html)` is a thin wrapper. It is **not** sanitized — the JSDoc on line 408 explicitly warns about XSS. The single in-tree caller is `nest-view.ts` line 226-ish, which embeds nested SVG markup that originated from local files (not network input). If a future code path pipes user input through this helper, it must sanitize first.
-
-`setInnerText(el, text)` uses `innerText` (not `textContent`) and is XSS-safe. **Currently unused outside the module.**
-
-### Transform / viewBox helpers
-
-```ts
-function createViewBox(x: number, y: number, w: number, h: number): string;
-function createTranslate(x: number, y: number): string;          // SVG transform=
-function createCssTransform(x: number, y: number, rot?: number): string;  // CSS transform:
-```
-
-`createViewBox` is **unused outside the module**.
-`createTranslate` produces `"translate(50 100)"` (space-separated, SVG flavor) — used by `nest-view.ts` to position part copies in the result SVG.
-`createCssTransform` produces `"translate(50px, 100px) rotate(45deg)"` (CSS flavor with `px` and a comma) — used by `nest-view.ts` for hover-preview overlays.
-
-These two helpers exist because SVG `transform=""` and CSS `transform:` use different number syntax — confusing them produces transforms that silently no-op.
+**None.** Zero `import` statements. The module is the bottom of the dependency graph for `main/ui/**`.
 
 ## Used-by
 
-Verified with `rg -nU --type ts "from\\s+['\"][^'\"]*dom-utils[^'\"]*['\"]"`.
+Imported by exactly five TypeScript files in the live tree (importer search executed in this worktree against `main/**/*.ts`):
 
-| Importer | Symbols pulled | Notes |
+| Importer | Line of `import { … } from "../utils/dom-utils.js"` (or `./utils/...`) | Symbols pulled in |
 |---|---|---|
-| `main/ui/index.ts:35` | `getElement`, `getElements` | Composition root — uses helpers for top-level mounting. |
-| `main/ui/components/navigation.ts:7` | `getElements`, `getElement`, `addClass`, `removeClass`, `toggleClass`, `hasClass` | Side nav state machine. |
-| `main/ui/components/parts-view.ts:15` | `getElement`, `getElements`, `createSvgElement`, `serializeSvg`, `removeFromParent`, `setAttributes` | Parts list and SVG preview. |
-| `main/ui/components/nest-view.ts:15` | `getElement`, `getElements`, `createSvgElement`, `setAttributes`, `serializeSvg`, `setInnerHtml`, `createTranslate`, `createCssTransform` | Result viewer. |
-| `main/ui/components/sheet-dialog.ts:13` | `getElement`, `createSvgElement`, `setAttributes`, `addClass`, `removeClass` | New-sheet dialog. |
+| [`main/ui/index.ts`](../../../main/ui/index.ts) | 35 | `getElement`, `getElements` |
+| [`main/ui/components/parts-view.ts`](../../../main/ui/components/parts-view.ts) | 15-22 | `getElement`, `getElements`, `createSvgElement`, `serializeSvg`, `removeFromParent`, `setAttributes` |
+| [`main/ui/components/nest-view.ts`](../../../main/ui/components/nest-view.ts) | 15-24 | `getElement`, `getElements`, `createSvgElement`, `setAttributes`, `serializeSvg`, `setInnerHtml`, `createTranslate`, `createCssTransform` |
+| [`main/ui/components/navigation.ts`](../../../main/ui/components/navigation.ts) | 7-14 | `getElements`, `getElement`, `addClass`, `removeClass`, `toggleClass`, `hasClass` |
+| [`main/ui/components/sheet-dialog.ts`](../../../main/ui/components/sheet-dialog.ts) | 13-19 | `getElement`, `createSvgElement`, `setAttributes`, `addClass`, `removeClass` |
 
-No service in `main/ui/services/` imports from `dom-utils.ts`. Services own DOM-free business logic; renderer side-effects are routed through components (the inverted-dependency rule documented in `architecture.md` §3).
+That's 19 total named-import references. **No service** under `main/ui/services/**` imports `dom-utils` — services (`import.service.ts`, `export.service.ts`, `nesting.service.ts`, `config.service.ts`) talk to the DOM through bypasses (see "Bypasses & gotchas").
 
-### Exports never imported anywhere
+Coverage of the export list: ~21 of the 30 exported functions are *unused* outside the file itself. They are kept as a complete convention layer; the unused ones (e.g. `getElementById`, `createHtmlElement`, `setVisible`, `setStyle`, `setStyles`, `addListener`, `removeListener`, `preventEvent`, `setInnerText`, `getComputedStyleValue`, `cloneSvgElement`, `cloneSvgElementDeep`, `getDataAttribute`, `setDataAttribute`, `removeAttribute`, `clearChildren`, `documentReady`, `createHtmlElement`, the `SVG_NAMESPACE` constant) are part of the documented contract for future migrations of the legacy JS modules.
 
-The following exports are reachable but unused in the current tree. They are **not** dead-code-elimination candidates yet (the module is not tree-shaken — see "Build & loading" below), but they are not load-bearing for any feature today:
+## Invariants & gotchas
 
-- `documentReady`
-- `getElementById`
-- `createHtmlElement`
-- `removeAttribute` (the wrapper — native `Element.removeAttribute` is called directly five times across services and components)
-- `getDataAttribute`, `setDataAttribute`
-- `clearChildren`
-- `cloneSvgElement`, `cloneSvgElementDeep`
-- `setVisible`
-- `setStyle`, `setStyles`, `getComputedStyleValue`
-- `addListener`, `removeListener`, `preventEvent`
-- `setInnerText`
-- `createViewBox`
+1. **All `getElement*` helpers return `null` on miss** — callers MUST guard. There is no overload that throws or asserts. Idiomatic guards in the codebase look like:
+   ```ts
+   const el = getElement<HTMLInputElement>('#sheetwidth');
+   if (!el) return;
+   ```
+   The `getElementById` wrapper on line 66 uses an `as T | null` cast on `document.getElementById(...)` — note the cast happens unconditionally, so passing the wrong `T` produces a typed `null` rather than a runtime guard. Type-only soundness.
 
-If a future change deletes these, no in-tree consumer breaks. Treat any external dependency on the module (e.g., a downstream plugin or fork) as out of scope for this audit.
+2. **`SVG_NAMESPACE` MUST be used for SVG creation.** A bare `document.createElement("svg")` produces an `HTMLUnknownElement` that does not render. The constant exists so callers cannot mistype the URL. Despite that, three call sites in `main/ui/services/export.service.ts` (lines 494, 508, 532) embed the raw `"http://www.w3.org/2000/svg"` string instead of importing `createSvgElement`/`SVG_NAMESPACE` — see "Bypasses".
 
-## Build & loading
+3. **`createSvgElement` overload order matters.** The two overload signatures (83-86) must list the typed-tag overload **first** so the compiler picks `SVGRectElement` for `createSvgElement('rect')`. The implementation (line 87) accepts `string` and is unreachable from typed call sites.
 
-`main/ui/utils/dom-utils.ts` is compiled by `tsc` to `build/ui/utils/dom-utils.js` (see `tsconfig.json`’s `outDir`) and loaded via the renderer module graph rooted at `main/ui/index.ts`. It is **not** loaded as a classic `<script>` and does **not** install anything on `window`. There is no `globalThis` mutation anywhere in the file.
+4. **`setInnerHtml` is XSS-prone by design.** The JSDoc on lines 407-417 spells this out ("Be cautious about XSS when using innerHTML with user input"). The single in-tree consumer (`nest-view.ts`) feeds it strings built from numeric utilisation values, so it is safe today; any future caller that interpolates filename or part metadata MUST sanitise.
 
-Imports in `.ts` files use the `.js` extension (`from "./utils/dom-utils.js"`) per the project's NodeNext module resolution — this is intentional and required, not a typo.
+5. **`setStyle` uses `(element.style as any)[property] = value` (line 332)** with an inline `eslint-disable-next-line @typescript-eslint/no-explicit-any` (line 331). The cast is necessary because TS's `CSSStyleDeclaration` has read-only properties for some keys. Don't "clean it up" — the disable comment is load-bearing.
 
-## Side effects
+6. **`cloneSvgElement` is shallow, `cloneSvgElementDeep` is deep.** Line 283 calls `cloneNode(false)`; line 295 calls `cloneNode(true)`. The naming is the only signal — pick correctly. Neither helper clones event listeners (DOM `cloneNode` never does).
 
-None at module load time. Every export is a function that, when called, mutates only the element passed in. No timers, no IPC, no console output, no network.
+7. **`removeFromParent` returns a `boolean`** (line 271-272) — `true` if removed, `false` if the node had no parent. Useful for idempotent cleanup; the rest of the helpers return `void`.
 
-## Error handling
+8. **`addListener` does not track handlers.** Pairing `addListener(el, 'click', h)` with `removeListener(el, 'click', h)` works only if `h` is the *same* function reference — passing `bind`-ed or arrow-wrapped handlers to `removeListener` silently fails. There is no auto-disposal helper here.
 
-The module deliberately propagates browser-native behavior:
+9. **`getDataAttribute(el, "config")` reads `data-config`** (line 212) — the function prefixes `data-`. Don't pass `"data-config"` (you'd get `data-data-config`). Same for `setDataAttribute`. Only one in-tree call needs this attribute API and it lives in [Group G's HTML deep-dive](../g/main__index.html.md) — `main/ui/index.ts` reads `data-config` / `data-conversion` directly via `getAttribute(...)` instead of through these helpers.
 
-- Selectors return `null` when nothing matches; callers must null-check.
-- `setAttribute` on a removed (orphan) element is silently accepted by the DOM.
-- `XMLSerializer().serializeToString` will throw `DOMException` only if the input is not a node — this is impossible from TypeScript because the parameter is typed `SVGElement`.
-- Class-list operations on `null` would throw `TypeError`, but the typed signature (`element: Element`) prevents that at compile time.
+10. **`createCssTransform` skips `rotate(0)`.** The check on line 496 (`rotation !== undefined && rotation !== 0`) elides the rotation segment for the no-op case. Useful for compositing — `rotate(0deg)` would still create a stacking context.
 
-There is no logging, no `message()` banner, no telemetry. This is correct for a leaf util but means **misuse is silent** — the wrapper buys you types, not safety.
+## Known TODOs
 
-## Testing
+`grep -n "TODO\|FIXME"` against this file returns **no matches**. The module has no in-source debt markers.
 
-- **Unit tests:** none in repo for this file (UI test surface is Playwright E2E, per `architecture.md` §6).
-- **E2E coverage:** every test that loads the renderer exercises this module transitively. There is no isolated coverage of, e.g., `cloneSvgElementDeep`. The unused exports listed above are not exercised at all.
-- **Manual verification:** import the module in a one-off script:
-  ```ts
-  import { getElement } from "./utils/dom-utils.js";
-  console.log(getElement<HTMLElement>("#sidenav"));
-  ```
+## Extension points
 
-## Comments / TODOs in source
+- **Adding a helper.** The convention is one wrapper per browser API call — generic over `Element` or `HTMLElement` where the call site benefits, no business logic. Add it next to its sibling (e.g. an `appendChildren(parent, ...nodes)` helper would slot next to `clearChildren` on line 252).
+- **Tightening the SVG creation overloads.** If a new SVG element appears in the codebase (e.g. `<foreignObject>`), the `SVGElementTagNameMap` lookup picks it up automatically — no edit needed.
+- **Migrating raw `document.querySelector` callers.** The bypasses in `ui-helpers.ts` (`message()`), `services/export.service.ts`, and `services/nesting.service.ts` should be migrated to `getElement<T>` to recover the type guarantee. See [`main__ui__utils__ui-helpers.ts.md`](./main__ui__utils__ui-helpers.ts.md) and the service deep-dives in [Group D](../d/README.md).
+- **A type-asserted `getElementOrThrow<T>(selector)`** would eliminate the boilerplate `if (!el) return;` guards. Not currently exported — would need a single chokepoint design decision before adding.
 
-The file has full JSDoc on every export and a single intentional `eslint-disable-next-line @typescript-eslint/no-explicit-any` on line 331 inside `setStyle`. There are no `TODO`, `FIXME`, `HACK`, or `XXX` markers.
+## Test coverage status
 
-## Contributor checklist
+- **No dedicated unit tests.** `tests/index.spec.ts` (Playwright E2E, single file) is the only test in the tree. It exercises the Config tab, which routes through `getElement` indirectly via [`main/ui/index.ts`](../../../main/ui/index.ts) — see [Group J's `tests__index.spec.ts.md`](../j/tests__index.spec.ts.md) for the full IPC/DOM path.
+- Effective coverage of this file is therefore **integration only** — every E2E click goes through `getElement`/`getElements`, but type contracts (the generic parameters) are validated only by `tsc`.
+- A dedicated unit-test file at `tests/unit/dom-utils.spec.ts` would be cheap to add (functions are pure wrappers + `jsdom`); none exists today.
 
-**Risks & gotchas:**
+## Bypasses & gotchas worth knowing for refactors
 
-- `setInnerHtml` is **not** XSS-safe. Never feed user-controlled strings through it. The current sole caller (`nest-view.ts`) consumes locally-loaded SVG content.
-- `setStyle` casts to `any` to allow camelCase strings; passing kebab-case (`"background-color"`) silently no-ops. Use camelCase.
-- `createTranslate` and `createCssTransform` look interchangeable — they are not. SVG `transform="..."` and CSS `transform: ...` use different syntax (space-vs-comma, no `px`-suffix vs. `px`-suffix). Picking the wrong one will make the element silently fail to translate.
-- The unused exports listed in **"Exports never imported anywhere"** are not part of any contract today. Adding a new caller is fine; refactoring their signatures is a free move (no consumer breaks).
-- `getElement<T>` is a *cast*, not a check. Passing the wrong generic returns `null` or the wrong type at runtime without warning. Match `T` to the selector’s actual element class.
-
-**Pre-change verification:**
-
-- `npm run build` (TypeScript strict catches selector-arg/type drift on every importer).
-- For UI-visible changes, launch the app: `npm start`, click through every tab, drag a part around the parts view, open the sheet dialog. The five components in **Used-by** cover the full surface.
-
-**Suggested tests before PR:**
-
-- `npm test` — Playwright E2E. Any regression in selection/class helpers will surface in `tests/specs/config-tab.spec.ts` (relies on tab class state) or `tests/specs/import.spec.ts` (relies on parts-view DOM).
-- If you change the SVG path (`createSvgElement`, `serializeSvg`, transform helpers) re-run the export flow manually — Playwright does not currently snapshot the serialized SVG output.
+- [`main/ui/utils/ui-helpers.ts:14-16`](../../../main/ui/utils/ui-helpers.ts) — `message()` calls `document.querySelector("#message")` directly instead of `getElement`. Pre-dates this helper by one migration step. Cross-file gotcha is documented in [`main__ui__utils__ui-helpers.ts.md`](./main__ui__utils__ui-helpers.ts.md).
+- [`main/ui/services/export.service.ts:494, 508, 532`](../../../main/ui/services/export.service.ts) — three `document.createElementNS("http://www.w3.org/2000/svg", ...)` calls duplicate the namespace string instead of importing `createSvgElement` / `SVG_NAMESPACE`.
+- [`main/ui/services/nesting.service.ts`](../../../main/ui/services/nesting.service.ts) — uses raw `querySelector` in places (importer search hit). A migration story would consolidate these.
 
 ## Cross-references
 
-- **Group D (services):** none consume this directly. Services delegate DOM access to their owning component.
-- **Group E (UI components):** all five components in [docs/deep-dive/e/](../e/) consume `dom-utils`. See each component's "Dependencies" section for the exact symbol set.
-- **Group G (`main/index.html`):** the markup these helpers operate on. Selectors used by the importers (`#sidenav li`, `.page.active`, `.parts li`, `#nest svg`, etc.) all originate in `main/index.html`. A doc audit of the HTML/selector contract is filed under DEE-19 (Group G).
-- **Component inventory:** `docs/component-inventory.md` row "DOM utilities" (`main/ui/utils/dom-utils.ts`).
-- **Architecture:** `docs/architecture.md` §3 (renderer composition); §4 (TypeScript module conventions and the `.js` extension on imports).
-
----
-
-_Generated by Paige for the Group F deep-dive on 2026-04-25. Sources: `main/ui/utils/dom-utils.ts`, all importers under `main/ui/`, `main/index.html`._
+- Importing components live in [Group E](../e/README.md): [`navigation`](../e/main__ui__components__navigation.md), [`nest-view`](../e/main__ui__components__nest-view.md), [`parts-view`](../e/main__ui__components__parts-view.md), [`sheet-dialog`](../e/main__ui__components__sheet-dialog.md).
+- The bootstrap that pulls `getElement`/`getElements` is [Group C's `main__ui__index.ts.md`](../c/main__ui__index.ts.md).
+- The `data-*` attribute contract that `getDataAttribute`/`setDataAttribute` are designed to address is documented in [Group G's `main__index.html.md`](../g/main__index.html.md).
+- Sibling utilities in the same directory: [`conversion.ts`](./main__ui__utils__conversion.ts.md), [`ui-helpers.ts`](./main__ui__utils__ui-helpers.ts.md).

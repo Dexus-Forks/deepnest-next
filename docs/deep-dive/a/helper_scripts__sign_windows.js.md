@@ -134,7 +134,14 @@ None. No `// TODO`, no `// FIXME`. The defects (skip-list mismatch, no thumbprin
 - `package.json#build.files` excludes `helper_scripts/` (`!{examples,helper_scripts}` at `package.json:107`). The signer is read by electron-builder before any artefact is produced; it is **not** packaged into the installer. Confirmed safe.
 - `package.json#build.directories.output` is `deepnest-v${version}-win32-${arch}` (`package.json:115`). The output folder name does not include "signed" — there is no on-disk way to distinguish a signed build from an unsigned one at the directory level. Use `signtool verify /pa /v <file>` to confirm.
 
-## 10. Cross-references
+## 10. Test coverage
+
+- **None.** This script only runs inside `electron-builder` with the Certum smart card present and Windows-only `signtool.exe` resolvable on `PATH` or `SIGNTOOL_PATH`. There is no automated test, no dry-run path, and no mock signtool wrapper.
+- The `--publish never` flag on `build-dist-signed` (`package.json:24`) makes a Windows release build the only end-to-end smoke for this code; failures surface only when a maintainer runs the signed-build pipeline.
+- **Smallest meaningful test**: the branch table in §3.2 is pure — `path.extname`, `fs.existsSync`, the `child_process.execSync` boundary — and could be exercised with a stubbed `execSync` and a temp file tree. The skip-list mismatch in §3.3 is the highest-value assertion (sign-list parity with `package.json#build.win.signExts`).
+- **Manual verification** today: `signtool verify /pa /v <artifact>` against the produced `.exe`/`.dll`/`.node` files after `npm run build-dist-signed`.
+
+## 11. Cross-references
 
 - `docs/architecture.md` §12 (Deployment Architecture) — calls out this script and the `signExts` list.
 - `docs/deployment-guide.md` — full Windows release walkthrough (out of scope for this deep-dive).

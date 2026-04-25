@@ -1,269 +1,332 @@
-# Deep Dive — `main/ui/types/index.ts`
+# `main/ui/types/index.ts` — Deep Dive
 
-> **Group**: C (UI renderer composition) · **Issue**: DEE-14 · **Parent**: [DEE-11](../../../docs/index.md) · **Author**: Paige · **Generated**: 2026-04-25
->
-> Per-file deep dive following the [DEE-11 shared template](../../../docs/index.md). Companion file: [`main__ui__index.ts.md`](./main__ui__index.ts.md).
-
-| Field | Value |
-|---|---|
-| Path | [`main/ui/types/index.ts`](../../../main/ui/types/index.ts) |
-| Lines | 316 |
-| Language / module | TypeScript (ambient + runtime exports) |
-| Compiled to | `build/ui/types/index.js` (only the `IPC_CHANNELS` constant survives compilation; everything else is type-only) |
-| Layer | Tier A — visible renderer / type & contract definitions |
-
----
+**Generated:** 2026-04-26 by Paige (Tech Writer) for [DEE-35](/DEE/issues/DEE-35) (parent: [DEE-11](/DEE/issues/DEE-11)).
+**Group:** C — UI renderer composition.
+**File:** `main/ui/types/index.ts` (315 LOC, single file).
+**Mode:** Exhaustive deep-dive. The companion file is [`main__ui__index.ts.md`](./main__ui__index.ts.md).
 
 ## 1. Purpose
 
-`main/ui/types/index.ts` is a **two-faced contract surface**:
+The UI type spec. This file is a thin extension layer over the engine's root `index.d.ts` (which owns `DeepNestConfig`, `Part`, `Polygon`, `NestingResult`, etc.) and adds:
 
-1. **Type extension layer.** It re-exports the canonical core types from root [`index.d.ts`](../../../index.d.ts) and extends them with UI-only concerns (`UIConfig`, `ConfigObject`, view-data shapes, Ractive instance generic, etc.). The root file is the engine contract; this file is the renderer contract.
-2. **Runtime IPC contract.** It exports `IPC_CHANNELS` — the only place where channel-name strings are declared. Every IPC site in the renderer (and, by convention, the main process) imports from here. Renaming a channel is a one-line edit; that's the entire point.
+1. **`UIConfig`** — adds the user-profile, SVG-pre-processor, and export-shape config keys that only the UI cares about.
+2. **`IPC_CHANNELS`** — the **only string-typed contract** between renderer and main process. Every IPC `send` / `invoke` / `on` call site in `main/ui/services/*.ts` reads its channel name from this constant.
+3. **`DeepNestInstance`, `SvgParserInstance`, `ConfigObject`, `RactiveInstance<T>`** — typed shims for the four globals installed on `window` by legacy JS (`window.DeepNest`, `window.SvgParser`, `window.config`, `window.nest`).
+4. **View-data interfaces** (`PartsViewData`, `NestViewData`, `ImportedFile`, `SelectableNestingResult`, `SheetPlacementWithMerged`) that match Ractive template bindings.
+5. **Misc helpers**: `SvgPanZoomInstance`, `ThrottleOptions`, `FileFilter`, `MergedSegment`, `PresetConfig`, `NestingProgress`.
 
-Treat this file like an API spec. **Every change is breaking** because every consumer is a different process or module compiled at different times. Bump the cross-references when a payload shape or channel name changes.
+> **Treat this file like an API doc.** `IPC_CHANNELS` (lines 267-278) is the contract surface between Tier A (renderer) and the Electron main process; rename a key here and you must rename it in `main.js` (`ipcMain.on/handle` call sites) **and** in every consumer service in the same commit. The constant's `as const` annotation (line 278) is what makes the rename detectable to TypeScript at the consumer site — drop it and the contract goes string-typed.
 
----
+## 2. Public surface
 
-## 2. Public surface — type & value exports
+### 2.1 Re-exports from `index.d.ts` (lines 7-17)
 
-### 2.1 Re-exports (passthrough from `index.d.ts`)
+These types live in the engine-side root `index.d.ts` and are re-exported here so UI code only imports from `./types/index.js`:
 
-| Symbol | Source | Notes |
+| Re-export | Origin | Purpose |
 |---|---|---|
-| `DeepNestConfig` | `index.d.ts` | Core algorithm + UX config (units, scale, spacing, rotations, populationSize, mutationRate, placementType, mergeLines, timeRatio, simplify, dxfImport/Export scale, endpointTolerance, conversionServer). 17 fields. |
-| `SheetPlacement` | `index.d.ts` | `{filename, id, rotation, source, x, y}`. One placed copy of one part. |
-| `NestingResult` | `index.d.ts` | `{area, fitness, index, mergedLength, selected, placements: [{sheet, sheetid, sheetplacements: SheetPlacement[]}]}`. Output of one GA individual's evaluation. |
-| `PlacementType` | `index.d.ts` | `"gravity" \| "box" \| "convexhull"`. |
-| `UnitType` | `index.d.ts` | `"mm" \| "inch"`. |
-| `Bounds` | `index.d.ts` | `{x, y, width, height}`. |
-| `PolygonPoint` | `index.d.ts` | `{x, y, marked?, exact?}`. |
-| `Polygon` | `index.d.ts` | `Array<PolygonPoint>` extended with `id?, source?, children?, parent?, filename?`. |
-| `Part` | `index.d.ts` | `{polygontree, svgelements, bounds, area, quantity, filename, sheet?, selected?}`. |
+| `DeepNestConfig` | root `index.d.ts:24-62` | Engine-side config base. Every `UIConfig` value flows through this. |
+| `SheetPlacement` | root `index.d.ts:67-80` | Per-part placement returned by the genetic algorithm. |
+| `NestingResult` | root `index.d.ts:85-105` | Top-level nest result, plus `selected` and the `placements: { sheet, sheetid, sheetplacements }[]` shape. |
+| `PlacementType` | root | Discriminated union: `"gravity" \| "box" \| "convexhull"` (consumed by the placement-type `<select>` in `main/index.html`). |
+| `UnitType` | root | `"inch" \| "mm"`. The renderer maps to/from these only — internal storage is always inches. |
+| `Bounds` | root | `{x,y,width,height}` rectangle. |
+| `PolygonPoint`, `Polygon`, `Part` | root | Geometry primitives. `Polygon` is `Array<PolygonPoint>` with an `id`/`children` extension. |
 
-> ⚠ **Hazard.** `Part`, `Polygon`, and `NestingResult` define both engine state (read by `main/deepnest.js`, `main/background.js`) and UI state (rendered by `partsViewService` / `nestViewService`). Adding a field affects both sides. If the field is renderer-only, prefer to extend on the UI side (see `SelectableNestingResult` for the pattern).
+The same identifiers are imported again at line 20 (`import type {…}`) for use as parameters of UIConfig and the various interfaces below — they are duplicated at the import line because TypeScript's `export type {…}` re-export does not implicitly bring them into scope for the file's own type expressions.
 
-### 2.2 Constants
-
-| Symbol | Type | Value | Where used |
-|---|---|---|---|
-| `DEFAULT_CONVERSION_SERVER` | `string` | `"https://converter.deepnest.app/convert"` | `services/config.service.ts` `DEFAULT_CONFIG.conversionServer`. The legacy `convert.deepnest.io` URL is rewritten to this on `read-config` (see `main.js` lines 354–356). |
-| `IPC_CHANNELS` | `Readonly<Record<string, string>>` (via `as const`) | See [§3](#3-ipc-channel-contract) | All renderer-side IPC sites import `IPC_CHANNELS.<KEY>` rather than literal strings. |
-
-### 2.3 `UIConfig extends DeepNestConfig`
-
-Adds 7 UI-only fields on top of the 17 core fields:
-
-| Field | Type | Purpose | Default (from `services/config.service.ts`) |
-|---|---|---|---|
-| `access_token` | `string?` | OAuth access token for authenticated features | `undefined` |
-| `id_token` | `string?` | OAuth ID token for user identification | `undefined` |
-| `useSvgPreProcessor` | `boolean` | Enable `@deepnest/svg-preprocessor` cleanup pass on import | `false` |
-| `useQuantityFromFileName` | `boolean` | Parse `part.3.svg` filename suffix as quantity | `false` |
-| `exportWithSheetBoundboarders` | `boolean` | Include sheet boundary rectangles in exports (note: misspelled `boundboarders` is intentional — the persisted key matches) | `false` |
-| `exportWithSheetsSpace` | `boolean` | Add spacing between sheets in multi-sheet exports | `false` |
-| `exportWithSheetsSpaceValue` | `number` | Space between sheets in SVG units (inches; default `0.3937…` = 10mm) | `0.3937007874015748` |
-
-> 🔒 **Persisted-shape contract.** `UIConfig` is what gets `JSON.stringify`'d into `userData/settings.json` (via `IPC_CHANNELS.WRITE_CONFIG`) and into named presets (via `IPC_CHANNELS.SAVE_PRESET`). Renaming or removing a key is a migration event for every existing user — keep `services/config.service.ts#DEFAULT_CONFIG` aligned and consider a one-time read-side rewrite (the `convert.deepnest.io` precedent in `main.js`).
-
-### 2.4 `ConfigObject extends UIConfig`
-
-Adds the synchronous getter/setter façade implemented by `ConfigService`. This is what `window.config` is typed as.
+### 2.2 `UIConfig` interface (lines 25-40)
 
 ```ts
-getSync<K extends keyof UIConfig>(key?: K):
-  K extends keyof UIConfig ? UIConfig[K] : UIConfig;
-setSync<K extends keyof UIConfig>(
-  keyOrObject: K | Partial<UIConfig>,
-  value?: UIConfig[K]
-): void;
-resetToDefaultsSync(): void;
-```
-
-> Note: this is a **shadowing** generic of the `ConfigObject` declared in root `index.d.ts` (which is parameterised over `DeepNestConfig`, not `UIConfig`). The renderer-side overload widens the type to include UI-only keys. Both surfaces need to track each other; if you add a `UIConfig` field, the engine-side `index.d.ts` does not need to know about it.
-
-### 2.5 View-data interfaces (Ractive bindings)
-
-These describe the data context Ractive templates see. They drive `RactiveInstance<T>` typing.
-
-| Interface | Methods / fields | Used by |
-|---|---|---|
-| `PartsViewData` | `parts: Part[]`, `imports: ImportedFile[]`, `getSelected()`, `getSheets()`, `serializeSvg(svg)`, `partrenderer(part)` | `components/parts-view.ts` (Ractive template `#parts`) |
-| `NestViewData` | `nests: SelectableNestingResult[]`, `getSelected()`, `getNestedPartSources(n)`, `getColorBySource(id)`, `getPartsPlaced()`, `getUtilisation()`, `getTimeSaved()` | `components/nest-view.ts` (Ractive template for nest results) |
-
-A change to either interface must be matched by a change to the corresponding Ractive template (`<input on-click="@.getSelected()">`-style references). There is no compile-time check between the two — Ractive templates are strings.
-
-### 2.6 Other UI extensions
-
-| Symbol | Notes |
-|---|---|
-| `SvgPanZoomInstance` | Minimal surface of the vendored `svgpanzoom.js` (`main/util/svgpanzoom.js`). Captured here because import-side preview relies on it. |
-| `ImportedFile` | `{filename, svg, selected?, zoom?}` — one row in the imports list. Stored on `DeepNest.imports[]`. |
-| `NestingProgress` | `{index, progress}`. `progress < 0` means done (matches `main.js` background-progress passthrough). |
-| `SelectableNestingResult` | Extends `NestingResult` with `selected: boolean` + `utilisation: number` (the latter is computed for the result panel header). |
-| `DeepNestInstance` | Renderer-side typing of `window.DeepNest`. Mirrors the legacy class shape — `imports`, `parts`, `nests`, `working`, `importsvg(...)`, `config(...)`, `start(...)`, `stop()`, `reset()`. |
-| `RactiveInstance<T>` | Generic Ractive surface — `update`, `get`, `set`, `on`. `T` is the view-data type. The root `index.d.ts` declares a non-generic version for `window.nest`; this generic version is the one services should use. |
-| `ThrottleOptions` | `{leading?, trailing?}`. Used by `parts-view`'s sort/zoom throttle. |
-| `FileFilter` | `{name, extensions: string[]}`. Used by `dialog.showOpenDialog` and `dialog.showSaveDialogSync` calls in `services/import.service.ts` and `services/export.service.ts`. |
-| `MergedSegment` | `{x, y}`. Endpoint of a merged laser line (used for "merge lines" optimization display). |
-| `SheetPlacementWithMerged` | Extends `SheetPlacement` with `mergedSegments?: [MergedSegment, MergedSegment][]`. Pairs of points → line-segment overlay. |
-| `PresetConfig` | `{ [presetName: string]: string }` (each value is a `JSON.stringify(UIConfig)`). The exact shape of `userData/presets.json` after `IPC_CHANNELS.SAVE_PRESET`. |
-| `IpcChannel` | `(typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]` — discriminated union of all 10 channel string-literals. |
-| `SvgParserInstance` | Renderer-side typing of `window.SvgParser`. Surface mirrors the legacy class; subset of the methods is used by `services/export.service.ts` and `services/import.service.ts`. |
-| `ExtendedWindow` | Detailed `Window` surface for renderer modules that want the typed shape without relying on the ambient augmentation in root `index.d.ts`. **Not currently consumed** — kept for future strict-mode tightening. |
-
----
-
-## 3. IPC channel contract
-
-This is the canonical IPC table for the renderer. **Cross-reference**: `architecture.md` §5 and Group A's `main.js` deep dive (DEE-12) — the main-process side of every channel.
-
-### 3.1 IPC channel table
-
-> Direction shorthand: **R→M** = renderer to main (request); **M→R** = main to renderer (push); **bg→M→R** = background renderer to main, forwarded to main renderer (and vice-versa).
-
-| Constant | Channel name | Direction | Kind | Payload shape | Sender (renderer side) | Handler (main side) |
-|---|---|---|---|---|---|---|
-| `LOAD_PRESETS` | `"load-presets"` | R→M (request/response) | `ipcMain.handle` / `ipcRenderer.invoke` | `()` → `Record<string, string>` (per `PresetConfig`) | `services/preset.service.ts` line 76 (`loadPresets()`) | `main.js` line 378–380 → `presets.js#loadPresets` |
-| `SAVE_PRESET` | `"save-preset"` | R→M (request/response) | `ipcMain.handle` / `ipcRenderer.invoke` | `(name: string, config: UIConfig)` → `void` | `services/preset.service.ts` line 145 (`savePreset()`) | `main.js` line 382–384 → `presets.js#savePreset` |
-| `DELETE_PRESET` | `"delete-preset"` | R→M (request/response) | `ipcMain.handle` / `ipcRenderer.invoke` | `(name: string)` → `void` | `services/preset.service.ts` line 177 (`deletePreset()`) | `main.js` line 386–388 → `presets.js#deletePreset` |
-| `READ_CONFIG` | `"read-config"` | R→M (request/response) | `ipcMain.handle` / `ipcRenderer.invoke` | `()` → `UIConfig` (or `{}` on first run; URL rewrite of `convert.deepnest.io` → `converter.deepnest.app` is done in main on read) | `services/config.service.ts` line 147 (`initialize()`) | `main.js` line 353–357 |
-| `WRITE_CONFIG` | `"write-config"` | R→M (request/response) | `ipcMain.handle` / `ipcRenderer.invoke` | `(stringifiedConfig: string)` → `void` (renderer is responsible for `JSON.stringify`; main does `fs.writeFileSync` verbatim) | `services/config.service.ts` line 301 (`save()`) | `main.js` line 358–360 |
-| `BACKGROUND_START` | `"background-start"` | R→M→bg (fire-and-forget) | `ipcRenderer.send` / `ipcMain.on` | `BackgroundStartPayload` (see [§3.3](#33-backgroundstart-payload)) | `main/deepnest.js` (legacy) — **not** the modular UI services | `main.js` line 302–311; main forwards to first idle bg window (`isBusy=false`) |
-| `BACKGROUND_RESPONSE` | `"background-response"` | bg→M→R (push) | `ipcRenderer.on` / `ipcMain.on` | Placement result (engine-internal — see `main/background.js`) | `main/deepnest.js` (legacy) | `main.js` line 313–326; main pairs sender to its window slot, clears `isBusy` |
-| `BACKGROUND_PROGRESS` | `"background-progress"` | bg→M→R (push) | `ipcRenderer.on` / `ipcMain.on` | `NestingProgress` (`{index: number, progress: number}`; negative = done) | **`main/ui/index.ts` line 514** (`initializeBackgroundProgress()`) — the only direct IPC subscription in the modular UI | `main.js` line 328–335 |
-| `BACKGROUND_STOP` | `"background-stop"` | R→M (fire-and-forget) | `ipcRenderer.send` / `ipcMain.on` | `()` | `services/nesting.service.ts` lines 488, 557 | `main.js` line 337–349; destroys all bg windows then re-creates them |
-| `SET_PLACEMENTS` | `"setPlacements"` | R→M (fire-and-forget) | `ipcRenderer.send` / `ipcMain.on` | `payload: unknown` (engine-defined) | `main/deepnest.js` / engine | `main.js` line 370–372; stashes on `global.exportedPlacements` for remote inspection |
-
-> **10 channels declared in `IPC_CHANNELS`**. The main process exposes a few more (`login-success`, `purchase-success`, `test`, `get-notification-data`, `notification-data`, `close-notification`) that are **not** in this constant — those are scoped to the OAuth flow and the notification window, which the modular UI doesn't currently touch. If you add a renderer-side handler for any of those, lift the channel name into `IPC_CHANNELS` first.
-
-### 3.2 Channels declared but not subscribed by the modular UI
-
-`BACKGROUND_START`, `BACKGROUND_RESPONSE`, and `SET_PLACEMENTS` are declared in this constant for completeness, but the modular UI services (`main/ui/services/*`) never call `ipcRenderer.send(BACKGROUND_START)` or `ipcRenderer.on(BACKGROUND_RESPONSE)` directly. Those channels are owned by the legacy `main/deepnest.js` GA orchestrator (`architecture.md` §3.3 / ADR-002). The modular `NestingService` only sends `BACKGROUND_STOP`; everything else flows through the legacy code path.
-
-This is deliberate — the GA lives in legacy until the engine port lands. Don't introduce direct background-IPC calls from a new TypeScript service; route through `DeepNest.start(...)` instead.
-
-### 3.3 `BACKGROUND_START` payload
-
-This shape is **not** declared in `types/index.ts` because the only producer is `main/deepnest.js` and the only consumer is `main/background.js` (the hidden renderer). Documented here for cross-reference (Group B's `deepnest.js` deep dive owns the canonical shape):
-
-```
-{
-  individual: { placement: number[], rotation: number[] },
-  sheets: Polygon[],
-  ids: number[],
-  sources: number[],
-  children: Polygon[][],
-  filenames: (string | null)[],
-  sheetids: number[],
-  sheetsources: number[],
-  sheetchildren: Polygon[][],
-  config: DeepNestConfig
+export interface UIConfig extends DeepNestConfig {
+  access_token?: string;             // OAuth access token
+  id_token?: string;                  // OAuth id token
+  useSvgPreProcessor: boolean;        // Enable @deepnest/svg-preprocessor
+  useQuantityFromFileName: boolean;   // part.3.svg → 3 copies
+  exportWithSheetBoundboarders: boolean;   // include sheet rect in export (note: misspelt)
+  exportWithSheetsSpace: boolean;     // gap between sheets in multi-sheet export
+  exportWithSheetsSpaceValue: number; // gap value (SVG units, default 10mm equivalent)
 }
 ```
 
-If a modular service ever needs to send `BACKGROUND_START` directly, lift this into `types/index.ts` as `BackgroundStartPayload` and reference here.
+Inherited from `DeepNestConfig` (root `index.d.ts:24-62`):
 
-### 3.4 Channel additions checklist
+| Key | Type | Notes |
+|---|---|---|
+| `units` | `UnitType` | UI-facing only; storage is always inches. |
+| `scale` | `number` | SVG units per inch (default 72 = points). |
+| `spacing` | `number` | Inter-part spacing (length-converted). |
+| `curveTolerance` | `number` | Polygonifier tolerance (length-converted). |
+| `clipperScale` | `number` | Clipper integer factor (1e7); never edited via UI. |
+| `rotations` | `number` | GA rotation count. |
+| `threads` | `number` | Background renderer pool size. |
+| `populationSize` | `number` | GA population. |
+| `mutationRate` | `number` | GA mutation 0-1. |
+| `placementType` | `PlacementType` | gravity / box / convexhull. |
+| `mergeLines` | `boolean` | Laser-merge optimisation. |
+| `timeRatio` | `number` | Material vs laser-time bias (0-1). |
+| `simplify` | `boolean` | Polygon simplification. |
+| `dxfImportScale` | `number` | DXF unit-mapping in. |
+| `dxfExportScale` | `number` | DXF unit-mapping out. |
+| `endpointTolerance` | `number` | Path-close tolerance (length-converted). |
+| `conversionServer` | `string` | DXF→SVG converter URL. |
 
-When you add a channel:
+The renderer's `BOOLEAN_CONFIG_KEYS` constant (in `main/ui/services/config.service.ts`) is the runtime mirror of which `UIConfig` fields are `boolean` — see [`main__ui__index.ts.md`](./main__ui__index.ts.md) §5.6 for the dual-source-of-truth gotcha.
 
-1. **Add the key to `IPC_CHANNELS` in this file**, with `as const` preserved at the bottom.
-2. **Update the `IpcChannel` type** — automatic if you keep `as const`.
-3. **Add the renderer-side caller** (preferred: in a service under `main/ui/services/`; only put it directly in `main/ui/index.ts` if it's UI-only with no service home).
-4. **Add the main-side handler** in `main.js`. Use `ipcMain.handle` for request/response, `ipcMain.on` for fire-and-forget or push.
-5. **Document payload shape** in this section (table + a payload type if it's complex enough to deserve one).
-6. **Add to `architecture.md` §5** so the canonical IPC table stays accurate.
+### 2.3 `ConfigObject` interface (lines 79-98)
 
----
+```ts
+export interface ConfigObject extends UIConfig {
+  getSync<K extends keyof UIConfig>(key?: K): K extends keyof UIConfig ? UIConfig[K] : UIConfig;
+  setSync<K extends keyof UIConfig>(keyOrObject: K | Partial<UIConfig>, value?: UIConfig[K]): void;
+  resetToDefaultsSync(): void;
+}
+```
+
+Quirk: `ConfigObject` **extends** `UIConfig`, so an instance is *both* a value object (every config key directly readable) and an action object (`getSync` / `setSync`). This shape matches the legacy `electron-settings` API surface that `deepnest.js` was originally written against. Backward-compat anchor — see [`main__ui__index.ts.md`](./main__ui__index.ts.md) line 594 (`window.config = configService as unknown as ConfigObject`).
+
+`getSync` is a typed conditional: with no key it returns the whole `UIConfig`; with a key it returns the value type of that key.
+
+### 2.4 Globals shims
+
+| Interface | Lines | Backing global | Required for |
+|---|---|---|---|
+| `DeepNestInstance` | 123-176 | `window.DeepNest` | `getDeepNest()` in the entry point. Lists `imports`, `parts`, `nests`, `working` and the four entry methods (`importsvg`, `config`, `start`, `stop`, `reset`). |
+| `SvgParserInstance` | 288-302 | `window.SvgParser` | `getSvgParser()` in the entry point. Lists `load`, `cleanInput`, `polygonElements`, `isClosed`, `polygonify`, `polygonifyPath`, `transformParse`, `applyTransform`, `flatten`, `splitLines`, `mergeOverlap`, `mergeLines`, `config`. |
+| `ConfigObject` | 79-98 | `window.config` | The cast at `index.ts` line 594. |
+| `RactiveInstance<T>` | 206-215 | `window.nest` (with `T = NestViewData`) | The cast at `index.ts` line 691; also the cast for `partsViewService.getRactive()` at line 652. |
+| `SvgPanZoomInstance` | 50-59 | `interact()` is global, but svg-pan-zoom is `window.svgPanZoom` (loaded by `util/svgpanzoom.js`). Used by `ImportedFile.zoom`. |
+| `ExtendedWindow` | 309-315 | The whole `window` shape | Documentation-only. The base `Window` interface is augmented in root `index.d.ts:276-…`; this interface is for IDE completion when a service explicitly needs all five globals. |
+
+### 2.5 View-data interfaces
+
+| Interface | Lines | Bound to |
+|---|---|---|
+| `ImportedFile` | 64-73 | `parts-view.html` Ractive — list of imported SVGs with `selected`, `zoom` (SvgPanZoomInstance) per row. |
+| `PartsViewData` | 181-188 | `partsViewService.getRactive()` — `parts`, `imports`, `getSelected()`, `getSheets()`, `serializeSvg(svg)`, `partrenderer(part)`. |
+| `NestViewData` | 193-201 | `nestViewService.getRactive()` — `nests`, `getSelected()`, `getNestedPartSources(n)`, `getColorBySource(id)`, `getPartsPlaced()`, `getUtilisation()`, `getTimeSaved()`. |
+| `SelectableNestingResult` | 113-118 | Element type of `nests`. Adds `selected: boolean` and `utilisation: number` (0-100) to `NestingResult`. |
+| `SheetPlacementWithMerged` | 246-255 | Variant of `SheetPlacement` that carries `mergedSegments?: [MergedSegment, MergedSegment][]` for the laser-merge UI. |
+| `MergedSegment` | 238-241 | `{ x, y }` point in a merged-line pair. |
+| `NestingProgress` | 103-108 | Payload of `IPC_CHANNELS.BACKGROUND_PROGRESS` — `{ index, progress }`, where a negative `progress` means "this worker is finished." |
+| `PresetConfig` | 260-262 | Preset file shape: `{ [presetName: string]: string }` where the value is a JSON-stringified `UIConfig` (yes, double-encoded). |
+
+### 2.6 Misc helper interfaces
+
+| Interface | Lines | Use |
+|---|---|---|
+| `ThrottleOptions` | 220-225 | `throttle(fn, ms, opts)` in utility helpers; `{ leading?, trailing? }`. |
+| `FileFilter` | 230-233 | `dialog.showOpenDialog`'s `filters` shape (`{ name, extensions }`). |
+
+### 2.7 Constants exported as values (not types)
+
+| Constant | Lines | Value | Consumed by |
+|---|---|---|---|
+| `DEFAULT_CONVERSION_SERVER` | 45 | `"https://converter.deepnest.app/convert"` | `config.service.ts` defaults; `main.js` rewrites legacy `convert.deepnest.io` URLs to this on read. |
+| `IPC_CHANNELS` | 267-278 | Frozen-by-`as const` map of channel names. | Every `ipcRenderer.invoke / send / on` in `main/ui/services/*.ts` and the lone `on` call in `main/ui/index.ts:514`. |
+
+## 3. IPC contract — the **deliverable**
+
+> **The canonical IPC contract.** Every consumer site in `main/ui/services/*.ts` and `main/ui/index.ts` reads its channel name from `IPC_CHANNELS` (lines 267-278). Every handler site in `main.js` and `main/background.js` declares the literal string. Adding a new channel: add the key here first, then add the consumer call, then add the handler — in that order, in the same PR.
+
+### 3.1 The constant (lines 267-278)
+
+```ts
+export const IPC_CHANNELS = {
+  LOAD_PRESETS: "load-presets",
+  SAVE_PRESET: "save-preset",
+  DELETE_PRESET: "delete-preset",
+  READ_CONFIG: "read-config",
+  WRITE_CONFIG: "write-config",
+  BACKGROUND_START: "background-start",
+  BACKGROUND_STOP: "background-stop",
+  BACKGROUND_PROGRESS: "background-progress",
+  BACKGROUND_RESPONSE: "background-response",
+  SET_PLACEMENTS: "setPlacements",
+} as const;
+
+export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];
+```
+
+`IpcChannel` (line 283) is the union `"load-presets" | "save-preset" | …` derived via lookup — a type, not a value.
+
+### 3.2 Channel-by-channel table
+
+`Direction` legend: `R` = renderer (UI window), `M` = Electron main process, `B` = background renderer (worker), `→` = `send`/`invoke` to, `↔` = round-trip via `invoke`.
+
+| Constant key | String | Direction | Payload | Sender | Handler | Consumed by |
+|---|---|---|---|---|---|---|
+| `LOAD_PRESETS` | `"load-presets"` | R ↔ M | `() → PresetConfig` | `preset.service.ts:76` (`ipcRenderer.invoke`) | `main.js:378` (`ipcMain.handle`) | `loadPresetList()` in `index.ts:218`. |
+| `SAVE_PRESET` | `"save-preset"` | R ↔ M | `(name: string, config: UIConfig) → void` | `preset.service.ts:146` | `main.js:382` | `confirmSavePreset` handler in `index.ts:301`. |
+| `DELETE_PRESET` | `"delete-preset"` | R ↔ M | `(name: string) → void` | `preset.service.ts:177` | `main.js:386` | `deletePresetBtn` handler in `index.ts:371`. |
+| `READ_CONFIG` | `"read-config"` | R ↔ M | `() → object (parsed JSON, possibly empty)` | `config.service.ts:148` (await on construction) | `main.js:353` | Whole-app boot path; `createConfigService` blocks `initialize()` until this resolves. |
+| `WRITE_CONFIG` | `"write-config"` | R ↔ M | `(stringifiedConfig: string) → void` | `config.service.ts:301` | `main.js:358` | Every `setSync` flush. |
+| `BACKGROUND_START` | `"background-start"` | R → M → B | `{ individual, sheets, ids, sources, children, filenames, sheetids, sheetsources, sheetchildren, config }` (full ga payload) | `deepnest.js:1292` (`this.eventEmitter.send(...)`) | `main.js:302` (`ipcMain.on`); fans out to first idle bg window with `webContents.send("background-start", payload)` (line 307) | `nestingService` initiates the run via `DeepNest.start(...)`. |
+| `BACKGROUND_STOP` | `"background-stop"` | R → M | `()` | `nesting.service.ts:488` and `:557` | `main.js:337` (`ipcMain.on`); destroys all bg windows and recreates the pool | "Stop nesting" button. |
+| `BACKGROUND_PROGRESS` | `"background-progress"` | B → M → R | `NestingProgress { index: number, progress: number }` (negative = done) | `background.js:264, 2307, 2480` | `main.js:328` (`ipcMain.on`); rebroadcasts via `mainWindow.webContents.send` (line 331) | `index.ts:514` (`initializeBackgroundProgress`) — the only direct IPC `on` in the entry point. |
+| `BACKGROUND_RESPONSE` | `"background-response"` | B → M → R | placement payload (see `setPlacements` below) | `background.js:247` (worker emits) | `main.js:313`; matches `event.sender` to its bg slot, clears `isBusy`, rebroadcasts to main | `deepnest.js:1097` listens and immediately re-sends as `setPlacements`. |
+| `SET_PLACEMENTS` | `"setPlacements"` | R → M (stash) | placement payload | `deepnest.js:1098` (`this.eventEmitter.send("setPlacements", payload)`) | `main.js:370` (`ipcMain.on`); stores on `global.exportedPlacements` for remote inspection (e.g. Playwright) | Used by Playwright tests to read out the current nest from the main process; not a user-feature IPC. |
+
+### 3.3 Channel directionality summary
+
+```
+┌────────────┐   load-presets / save-preset / delete-preset           ┌────────────┐
+│            │   read-config / write-config                           │            │
+│  Renderer  │ ────────── ipcRenderer.invoke ─────────────────────►   │   Main     │
+│  (Tier A)  │                                                        │            │
+│            │   background-stop                                      │            │
+│            │ ───────────── ipcRenderer.send ─────────────────────►  │            │
+│            │                                                        │            │
+│            │   setPlacements                                        │            │
+│            │ ───────────── ipcRenderer.send ─────────────────────►  │            │
+│            │                                                        │            │
+│            │   background-progress / -response                      │            │
+│            │ ◄──────────── webContents.send ────────────────────    │            │
+└────────────┘                                                        └─────┬──────┘
+                                                                            │
+                                              background-start              │
+                                              webContents.send              ▼
+                                                                       ┌────────────┐
+                                                                       │ Background │
+                                                                       │ renderers  │
+                                                                       │ (Tier B)   │
+                                                                       └────────────┘
+```
+
+Cross-reference: `docs/architecture.md` §5 carries the same table grouped by capability (background nesting / configuration / auxiliary) and is the primary IPC reference. This file is the *type-level* contract; the architecture doc is the *behaviour* contract.
+
+### 3.4 Channels **not** in `IPC_CHANNELS`
+
+The following channels exist in `main.js` but are not surfaced in `IPC_CHANNELS` and therefore are not type-checked at the consumer site. Adding them is a worthy refactor:
+
+| Channel | Where it's referenced | Why it's outside the constant |
+|---|---|---|
+| `login-success` | `main.js:362` (rebroadcast), consumed by cloud-login UI | Cloud feature; `IPC_CHANNELS` is core-app only. |
+| `purchase-success` | `main.js:366` | Same. |
+| `test` | `main.js:374` | Test-only stash on `global.test`. |
+| `get-notification-data`, `close-notification` | `main.js:391, 401` | Notification window only — see [`docs/deep-dive/g/main__notification.html.md`](../g/main__notification.html.md). |
 
 ## 4. Dependencies
 
-### 4.1 Inbound (who imports this file)
+### 4.1 Imports
 
-Every TypeScript module under `main/ui/` imports something from here. Verified imports as of 2026-04-25:
+This file imports from exactly one location:
 
-| Importer | Imports |
+| Import | Source | Use |
+|---|---|---|
+| `DeepNestConfig`, `NestingResult`, `PolygonPoint`, `Part` (type-only) | `../../../index.d.ts` (root) | Base types extended by `UIConfig`, `SelectableNestingResult`, `SvgParserInstance.polygonify`, `DeepNestInstance.parts`. |
+
+Plus the `export type { … }` re-export block at lines 7-17 (same source).
+
+### 4.2 Consumers
+
+| Consumer | What it imports |
 |---|---|
-| `main/ui/index.ts` | 8 type imports (`UIConfig`, `ConfigObject`, `DeepNestInstance`, `SvgParserInstance`, `RactiveInstance`, `NestViewData`, `NestingProgress`, `PartsViewData`) + `IPC_CHANNELS` |
-| `main/ui/services/config.service.ts` | `UIConfig`, `ConfigObject`, `PlacementType`, `UnitType`, `DEFAULT_CONVERSION_SERVER`, `IPC_CHANNELS` |
-| `main/ui/services/preset.service.ts` | `IPC_CHANNELS`, `UIConfig`, `PresetConfig` |
-| `main/ui/services/import.service.ts` | `UIConfig`, `ImportedFile`, `Part`, `RactiveInstance`, `PartsViewData`, `FileFilter` |
-| `main/ui/services/export.service.ts` | `UIConfig`, `SvgParserInstance`, `DeepNestInstance`, `SelectableNestingResult`, `MergedSegment`, `SheetPlacementWithMerged` |
-| `main/ui/services/nesting.service.ts` | `IPC_CHANNELS`, `RactiveInstance`, `NestViewData`, `SelectableNestingResult`, `DeepNestInstance` |
-| `main/ui/components/*` | View-data interfaces + the `Ractive`-related types they bind to |
+| `main/ui/index.ts` | `UIConfig`, `ConfigObject`, `DeepNestInstance`, `SvgParserInstance`, `RactiveInstance`, `NestViewData`, `NestingProgress`, `PartsViewData`, plus the value `IPC_CHANNELS`. |
+| `main/ui/services/config.service.ts` | `UIConfig`, `IPC_CHANNELS` (`READ_CONFIG`, `WRITE_CONFIG`). |
+| `main/ui/services/preset.service.ts` | `IPC_CHANNELS` (`LOAD_PRESETS`, `SAVE_PRESET`, `DELETE_PRESET`), `UIConfig`, `PresetConfig`. |
+| `main/ui/services/nesting.service.ts` | `IPC_CHANNELS` (`BACKGROUND_STOP`), `NestingResult`, `RactiveInstance`, `NestViewData`. |
+| `main/ui/services/import.service.ts` | `ImportedFile`, `RactiveInstance`, `PartsViewData`, `Part`, `SvgPanZoomInstance`, `FileFilter`, `UIConfig`. |
+| `main/ui/services/export.service.ts` | `UIConfig`, `SvgParserInstance`, `DeepNestInstance`, `FileFilter`. |
+| `main/ui/components/parts-view.ts` | `PartsViewData`, `RactiveInstance`, `Part`, `ImportedFile`. |
+| `main/ui/components/nest-view.ts` | `NestViewData`, `RactiveInstance`, `SelectableNestingResult`, `MergedSegment`, `SheetPlacementWithMerged`. |
+| `main/ui/components/sheet-dialog.ts` | `Part`, `UIConfig`, `DeepNestInstance`. |
 
-### 4.2 Outbound
+The import graph forms a DAG with this file at the root — every other UI module depends on it.
 
-Type-only re-exports from [`../../../index.d.ts`](../../../index.d.ts). No runtime dependencies. No imports from any sibling under `main/ui/`.
+### 4.3 Outbound runtime dependencies
 
----
+None. This file emits **only types and one frozen object literal**. The compiled JS output is a single `IPC_CHANNELS = {…}` const plus an empty default export.
 
 ## 5. Invariants & gotchas
 
-1. **`as const` is required.** The `IPC_CHANNELS` constant is `as const`; this is what makes `IpcChannel` a string-literal union. Removing `as const` widens every value to plain `string` and silently breaks the discriminated-union behaviour at every call site.
-2. **`exportWithSheetBoundboarders` typo is on the wire.** Misspelling preserved because that's the persisted key in `userData/settings.json` for every existing user. Fixing it requires a migration on the main side — see the `convert.deepnest.io` URL-rewrite precedent in `main.js`.
-3. **`UIConfig` is doubly-typed.** The same shape is described here (renderer side) and partially in `index.d.ts` (engine side, narrower as `DeepNestConfig`). Engine code only sees `DeepNestConfig`; renderer sees `UIConfig`. Adding a UI-only field here does **not** require an engine-side change.
-4. **`RactiveInstance<T>` shadows root.** Root `index.d.ts` declares a non-generic `RactiveInstance` for `window.nest`. The generic version here widens the API surface (adds `get`/`set`/`on`). If you reference `RactiveInstance` from a renderer module, make sure you're getting the generic version (this file), not the root one.
-5. **Not every `IPC_CHANNELS` entry has a renderer-side caller.** See [§3.2](#32-channels-declared-but-not-subscribed-by-the-modular-ui). Don't assume the constant is exhaustive of "what the renderer does" — it's exhaustive of "what the modular code calls", with three legacy passthroughs included for reference.
-6. **`SelectableNestingResult` is a UI overlay**, not what the engine produces. The engine produces `NestingResult` (with `selected: boolean` already, from root `index.d.ts`) — `utilisation: number` is the renderer extension. `nest-view` is the only consumer.
-7. **`PresetConfig` values are JSON strings, not `UIConfig` objects.** The wire format double-encodes: `presets.json` is `Record<name, JSON.stringify(UIConfig)>`. Don't `JSON.parse` once and assume you get the config — `services/preset.service.ts` does the second `JSON.parse`.
-8. **`ExtendedWindow` is unused.** It exists for future strict-mode tightening; the actual ambient augmentation is in root `index.d.ts`. If you start consuming `ExtendedWindow`, you must also stop relying on the ambient `Window` augmentation — they overlap.
-9. **`DeepNestInstance` here vs. in root.** The root `index.d.ts` version has `parts: Part[]`, `nests: NestingResult[]`. This file's version adds `imports: ImportedFile[]` and replaces `nests` with `nests: SelectableNestingResult[]`. The renderer version is a superset of the engine's contract — keep it that way.
+### 5.1 `IPC_CHANNELS` keys are `as const`
 
----
+Line 278. The `as const` is what gives `IpcChannel` its literal-union type and what allows TypeScript to detect a typo at the consumer site (`ipcRenderer.invoke(IPC_CHANNELS.READ_CONIFG)` ⇒ compile error). Drop the `as const` and the constant becomes `Record<string, string>` and consumers go string-typed silently.
+
+### 5.2 `IPC_CHANNELS` values are kebab-case **except** `setPlacements`
+
+The lone camelCase value `"setPlacements"` (line 277) does not match the kebab-case convention used by the other channels. Both `main.js:370` and `deepnest.js:1098` use the camelCase string verbatim. Renaming would be a multi-file change for cosmetic value only — leave it alone.
+
+### 5.3 `exportWithSheetBoundboarders` is misspelt
+
+Line 35. The doubled `b` in `Boundboarders` is a typo carried forward from the legacy config (matches the HTML attribute `data-config="exportWithSheetBoundboarders"` in `main/index.html` line 366 — see [`docs/deep-dive/g/main__index.html.md`](../g/main__index.html.md) §3.1). Fixing this requires updating: this file, `config.service.ts` defaults, `main/index.html`, and any persisted user `settings.json` that already contains the misspelt key.
+
+### 5.4 `PresetConfig` values are JSON-stringified `UIConfig`
+
+```ts
+export interface PresetConfig {
+  [presetName: string]: string; // JSON stringified UIConfig
+}
+```
+
+The consumer must `JSON.parse(presetConfigValue)` before treating it as a `UIConfig`. This is double-encoding — the wrapping JSON file already represents the keys as JSON strings, and each value is itself a JSON string. The pattern persists for legacy compat with the old preset format.
+
+### 5.5 `DeepNestInstance.config` accepts a partial **`DeepNestConfig`**, not a `UIConfig`
+
+Line 155 (`config(config?: Partial<DeepNestConfig>): DeepNestConfig`). The engine does not know about UI-only keys (`access_token`, `useSvgPreProcessor`, …) so passing a `UIConfig` widens the signature implicitly. The current call sites at `index.ts:601`, `:437`, `:494` rely on TypeScript's structural compatibility: `UIConfig extends DeepNestConfig`, so a `UIConfig` is assignable to `Partial<DeepNestConfig>`. **Don't drop the `extends` relationship** — every UI config write to `DeepNest` would fail to type-check.
+
+### 5.6 `NestingProgress.progress` is overloaded with a sentinel
+
+Line 107: `/** Progress value (0-1, negative means finished) */`. The progress callback at `index.ts:519` does `parseInt(String(progress * 100))` and unconditionally writes a width — so a negative value renders as `width: -50%` which CSS clamps to 0%. Cosmetically benign because the second-leg "transition: none" at line 519 is also engaged only when `progress < 0.01` (i.e. *during the first percent*, not the finish marker). The finish-marker UX is "bar collapses to zero on completion" — verify this is intentional before refactoring.
+
+### 5.7 `SelectableNestingResult.selected` collides with `NestingResult.selected`
+
+Root `index.d.ts:95` already declares `selected: boolean` on `NestingResult`. Re-declaring it in `SelectableNestingResult` (line 115) is harmless TypeScript-side (identical type) but signals that the engine and UI differ on which struct owns the flag. The `utilisation: number` field (line 117) is the *real* UI-only addition.
+
+### 5.8 `RactiveInstance<T>` is a minimal shim
+
+Lines 206-215. It exposes only `update`, `get`, `set`, `on`. Real Ractive 0.8.1 has dozens more methods; the minimal surface is intentional — calling code that needs (e.g.) `ractive.findComponent` must extend the type locally. The generic `<T>` parameter only types `get` and `set`; `on` payloads are still `unknown`.
+
+### 5.9 `ConfigObject` extending `UIConfig` is the only reason `window.config.threads` works
+
+Line 79. Removing `extends UIConfig` from `ConfigObject` would force every read site that does `config.threads` (instead of `config.getSync("threads")`) to switch to the method. The legacy `deepnest.js` does both — see `docs/deep-dive/d/main__ui__services__config.service.md` for the migration plan.
+
+### 5.10 No runtime validators
+
+Every interface in this file is a compile-time-only type. There are no `zod` / `io-ts` validators applied to IPC payloads at runtime — if `main.js` sends a malformed `read-config` response, the renderer trusts it. Acceptable for an Electron app where both sides are owned by us; would be a security gap if a renderer ran untrusted code.
 
 ## 6. Known TODOs
 
-In-source: **none**. No `TODO` / `FIXME` / `HACK` markers in this file.
+The file has zero `// TODO` / `// FIXME` comments. All annotations are explanatory JSDoc.
 
-Implicit (called out elsewhere in the docs):
+Implicit / un-annotated TODOs surfaced during the deep-dive:
 
-- **`exportWithSheetBoundboarders` rename** — flagged in `architecture.md` §11 indirectly (under "Known Risks") and in this deep dive's invariants. Migrating requires read-side rewriting in `main.js` and a deprecation period.
-- **`BACKGROUND_START` payload type** — currently undocumented in TypeScript. Lifting it into a named interface here would let the modular `NestingService` stop relying on the legacy GA path. This is gated on the engine port (`architecture.md` ADR-002 successor).
-
----
+- **`exportWithSheetBoundboarders` typo** (§5.3) — eligible for cleanup with a migration step.
+- **Cloud-feature IPC channels missing from `IPC_CHANNELS`** (§3.4) — `login-success` / `purchase-success` would benefit from being typed.
+- **Notification IPC missing** (`get-notification-data`, `close-notification`) — see Group G's notification.html deep-dive for the existing three-channel contract that lives entirely outside `IPC_CHANNELS`.
+- **No runtime IPC payload validators** (§5.10) — viable hardening if a future renderer ever runs untrusted SVG content.
+- **`SET_PLACEMENTS` is dead-letter on the main side** — `main.js:370-372` only stashes to `global.exportedPlacements`. If no Playwright test reads it, the channel is unused; consider deleting or documenting the test-only contract.
 
 ## 7. Extension points
 
-1. **Add a new IPC channel.**
-   - Add a key to `IPC_CHANNELS` (line 267).
-   - Document payload + direction in [§3](#3-ipc-channel-contract).
-   - Implement renderer side in the relevant service (or `main/ui/index.ts` if UI-only).
-   - Implement main-process handler in `main.js`.
-   - Update `architecture.md` §5.
-2. **Add a new `UIConfig` field.**
-   - Append to `UIConfig` (line 25).
-   - Update `DEFAULT_CONFIG` in `services/config.service.ts`.
-   - If checkbox: append the key to `BOOLEAN_CONFIG_KEYS` in the same service file.
-   - Add the form input to `main/index.html` with `data-config="<key>"` (and `data-conversion="true"` if scaled).
-3. **Add a new view-data interface for a new Ractive component.**
-   - Define the interface here next to `PartsViewData` / `NestViewData`.
-   - Type the component's Ractive instance as `RactiveInstance<NewData>`.
-4. **Promote a legacy IPC channel into the modular path.**
-   - Today `BACKGROUND_START` / `BACKGROUND_RESPONSE` / `SET_PLACEMENTS` are legacy passthroughs (see [§3.2](#32-channels-declared-but-not-subscribed-by-the-modular-ui)).
-   - To consume them from a TypeScript service: lift the payload into a named interface here, document, then call `ipcRenderer.send / on` from the service. This is part of the eventual engine port (`architecture.md` ADR-002 successor).
-5. **Add a new global on `window`.**
-   - **Don't** (ADR-005). If you must: declare on `Window` in root `index.d.ts`, document in this file's `ExtendedWindow`, and update `architecture.md` ADR-005.
+| To add… | Touch |
+|---|---|
+| A new IPC channel | (1) Add `KEY: "channel-name"` to `IPC_CHANNELS` (lines 267-278). (2) Add `ipcMain.on/handle("channel-name", …)` in `main.js`. (3) Call `ipcRenderer.send/invoke(IPC_CHANNELS.KEY, …)` from a service in `main/ui/services/*.ts`. (4) Update `docs/architecture.md` §5. |
+| A new `UIConfig` field | (1) Add the field with a JSDoc. (2) If boolean, add to `BOOLEAN_CONFIG_KEYS` in `config.service.ts`. (3) Add a default value in `config.service.ts` defaults. (4) Add an `<input data-config="...">` in `main/index.html` (and `data-conversion="true"` if it's a length). |
+| A new view-data interface | Add an interface that mirrors the Ractive template's data context. Reference it via `RactiveInstance<NewViewData>` at the consumer site. |
+| A new globals shim | Add an interface here, `declare let X: NewInstance` in the consumer file, and ensure the global is installed by a `<script>` tag in `main/index.html` before the `<script type="module">` block. |
 
----
+## 8. Test coverage
 
-## 8. Test coverage status
+Direct coverage: **none**. Type-only files cannot be unit-tested in isolation; the value-side `IPC_CHANNELS` constant has no behaviour to assert.
 
-- **Unit tests**: none. Type-only declarations don't run; they're erased at compile time. The only runtime export (`IPC_CHANNELS` + `DEFAULT_CONVERSION_SERVER`) is exercised indirectly by every IPC test path.
-- **Compile-time checks**: `tsc --strict` (`tsconfig.json`) covers every importer of this file. A breaking type change here surfaces as a compiler error in the consumer service.
-- **E2E tests**: `tests/index.spec.ts` exercises `IPC_CHANNELS.READ_CONFIG`, `WRITE_CONFIG`, `LOAD_PRESETS`, `SAVE_PRESET`, `DELETE_PRESET`, `BACKGROUND_PROGRESS`, `BACKGROUND_STOP` indirectly via real Electron + Playwright. Pure renderer types like `MergedSegment` or `SheetPlacementWithMerged` are not E2E-asserted.
-- **Coverage gap**: no contract tests against the main-process handlers. A channel-name typo (e.g. `BACKGROUND_PORGRESS`) would compile cleanly and only surface as "progress bar doesn't move" in manual smoke. Mitigated today by the small surface area + every consumer importing `IPC_CHANNELS` instead of literal strings.
+Indirect coverage:
 
----
+- **TypeScript compile (`npm run build` / `tsc`)** is the primary "test" — every consumer site that mistypes a channel name or `UIConfig` key fails the build. CI runs `tsc` (see [`docs/architecture.md`](../../architecture.md) §6).
+- **Playwright e2e in `tests/index.spec.ts`** exercises every channel in §3.2 transitively — startup performs `read-config`/`load-presets`, the import flow uses `background-start`/`-progress`/`-response`, the export flow uses `setPlacements`. A channel-string mismatch between renderer and main would surface as a hung promise or a missing handler error.
+
+Coverage gap:
+
+- **No fuzz / contract test for IPC payloads.** A renderer could send an `int` where main expects a `string` and the type system wouldn't catch it (TypeScript's view of `ipcRenderer.invoke` is loose). A `zod` schema per channel would close this.
 
 ## 9. Cross-references
 
-- **Sibling deep dive**: [`main__ui__index.ts.md`](./main__ui__index.ts.md) — the single direct subscriber of `BACKGROUND_PROGRESS` and the only place outside services that touches `IPC_CHANNELS`.
-- **Group A** (DEE-12): `main.js` deep dive — main-process side of every channel in [§3.1](#31-ipc-channel-table).
-- **Group A** (DEE-12): `presets.js` — handler implementation for `LOAD_PRESETS` / `SAVE_PRESET` / `DELETE_PRESET`.
-- **Group B** (DEE-13): `main/deepnest.js` — owns `BACKGROUND_START` / `BACKGROUND_RESPONSE` send/receive (legacy GA orchestrator).
-- **Group B** (DEE-13): `main/background.js` — far end of `BACKGROUND_START`; emits `BACKGROUND_RESPONSE` and `BACKGROUND_PROGRESS`.
-- **Group D** (DEE-15): per-service deep dives — `config.service.ts` (`READ_CONFIG`/`WRITE_CONFIG`), `preset.service.ts` (`LOAD_PRESETS`/`SAVE_PRESET`/`DELETE_PRESET`), `nesting.service.ts` (`BACKGROUND_STOP`).
-- **Architecture context**: `docs/architecture.md` §5 (canonical IPC table), §3.2 (renderer types), ADR-005 (window globals), ADR-007 (TS scope).
-- **Root types**: [`index.d.ts`](../../../index.d.ts) — engine-side contract; this file extends it.
+- [`main__ui__index.ts.md`](./main__ui__index.ts.md) — companion: every consumer site for the types and the `IPC_CHANNELS` constant.
+- [`docs/architecture.md`](../../architecture.md) §5 — the canonical IPC behavior table (this file is the type contract; that table is the behavior).
+- [`docs/deep-dive/a/main.js.md`](../a/main.js.md) — the handler side. Every channel in §3.2 has a matching `ipcMain.on`/`handle` documented there.
+- [`docs/deep-dive/g/main__index.html.md`](../g/main__index.html.md) — the HTML contract surface; `data-config="<UIConfig key>"` is the runtime mirror of §2.2.
+- [`docs/deep-dive/d/main__ui__services__config.service.md`](../d/main__ui__services__config.service.md) — owns `READ_CONFIG`, `WRITE_CONFIG`, `BOOLEAN_CONFIG_KEYS`.
+- [`docs/deep-dive/d/main__ui__services__preset.service.md`](../d/main__ui__services__preset.service.md) — owns `LOAD_PRESETS`, `SAVE_PRESET`, `DELETE_PRESET`; also unwraps `PresetConfig` (§5.4).
+- [`docs/deep-dive/d/main__ui__services__nesting.service.md`](../d/main__ui__services__nesting.service.md) — owns `BACKGROUND_STOP`; consumes `NestingProgress`, `NestingResult`.
+- Root `index.d.ts:24-62` — origin of `DeepNestConfig`; this file's `UIConfig` is its only direct extension.

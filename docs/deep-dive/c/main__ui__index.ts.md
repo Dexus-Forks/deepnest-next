@@ -1,302 +1,327 @@
-# Deep Dive — `main/ui/index.ts`
+# `main/ui/index.ts` — Deep Dive
 
-> **Group**: C (UI renderer composition) · **Issue**: DEE-14 · **Parent**: [DEE-11](../../../docs/index.md) · **Author**: Paige · **Generated**: 2026-04-25
->
-> Per-file deep dive following the [DEE-11 shared template](../../../docs/index.md). Companion file: [`main__ui__types__index.ts.md`](./main__ui__types__index.ts.md).
-
-| Field | Value |
-|---|---|
-| Path | [`main/ui/index.ts`](../../../main/ui/index.ts) |
-| Lines (incl. blanks/comments) | 823 |
-| Language / module | TypeScript (compiled to ESM under `build/ui/index.js`) |
-| Loaded by | `main/index.html` `<script type="module" src="../build/ui/index.js">` |
-| Layer | Tier A — visible renderer / composition root (see `architecture.md` §2) |
-
----
+**Generated:** 2026-04-26 by Paige (Tech Writer) for [DEE-35](/DEE/issues/DEE-35) (parent: [DEE-11](/DEE/issues/DEE-11)).
+**Group:** C — UI renderer composition.
+**File:** `main/ui/index.ts` (822 LOC, single file).
+**Mode:** Exhaustive deep-dive. The companion file is [`main__ui__types__index.ts.md`](./main__ui__types__index.ts.md).
 
 ## 1. Purpose
 
-`main/ui/index.ts` is the **composition root** of the visible renderer. It is the single seam between the legacy globals (`window.DeepNest`, `window.SvgParser`) and the modern modular UI under `main/ui/services/`, `main/ui/components/`, and `main/ui/utils/`.
+The composition root of the visible Electron renderer. This file replaces the legacy monolithic `page.js` (per the doc-block at lines 1-5) and orchestrates initialization of every service, every component, every IPC subscription, and every DOM event binding.
 
-It owns three concerns and nothing else:
+It is loaded by the inline `<script type="module">` block in `main/index.html` (`import * as ui from "../build/ui/index.js"` — see [`docs/deep-dive/g/main__index.html.md`](../g/main__index.html.md) §2). Once the module evaluates, it registers a single `DOMContentLoaded` callback (`ready(initialize)`, line 807) and exposes nine service singletons via `export {…}` (lines 812-822) for external consumers. Every other piece of UI behavior — preset modal, config form, drag-drop suppression, parts resizing, version display, import/export buttons, background-progress bar — flows from `initialize()`.
 
-1. **Boot orchestration** — wait for DOM, resolve Node modules, initialise services then components, register every event handler, hand off to `loadInitialFiles()`.
-2. **Cross-module wiring** — every callback shared between modules (`updatePartsCallback`, `displayNestFn`, `saveJsonFn`, `attachSortCallback`, `applyZoomCallback`, `resizeCallback`) is constructed here. There is no DI container; constructor injection via plain factory functions is the convention (see `architecture.md` ADR-007 + `component-inventory.md`).
-3. **Renderer-side glue logic that doesn't justify a service** — the config-form change handler, preset modal lifecycle, parts-list resize, version label, button click handlers. Anything that's "DOM event → call service" lives here.
-
-It does **not** own:
-- The IPC contract (lives in [`types/index.ts`](./main__ui__types__index.ts.md)).
-- Persistence (lives in `services/config.service.ts` and `services/preset.service.ts`).
-- Ractive view-data (lives in the relevant component file).
-
-This file replaces the monolithic legacy `page.js` (header comment line 3). Treat it as load-bearing — every renderer feature touches it.
-
----
+> **Document this file before refactoring any UI service.** It is the only place where every service constructor is called and every cross-service callback is wired (`updatePartsCallback`, `displayNestFn`, `saveJsonFn`, `attachSortCallback`, `applyZoomCallback`, `resizeCallback`). Renaming a public method on any service will silently break composition here unless you update the relevant `createXxxService(…)` call site listed in §4.2.
 
 ## 2. Public surface
 
-### 2.1 Boot sequence
+### 2.1 Module exports
 
-The exported behaviour is the side-effect of calling `ready(initialize)` at the bottom (line 807). Reproduced as a numbered list — each step is tied to the source line.
+The module re-exports nine service singletons (lines 812-822). They are populated by `initialize()` after the DOM is ready, so any consumer that imports them must wait until `DOMContentLoaded` itself has fired or face `undefined` references.
 
-| # | Step | Source line | Notes |
+| Export | Type | Populated by | Lifetime |
 |---|---|---|---|
-| 1 | Wait for `DOMContentLoaded` | `ready(initialize)` line 807; `ready()` defined at line 96 | Calls `initialize` immediately if `document.readyState !== "loading"`. |
-| 2 | `require("electron")` → `ipcRenderer` | line 767–768 | First side-effect inside `initialize()`. Only the renderer-side `ipcRenderer` is captured; `@electron/remote` is loaded on the next line. |
-| 3 | Resolve `@electron/remote`, `graceful-fs`, `form-data`, `axios`, `path`, `@deepnest/svg-preprocessor` | lines 769–774 | Loaded synchronously via `require()` because `nodeIntegration: true` is enabled in the renderer (`architecture.md` ADR-004). The `svgPreProcessor` module is an out-of-tree native package (`architecture.md` §3.5). |
-| 4 | `Ractive.DEBUG = false` | line 777 | Disables Ractive's runtime warnings. Ractive itself is loaded as a `<script>` in `main/index.html`, not via `require`. |
-| 5 | `await initializeServices()` | line 780 → defined line 591 | Creates `configService` (async, calls `IPC_CHANNELS.READ_CONFIG`), creates `presetService`, attaches `window.config`, pushes initial config into `DeepNest`, calls `updateForm(cfgValues)` to seed the form. |
-| 6 | `await loadPresetList()` | line 783 → defined line 218 | Calls `presetService.loadPresets()` → `IPC_CHANNELS.LOAD_PRESETS`. Populates `#presetSelect` `<option>`s. |
-| 7 | `initializeComponents()` | line 786 → defined line 608 | Synchronous. Order: navigation → parts-view → nest-view → `(window as any).nest = nestViewService.getRactive()` → sheet-dialog → import-service → export-service → `setExportButton(#export)` → nesting-service → `setNestRactive(...)` → `nestingService.bindEventHandlers()`. |
-| 8 | `initializePresetModal()` | line 789 → defined line 243 | Wires `#savePresetBtn`, `#loadPresetBtn`, `#deletePresetBtn`, `#preset-modal`, `#confirmSavePreset`, `#presetName`, the `.close` button, and an outside-click dismiss on `window`. |
-| 9 | `initializeConfigForm()` | line 790 → defined line 388 | Iterates `#config input, #config select`. For each: registers `change` (config-write + DeepNest re-config + `updateForm`), `mouseover` (highlight `.config_explain`), `mouseleave` (clear highlight). Also wires `#setdefault` and appends `.spinner` `<div>` to every `#configform dd`. |
-| 10 | `initializeBackgroundProgress()` | line 791 → defined line 513 | **Only direct `ipcRenderer.on()` call in this file.** Subscribes to `IPC_CHANNELS.BACKGROUND_PROGRESS` and updates the width of `#progressbar`. |
-| 11 | `initializeDragDropPrevention()` | line 792 → defined line 528 | Sets `document.ondragover`, `document.ondrop`, `document.body.ondrop` to `preventDefault`. Stops accidental file drops from navigating away. |
-| 12 | `initializeMessageClose()` | line 793 → defined line 541 | Wires the `#message a.close` link to clear `#messagewrapper.className`. The banner itself is rendered by `utils/ui-helpers.ts#message()`. |
-| 13 | `initializePartsResize()` | line 794 → defined line 557 | Wraps `interact(".parts-drag").resizable(...)` and `window.addEventListener("resize", resize)`. Also calls `resize()` once for the initial layout. |
-| 14 | `initializeVersionInfo()` | line 795 → defined line 576 | `require("../package.json")` and writes `pjson.version` into `#package-version`. Wrapped in a try/catch — failure is silent (line 583). |
-| 15 | `initializeImportButton()` | line 796 → defined line 700 | Wires `#import` click → `importService.showImportDialog()`, with className-based busy-state (`button import disabled` → `button import spinner` → `button import`). |
-| 16 | `initializeExportButtons()` | line 797 → defined line 725 | Wires `#exportjson`, `#exportsvg`, `#exportdxf` to `exportService.exportTo*()`. |
-| 17 | `await loadInitialFiles()` | line 800 → defined line 757 | Calls `importService.loadNestDirectoryFiles()` which reads SVGs already in `global.NEST_DIRECTORY` (set by `main.js` line 138) and imports each one. |
-| 18 | `window.loginWindow = null` | line 803 | OAuth flow expects this slot; the actual popup is created elsewhere. |
+| `configService` | `ConfigService` | `await createConfigService(ipcRenderer)` (line 593) | App lifetime; also published as `window.config` (line 594) |
+| `presetService` | `PresetService` | `createPresetService(ipcRenderer)` (line 597) | App lifetime |
+| `importService` | `ImportService` | `createImportService({…})` (line 642) | App lifetime |
+| `exportService` | `ExportService` | `createExportService({…})` (line 659) | App lifetime |
+| `nestingService` | `NestingService` | `createNestingService({…})` (line 679) | App lifetime |
+| `navigationService` | `NavigationService` | `createNavigationService({resizeCallback})` (line 610) | App lifetime |
+| `partsViewService` | `PartsViewService` | `createPartsViewService({…})` (line 614) | App lifetime |
+| `nestViewService` | `NestViewService` | `createNestViewService({…})` (line 622) | App lifetime; Ractive instance also published as `window.nest` (line 629) |
+| `sheetDialogService` | `SheetDialogService` | `createSheetDialogService({…})` (line 632) | App lifetime |
 
-> **Boot-order invariant.** Steps 5 and 7 are not interchangeable — `initializeComponents()` reads `configService.getSync()` and `presetService` and so requires step 5 to have completed. Similarly, step 6 depends on `presetService` from step 5. Anything new that needs services or globals goes **after** step 5 / step 7 respectively.
+Three additional `window.*` globals are written by this module:
 
-### 2.2 Module exports
-
-The named exports (lines 812–822) expose the same nine instances that are wired in `initializeComponents()`:
-
-| Export | Type | Set in | Available after |
+| Global | Source | Line | Why it exists |
 |---|---|---|---|
-| `configService` | `ConfigService` | `initializeServices()` | Step 5 |
-| `presetService` | `PresetService` | `initializeServices()` | Step 5 |
-| `importService` | `ImportService` | `initializeComponents()` | Step 7 |
-| `exportService` | `ExportService` | `initializeComponents()` | Step 7 |
-| `nestingService` | `NestingService` | `initializeComponents()` | Step 7 |
-| `navigationService` | `NavigationService` | `initializeComponents()` | Step 7 |
-| `partsViewService` | `PartsViewService` | `initializeComponents()` | Step 7 |
-| `nestViewService` | `NestViewService` | `initializeComponents()` | Step 7 |
-| `sheetDialogService` | `SheetDialogService` | `initializeComponents()` | Step 7 |
+| `window.config` | `configService` cast as `ConfigObject` | 594 | Backward-compat with the legacy `electron-settings` API consumed by `deepnest.js`. |
+| `window.nest` | `nestViewService.getRactive()` | 629 | Backward-compat for the legacy view code that reads `nest.update(…)`. |
+| `window.loginWindow` | `null` | 803 | Slot reserved for the cloud-login popup; populated elsewhere. |
 
-> ⚠ **Hazard.** All nine exports start as `undefined` at module load time and are populated inside `initialize()`. Any consumer importing these from another renderer module must guard against the pre-init state, or import within an event handler that fires post-boot. There is currently **no consumer** in the repo — the exports exist for tooling/testability.
+These three are written via the same triple-keyed cast `(window as unknown as { config: unknown; nest: unknown; loginWindow: unknown })` (lines 594, 629, 803) — see §5.10 for the gotcha.
 
-### 2.3 Internal helpers (file-private but architecturally relevant)
+### 2.2 Boot sequence (`initialize()` at lines 765-804)
 
-| Symbol | Source line | Role |
+The numbered list below maps each step of `initialize()` to its source line. **This is the canonical entry-point map** — all other functions in the file are helpers invoked from one of these steps.
+
+1. **Load Electron + Node module references** (lines 766-774). `require()`-loads `electron`, `@electron/remote`, `graceful-fs`, `form-data`, `axios`, `path`, `@deepnest/svg-preprocessor`. These are stored in module-scope `let` bindings declared at lines 120-126. Relies on `nodeIntegration: true` and `enableRemoteModule: true` set by `main.js:100-105` (see [`docs/deep-dive/a/main.js.md`](../a/main.js.md) §3.2).
+2. **Disable Ractive debug** (line 777, `Ractive.DEBUG = false`). Suppresses the Ractive 0.8.1 console diagnostics; the `Ractive` global is provided by the vendored `util/ractive.js` loaded earlier in `main/index.html`.
+3. **Initialize services** (line 780, `await initializeServices()`). Detail at §4.1.
+4. **Load preset list** (line 783, `await loadPresetList()`). Populates `<select id="presetSelect">` from the preset file via IPC `load-presets`.
+5. **Initialize components** (line 786, `initializeComponents()`). Detail at §4.2.
+6. **Initialize handlers** (lines 789-797). Nine specialised binders, called in this strict order (the order matters for `initializePartsResize()`, see §5.3 below):
+    1. `initializePresetModal()` (line 789)
+    2. `initializeConfigForm()` (line 790)
+    3. `initializeBackgroundProgress()` (line 791)
+    4. `initializeDragDropPrevention()` (line 792)
+    5. `initializeMessageClose()` (line 793)
+    6. `initializePartsResize()` (line 794)
+    7. `initializeVersionInfo()` (line 795)
+    8. `initializeImportButton()` (line 796)
+    9. `initializeExportButtons()` (line 797)
+7. **Load initial files** (line 800, `await loadInitialFiles()`). Delegates to `importService.loadNestDirectoryFiles()` so the nest scratch directory is reflected in the parts list at startup.
+8. **Reserve `window.loginWindow`** (line 803). Sets it to `null` so subsequent feature code can do `if (window.loginWindow) {…}` safely.
+
+The DOM-ready guard is `ready()` at lines 96-102 — synchronous if `document.readyState !== "loading"`, otherwise `addEventListener("DOMContentLoaded", fn)`. `initialize` returns a Promise, but `ready()` does not await it; an unhandled rejection inside `initialize` propagates as an `unhandledrejection` event on the renderer.
+
+### 2.3 Helper functions in module scope
+
+| Function | Lines | Role |
 |---|---|---|
-| `getDeepNest()` | 81 | Typed accessor for the `window.DeepNest` global. **Use this** instead of touching the global directly (ADR-005). |
-| `getSvgParser()` | 88 | Same pattern for `window.SvgParser`. |
-| `ready(fn)` | 96 | DOM-ready helper. Idempotent on `readyState !== "loading"`. |
-| `resize(event?)` | 132 | Adjusts `#parts` width and per-`<th>` span widths. Used as `resizeCallback` for navigation, parts-view, sheet-dialog, import-service, and `interact.js` resize-move. |
-| `updateForm(c)` | 152 | Reflects a `UIConfig` into every `#config input, #config select`. Handles unit/scale conversion (mm → divide by 25.4 in `#inputscale`; `data-conversion="true"` divides by current scale), boolean keys (`BOOLEAN_CONFIG_KEYS`), and skips `presetSelect` / `presetName`. |
-| `loadPresetList()` | 218 | Repopulates `#presetSelect`. |
+| `getDeepNest()` | 81-83 | Returns the `window.DeepNest` global cast to `DeepNestInstance`. The legacy `deepnest.js` installs the global at parse time. |
+| `getSvgParser()` | 88-90 | Returns the `window.SvgParser` global cast to `SvgParserInstance`. Same legacy pattern. |
+| `ready(fn)` | 96-102 | DOM-ready shim. |
+| `resize(event?)` | 132-146 | Header-width sync between `<table>` cells and their inner `<span>`. Used by both the `interact()` resize handler and the `window.resize` listener. |
+| `updateForm(c)` | 152-213 | Writes a `UIConfig` value object back into the DOM (radio, scale, all `data-config` inputs). Mirrors `initializeConfigForm()`'s read direction. |
 
-These helpers are **not exported** but are referenced from inside `initialize*()` functions, so any refactor that splits this file must keep them visible to those handlers.
+`updateForm()` and `initializeConfigForm()` are mirror images:
 
----
+- `updateForm` reads `data-config="<key>"` from each input (line 193), then writes `c[key]` into `inputElement.value` or `.checked` (lines 204-211).
+- `initializeConfigForm` (lines 388-508) attaches `change` listeners that read `inputElement.value`/`.checked`, decide whether to multiply by the scale, and call `configService.setSync(key, val)` (line 435).
+
+The two functions form a closed loop: every `change` event ends with `updateForm(cfgValues)` (line 438) so the DOM stays internally consistent if the service mutated additional keys.
 
 ## 3. IPC / global side-effects
 
-### 3.1 IPC subscribed (renderer side)
+This file performs **one** IPC subscription directly. All other IPC happens through service objects:
 
-`main/ui/index.ts` itself directly subscribes to **exactly one** IPC channel:
+### 3.1 Direct IPC subscription
 
-| Channel | Method | Source line | Handler effect |
+| Channel | Direction | Handler | Source line |
 |---|---|---|---|
-| `IPC_CHANNELS.BACKGROUND_PROGRESS` (`"background-progress"`) | `ipcRenderer.on(...)` | 514 | Reads `args[0] as NestingProgress`, sets `#progressbar` width to `progress*100%`. Adds `transition: none` when `progress < 0.01` to snap back instantly on a fresh run. |
+| `IPC_CHANNELS.BACKGROUND_PROGRESS` (`"background-progress"`) | main → renderer | `initializeBackgroundProgress()` lines 514-522. Reads `args[0]` as `NestingProgress`, writes `width: <progress*100>%` into `#progressbar`. Below 1% it disables the CSS transition to avoid a "rubber-band" snap. | 514 |
 
-All other IPC traffic from the renderer is mediated by the services (see `architecture.md` §5). This file passes the captured `ipcRenderer` into `createConfigService(...)`, `createPresetService(...)`, and `createNestingService({ ipcRenderer })`. The services then invoke / send / on as documented in `component-inventory.md` and the [types deep dive](./main__ui__types__index.ts.md#3-ipc-channel-contract).
+The progress callback is the only place where the file pulls a payload from `main` directly. Every other IPC channel is owned by a service:
 
-### 3.2 Globals written
+- `read-config`, `write-config` → `ConfigService` (`main/ui/services/config.service.ts`).
+- `load-presets`, `save-preset`, `delete-preset` → `PresetService` (`main/ui/services/preset.service.ts`).
+- `background-start`, `background-stop`, `background-response` → `NestingService` + the legacy `deepnest.js` event emitter.
 
-| Global | Source line | When | Why |
+See [`main__ui__types__index.ts.md`](./main__ui__types__index.ts.md) §3 for the full IPC contract.
+
+### 3.2 DOM side-effects (one-shot, registered once at boot)
+
+| Side-effect | Function | Lines | Element(s) touched |
 |---|---|---|---|
-| `window.config` | 594 | After `createConfigService()` completes (step 5) | Backwards compat with `window.config.getSync(...)` calls in legacy renderer code (`main/deepnest.js`, etc.). |
-| `window.nest` | 629 | After `nestViewService` is created (step 7) | Legacy access pattern for the nest-view Ractive — still read by some exported functions. Type is `RactiveInstance<NestViewData>`. |
-| `window.loginWindow` | 803 | End of `initialize()` | OAuth popup slot; populated when login flow runs. |
+| Drag-drop suppression on document and body | `initializeDragDropPrevention()` | 528-536 | `document.ondragover`, `document.ondrop`, `document.body.ondrop` |
+| Message close button | `initializeMessageClose()` | 541-552 | `#message a.close`, `#messagewrapper` |
+| Parts table resize | `initializePartsResize()` | 557-571 | `interact(".parts-drag")`, `window.resize` listener |
+| Version label | `initializeVersionInfo()` | 576-586 | `#package-version` (innerText). Reads `package.json` via Node `require`. |
+| Import button | `initializeImportButton()` | 700-720 | `#import` `onclick` |
+| Export buttons | `initializeExportButtons()` | 725-752 | `#exportjson`, `#exportsvg`, `#exportdxf` `onclick` (DXF is async) |
+| Spinner injection | `initializeConfigForm()` tail | 502-507 | Appends a `<div class="spinner">` to every `#configform dd` so `change` handlers can flip `parentNode.className = "progress"`/`""` (lines 431, 442). |
 
-> All three globals are declared in `index.d.ts` (root-level `Window` augmentation) — see ADR-005. **Do not add a fourth.**
+### 3.3 `window.*` mutations
 
-### 3.3 Globals read
-
-- `DeepNest` (legacy global, set by `main/deepnest.js`) — read via `getDeepNest()` from `initializeServices()`, `initializeComponents()`, `initializeConfigForm()`, and the preset load/reset paths.
-- `SvgParser` (legacy global, set by `main/svgparser.js`) — read via `getSvgParser()` and passed into `createExportService(...)`.
-- `Ractive` (script-tag global) — `Ractive.DEBUG = false` (line 777).
-- `interact` (script-tag global) — used by `initializePartsResize()` line 558.
-- `require` (Node CommonJS, available because `nodeIntegration: true`) — every Node module is loaded synchronously in `initialize()`.
-
-### 3.4 DOM contract
-
-`main/ui/index.ts` reads/writes the following selectors. Anything that renames these in `main/index.html` will silently break boot. Cross-reference: Group G's `main/index.html` deep-dive (DEE-18).
-
-| Selector | Used in | Direction |
-|---|---|---|
-| `#parts` | `resize()` line 133 | Write `style.width` |
-| `#parts table th` | `resize()` line 140 | Read `offsetWidth`, write `<span>.style.width` |
-| `#configform input[value=inch]` / `[value=mm]` | `updateForm()` lines 156, 158 | Write `checked` |
-| `span.unit-label` | `updateForm()` line 166 | Write `innerText` |
-| `#inputscale` | `updateForm()`, `initializeConfigForm()` | Read/write `value` |
-| `#config input, #config select` | `updateForm()`, `initializeConfigForm()` | Read attributes (`data-config`, `data-conversion`, `id`); write `value` / `checked` |
-| `#configform dd` | `initializeConfigForm()` line 502 | Append `.spinner` div |
-| `#presetSelect`, `#savePresetBtn`, `#loadPresetBtn`, `#deletePresetBtn`, `#preset-modal`, `#confirmSavePreset`, `#presetName` | `initializePresetModal()` | Click + value handling |
-| `#preset-modal .close` | `initializePresetModal()` line 256 | Click |
-| `body.modal-open` (class) | `initializePresetModal()` | Add/remove |
-| `#progressbar` | `initializeBackgroundProgress()` | Write `style` attribute |
-| `#message a.close` | `initializeMessageClose()` | Click |
-| `#messagewrapper` | `initializeMessageClose()` | Write `className` |
-| `.parts-drag` | `initializePartsResize()` | `interact.js` resizable |
-| `#package-version` | `initializeVersionInfo()` | Write `innerText` |
-| `#import`, `#export` | Import/export wiring | Click + className busy state |
-| `#exportjson`, `#exportsvg`, `#exportdxf` | `initializeExportButtons()` | Click |
-| `#explain_<config-key>` | Config-form mouseover | Toggle `.config_explain.active` |
-| `.config_explain` | Config-form mouseover/mouseleave | Reset class |
-| `#setdefault` | `initializeConfigForm()` | Click |
-
-The HTML also relies on **`data-config="<UIConfig key>"`** and **`data-conversion="true"`** attributes — those are the canonical contract between this file and `main/index.html`. See Group G for the static-surface deep dive of the HTML.
-
----
+Lines 594, 629, 803. See §2.1.
 
 ## 4. Dependencies
 
-### 4.1 Inbound (who imports / triggers this file)
-
-- **`main/index.html`** loads the compiled `build/ui/index.js` as the renderer entry script.
-- No runtime importer — exports are not consumed elsewhere in the repo (verified via grep at time of writing). They exist for testability.
-
-### 4.2 Outbound — type-only imports
-
-From [`./types/index.js`](./main__ui__types__index.ts.md):
+### 4.1 Service initialization graph (`initializeServices()` lines 591-603)
 
 ```
-UIConfig, ConfigObject, DeepNestInstance, SvgParserInstance,
-RactiveInstance, NestViewData, NestingProgress, PartsViewData
+createConfigService(ipcRenderer)  ── async, awaits read-config IPC
+        │
+        ├── window.config = configService       (line 594)
+        │
+createPresetService(ipcRenderer)                (line 597)
+        │
+        ▼
+configService.getSync()  ──►  DeepNest.config(cfg)  ──►  updateForm(cfg)
+                                  (line 601)              (line 602)
 ```
 
-Plus the runtime constant `IPC_CHANNELS`.
+Only `ConfigService` is async at construction time — it awaits the `read-config` IPC round-trip before it can serve `getSync()`. Every other service is constructed synchronously.
 
-### 4.3 Outbound — service / component imports
+### 4.2 Component initialization graph (`initializeComponents()` lines 608-695)
 
-| Module | Imports |
-|---|---|
-| `./services/config.service.js` | `ConfigService`, `createConfigService`, `BOOLEAN_CONFIG_KEYS` |
-| `./services/preset.service.js` | `PresetService`, `createPresetService` |
-| `./services/import.service.js` | `ImportService`, `createImportService` |
-| `./services/export.service.js` | `ExportService`, `createExportService` |
-| `./services/nesting.service.js` | `NestingService`, `createNestingService` |
-| `./components/navigation.js` | `NavigationService`, `createNavigationService` |
-| `./components/parts-view.js` | `PartsViewService`, `createPartsViewService` |
-| `./components/nest-view.js` | `NestViewService`, `createNestViewService` |
-| `./components/sheet-dialog.js` | `SheetDialogService`, `createSheetDialogService` |
-| `./utils/ui-helpers.js` | `message` |
-| `./utils/dom-utils.js` | `getElement`, `getElements` |
+The order matters because services hand each other Ractive instances and callbacks. Reordering will break references that are still `undefined`.
 
-Each of these modules has its own deep dive: Group D (services, [DEE-15](https://example/DEE-15)), Group E (components, [DEE-16](https://example/DEE-16)), Group F (utils, [DEE-17](https://example/DEE-17)).
+```
+1. NavigationService    (610-611)   ── { resizeCallback }
+2. PartsViewService     (614-619)   ── { deepNest, config, resizeCallback }
+3. NestViewService      (622-626)   ── { deepNest, config }
+4.   window.nest = nestViewService.getRactive()      (629)
+5. SheetDialogService   (632-639)   ── { deepNest, config,
+                                          updatePartsCallback: () => partsViewService.update(),
+                                          resizeCallback }
+6. ImportService        (642-656)   ── needs partsViewService.getRactive(),
+                                       attachSortCallback, applyZoomCallback
+7. ExportService        (659-669)   ── needs svgParser, then setExportButton(#export) (672-676)
+8. NestingService       (679-686)   ── needs nestViewService.getDisplayNestCallback()
+                                       and exportService.exportToJson
+9.   nestingService.setNestRactive(nestViewService.getRactive())   (689-692)
+10.  nestingService.bindEventHandlers()                            (694)
+```
 
-### 4.4 Outbound — Node / Electron / vendor (resolved via `require()`)
+Key cross-service callbacks (any of which would be `undefined` if the order were wrong):
 
-| Module | Used as | Required for |
+| Site | Provides | Consumed by |
 |---|---|---|
-| `electron` | `ipcRenderer` | All renderer↔main IPC |
-| `@electron/remote` | `electronRemote.dialog`, `electronRemote.getGlobal` | File dialogs, `global.NEST_DIRECTORY` access |
-| `graceful-fs` | `fs` | Reading nest dir, writing exports |
-| `form-data` | `FormData` | Multipart payload for converter |
-| `axios` | `axios.default` | Converter HTTP round-trips |
-| `path` | `extname`, `basename`, `dirname` | Filename handling |
-| `@deepnest/svg-preprocessor` | `svgPreProcessor.loadSvgString` | Optional SVG cleanup pass on import |
+| `partsViewService.update` | DOM refresh of parts table | `SheetDialogService` `updatePartsCallback` (line 636) |
+| `partsViewService.attachSort` | Re-bind sortable headers | `ImportService` `attachSortCallback` (line 653) |
+| `partsViewService.applyZoom` | Reset SVG pan-zoom | `ImportService` `applyZoomCallback` (line 654) |
+| `nestViewService.getDisplayNestCallback()` | Push a placement to the nest view | `NestingService` `displayNestFn` (line 684) |
+| `nestViewService.getRactive()` | Ractive view-model for nest results | `NestingService.setNestRactive` (line 691) |
+| `exportService.exportToJson` | Serialize nest snapshot | `NestingService` `saveJsonFn` (line 685) |
+| `svgPreProcessor` | SVG cleanup pre-import | `ImportService` (line 649) |
+| `svgParser` (`getSvgParser()`) | Polygon flatten/merge | `ExportService` (line 667) |
 
-### 4.5 Cross-callback wiring (this file is the wiring diagram)
+### 4.3 Required globals at boot
 
-```
-                      configService ─┬─► (window.config)
-                                     │
-   resize() ─┬───────────────────────┘
-             │
-             ├─► navigationService.initialize()
-             ├─► partsViewService.initialize()
-             ├─► sheetDialogService.initialize()
-             └─► importService.showImportDialog()
+These globals must already exist on `window` when `initialize()` runs. They are installed by the synchronous `<script>` tags in `main/index.html` that precede the `<script type="module">` block (see [`docs/deep-dive/g/main__index.html.md`](../g/main__index.html.md) §2):
 
-   partsViewService.update         ◄─── sheetDialogService (updatePartsCallback)
-   partsViewService.attachSort     ◄─── importService (attachSortCallback)
-   partsViewService.applyZoom      ◄─── importService (applyZoomCallback)
-   nestViewService.getDisplayNestCallback() ──► nestingService.displayNestFn
-   exportService.exportToJson      ◄─── nestingService (saveJsonFn)
-   nestViewService.getRactive()    ──► (window.nest)
-                                     ──► nestingService.setNestRactive(...)
-```
+| Global | Provider | Used at |
+|---|---|---|
+| `Ractive` | `util/ractive.js` | line 777 (`Ractive.DEBUG = false`) |
+| `interact` | `util/interact.js` | line 558 (parts-table resize) |
+| `DeepNest` | `main/deepnest.js` (constructed inline in `index.html`) | `getDeepNest()` everywhere |
+| `SvgParser` | `main/svgparser.js` (`window.SvgParser = SvgParser`) | `getSvgParser()` (export service init) |
 
-Read this when you add a new callback edge. If a new module needs another module's behaviour, the wire goes here — **not** as a direct import in the consumer module.
+The `declare const Ractive` / `declare const interact` / `declare let DeepNest` / `declare let SvgParser` blocks at lines 55-76 are typescript-only shims; they do not generate runtime code.
 
----
+### 4.4 Imports from `./types/index.js`
+
+| Import | Source line | Use site |
+|---|---|---|
+| `UIConfig` (type) | 9 | `c[key]` indexing in `updateForm` (line 202); `keyof UIConfig` cast in `initializeConfigForm` (line 402) |
+| `ConfigObject` (type) | 10 | `window.config = configService as unknown as ConfigObject` (line 594) and the per-service casts of `configService` |
+| `DeepNestInstance` (type) | 11 | `getDeepNest()` return type (line 81) |
+| `SvgParserInstance` (type) | 12 | `getSvgParser()` return type (line 88) |
+| `RactiveInstance` (type) | 13 | Casts at lines 652 (`partsViewService.getRactive() as unknown as RactiveInstance<PartsViewData>`) and 691 (`as unknown as RactiveInstance<NestViewData>`) |
+| `NestViewData`, `NestingProgress`, `PartsViewData` | 14-16 | Generic parameters for the casts above; `NestingProgress` is the typed view of the IPC payload at line 515 |
+| `IPC_CHANNELS` (value) | 18 | `ipcRenderer.on(IPC_CHANNELS.BACKGROUND_PROGRESS, …)` (line 514) |
+
+### 4.5 Imports from siblings
+
+| Import | From | Use |
+|---|---|---|
+| `ConfigService`, `createConfigService`, `BOOLEAN_CONFIG_KEYS` | `./services/config.service.js` | `initializeServices`, `BOOLEAN_CONFIG_KEYS.includes(key)` (lines 207, 416) |
+| `PresetService`, `createPresetService` | `./services/preset.service.js` | `loadPresetList`, `initializePresetModal` |
+| `ImportService`, `createImportService` | `./services/import.service.js` | `initializeComponents`, `initializeImportButton`, `loadInitialFiles` |
+| `ExportService`, `createExportService` | `./services/export.service.js` | `initializeComponents`, `initializeExportButtons` |
+| `NestingService`, `createNestingService` | `./services/nesting.service.js` | `initializeComponents` |
+| `NavigationService`, `createNavigationService` | `./components/navigation.js` | `initializeComponents` |
+| `PartsViewService`, `createPartsViewService` | `./components/parts-view.js` | `initializeComponents`; `partsViewService.updateUnits()` on `units` change (line 447) |
+| `NestViewService`, `createNestViewService` | `./components/nest-view.js` | `initializeComponents`; supplies the global `window.nest` |
+| `SheetDialogService`, `createSheetDialogService` | `./components/sheet-dialog.js` | `initializeComponents` |
+| `message` | `./utils/ui-helpers.js` | All preset modal user-feedback toasts |
+| `getElement`, `getElements` | `./utils/dom-utils.js` | All DOM lookups |
 
 ## 5. Invariants & gotchas
 
-1. **Service singletons**. All nine `let` bindings (lines 107–115) are module-private singletons populated in `initialize()`. There is no provision for re-init. If you ever need to swap a service at runtime (HMR, test fixture), you'll need to add reset functions explicitly.
-2. **Boot order is load-bearing**. See the boot-order invariant under §2.1. Adding a step that needs `configService` before line 780 will throw a `Cannot read properties of undefined`.
-3. **Unit conversion must not be doubled**. `updateForm()` divides scale by 25.4 for mm display (line 178) and `initializeConfigForm()` multiplies the inverse on change (line 411). The `data-conversion="true"` and `key === "scale"` branches each handle a different conversion — see the explicit guards. Don't fold them.
-4. **User profile preservation on reset/preset-load**. Both `#setdefault` (line 478) and the preset-load handler (line 329) snapshot `access_token` + `id_token` before mutation and restore after. Any new "reset" path must do the same — losing OAuth on a config reload would log the user out silently.
-5. **Spinner UX is class-based, not state-managed**. The change handler manually toggles `parentNode.className` between `"progress"` and `""` (lines 430, 442). If a future change is async, the spinner will be cleared before the IPC write resolves. Today this is fine because `setSync` is fire-and-forget into the in-memory cache; the IPC write is best-effort.
-6. **`window.nest` is the Ractive instance, not a `NestingService`**. Misleading name but legacy. Don't rename without auditing `main/deepnest.js`.
-7. **`Ractive.DEBUG = false`** is set globally and affects every Ractive component. Don't flip it for a one-off debug — Ractive scolds loudly.
-8. **`require()` is Node CommonJS, not ESM dynamic import**. `nodeIntegration: true` makes this work; flipping that off (per ADR-004 hardening discussion) means rewriting every `require(...)` here as a preload-bridge call.
-9. **`interact.js` is ambient**. The `declare const interact: ...` (line 56) only types the resizable surface used here. Other `interact.js` features (drag/drop) are not typed in this file.
-10. **`#progressbar` width-snap heuristic**. `progress < 0.01` switches off CSS transition. This is intentional so the bar resets to 0 instantly when a fresh nest run starts; without it, you'd see a backwards-running animation.
-11. **Drag/drop prevention is global**. Setting `document.ondragover` (line 529) overrides any handler attached later via `addEventListener`. Order matters — anything that wants to handle a drop must call `event.stopPropagation()` upstream of `document`.
+> Each invariant below is paired with the source line that codifies it. Violating any of them silently breaks user-visible behavior — there are no runtime asserts.
 
----
+### 5.1 Internal store is **inches**; mm display is computed at the boundary
+
+- The scale config is stored in **inches** regardless of the UI unit selection.
+- Read direction (`updateForm`, lines 174-180): if `c.units === "mm"` divide `c.scale` by `25.4` for display.
+- Write direction (`initializeConfigForm`, lines 409-413): if current units are `mm`, multiply the new scale by `25.4` before `configService.setSync`.
+- **Do not fold this branch** into the generic `data-conversion` branch (lines 421-427). The two are deliberately separate because `scale` itself is the input to the conversion formula and would self-reference.
+
+### 5.2 `data-conversion` comparator is `=== "true"`
+
+- `inputElement.getAttribute("data-conversion") === "true"` (lines 204, 421).
+- Adding `data-conversion="false"` to the HTML decoratively will **not** disable conversion — it will be treated as falsy. There is no `false` branch.
+
+### 5.3 Initial `resize()` runs after `initializePartsResize()` only
+
+`initializePartsResize()` (lines 557-571) calls `resize()` once at the end (line 570). It must run **after** `partsViewService.initialize()` has populated `#parts table th` (handled by `initializeComponents()`, step 5 of `initialize()`) — otherwise `getElements<HTMLTableCellElement>("#parts table th")` returns an empty list and header widths stay zero. Reordering the binder calls in §2.2 step 6 will break this.
+
+### 5.4 Unit display side-effect on every form change
+
+When a `change` event fires on a `data-config="units"` input, `partsViewService.updateUnits()` is called (line 447) to refresh Ractive bindings that show "in" / "mm" labels. If you add another consumer of unit changes, it must hook here — there is no central pub/sub for unit changes.
+
+### 5.5 User profile is preserved across preset/reset operations
+
+Two paths must save/restore `access_token` and `id_token` around bulk config writes:
+
+- **Preset load** (`initializePresetModal`, lines 330-342) — read both, set the preset, restore both.
+- **Reset to defaults** (`initializeConfigForm`, lines 480-491) — same dance around `configService.resetToDefaultsSync()`.
+
+Forgetting either restore step logs the user out silently. There is no test asserting this; the only protection is the inline pattern.
+
+### 5.6 Boolean keys are typed `boolean`, not `"true"`/`"false"`
+
+`BOOLEAN_CONFIG_KEYS.includes(key)` at lines 207, 416 is the only switch that distinguishes checkboxes from text inputs. Adding a new boolean config key requires:
+
+1. Adding the key to the `UIConfig` interface in `main/ui/types/index.ts`.
+2. Adding it to `BOOLEAN_CONFIG_KEYS` in `main/ui/services/config.service.ts`.
+3. Adding the `<input type="checkbox" data-config="<key>">` to `main/index.html`.
+
+Skipping step 2 will store the literal string `"true"` / `"false"` in the config, breaking every consumer that branches on `if (config.<key>)`.
+
+### 5.7 Preset and config form share the same input set
+
+Both `updateForm` (line 183) and `initializeConfigForm` (line 389) iterate `document.querySelectorAll("#config input, #config select")` and skip ids `presetSelect` / `presetName` (lines 189-191, 396-398). If you add another non-config input under `#config`, you must extend the skip list in **both** places — they don't share a constant.
+
+### 5.8 Async unawaited from `ready()`
+
+`ready(initialize)` (line 807) hands `initialize` (which returns `Promise<void>`) to `addEventListener` or invokes it synchronously without awaiting. Unhandled rejections become `unhandledrejection` events on the renderer. There is no central error toast for boot failures — consult the dev console.
+
+### 5.9 Module exports are `let`-bound and populated post-DOMContentLoaded
+
+`configService`, `presetService`, … (lines 107-115) are declared with `let` at module scope and assigned only inside `initialize()`. ES modules export live bindings, so external consumers see them transition from `undefined` → service instance. Don't read them at module top level.
+
+### 5.10 The triple-keyed `window` cast is identical at every call site
+
+```ts
+(window as unknown as { config: unknown; nest: unknown; loginWindow: unknown })
+```
+
+Used at lines 594, 629, 803. Do not narrow the cast at one call site — TypeScript will infer the property writes as different types and the union will silently drift.
+
+### 5.11 `getElement<T>(…)` returns `T | null`
+
+Every call site checks for null (e.g. `if (parts) {…}` at line 135). `getElement` is the typed wrapper around `document.getElementById`/`querySelector`; do not chain `!` on its return without a null guard.
 
 ## 6. Known TODOs
 
-In-source: **none**. There are no `TODO`/`FIXME`/`HACK`/`XXX` markers in this file. The composition root is currently considered finished w.r.t. its own scope; outstanding items live in the services it composes.
+The file has zero `// TODO` / `// FIXME` comments. Every doc-comment block is a normal JSDoc explainer, not a deferred task marker.
 
-Inherited from upstream architecture (cross-reference, not native to this file):
+Implicit / un-annotated TODOs surfaced during the deep-dive:
 
-- `main.js` background-worker shutdown TODOs (`architecture.md` §11) — those propagate to this file via the `BACKGROUND_PROGRESS` subscription (line 514): when the bg window is destroyed mid-run, the renderer continues to receive the last frame's progress until it isn't. No action here — the fix is in the main process.
-
----
+- **No central error UI for boot failures.** A rejection from `initialize()` is silent (see §5.8). Acceptable today because the legacy `deepnest.js` already installs a global `window.onerror` handler, but a typed boot-failure toast would be cleaner.
+- **`require("../package.json")` swallows errors silently** (`initializeVersionInfo`, lines 583-585). The `// Ignore if package.json is not accessible` comment is a deliberate-but-unverified path; the version label simply stays empty.
+- **`window.config` is exposed as `ConfigObject`** for the legacy `deepnest.js` consumer. Removing this requires migrating `deepnest.js` off the global to direct service injection.
+- **`alert(…)` for the empty preset-name case** (line 296). Every other user-feedback path uses `message(…)`; this one diverges and is the only blocking modal in the file.
 
 ## 7. Extension points
 
-Concrete places to extend without restructuring the file:
+| To add… | Touch |
+|---|---|
+| A new service | Import its `Service` class + `createXxxService` factory at the top, declare a module-level `let xxxService: XxxService;`, instantiate inside `initializeComponents` (or `initializeServices` if it depends only on IPC), then add to the `export {…}` block. Wire its callbacks against existing services in the same `initializeComponents` block. |
+| A new IPC subscription that lives in the entry point (rather than a service) | Add a binder named `initializeXxx()` that registers `ipcRenderer.on(IPC_CHANNELS.NEW_CHANNEL, …)`. Call it from `initialize()` after `initializeBackgroundProgress()`. **Add the channel name to `IPC_CHANNELS` in `types/index.ts` first.** Then add the corresponding `ipcMain.on`/`handle` in `main.js`. |
+| A new config field with no conversion | Add to `UIConfig` (`types/index.ts`); add the default in `config.service.ts`; add `<input data-config="<key>">` to `main/index.html`. Boolean? Also add to `BOOLEAN_CONFIG_KEYS`. |
+| A new config field with length conversion | Same as above plus `data-conversion="true"` on the HTML element. The math is shared — no code change in `index.ts`. |
+| A new top-level button (like Import/Export) | Add an `initializeXxxButton()` binder following the `initializeImportButton()` shape; call from the binder list in step 6 of `initialize()`. |
+| A new per-input UI side-effect (like the explainer panel) | Add the side-effect handler inside the `inputs.forEach` block of `initializeConfigForm()`. The explainer-panel pattern at lines 451-470 is the template — `mouseover` highlights `#explain_<configKey>`, `mouseleave` clears it. |
 
-1. **Add a new service.**
-   - Create `main/ui/services/foo.service.ts` with a `createFooService(deps)` factory.
-   - Import in `main/ui/index.ts`, declare a `let fooService: FooService` near line 115.
-   - Construct in `initializeServices()` (if it needs no DOM) or `initializeComponents()` (if it does), wired into the dependency graph alongside its peers.
-   - Add to the export block at the bottom (lines 812–822).
-2. **Subscribe to a new IPC channel from the renderer.**
-   - Add the channel constant to `IPC_CHANNELS` in [`types/index.ts`](./main__ui__types__index.ts.md#3-ipc-channel-contract).
-   - Add the matching handler in `main.js` (Group A deep dive).
-   - Subscribe via `ipcRenderer.on(IPC_CHANNELS.<NAME>, ...)` either inside `initialize*()` here, or — preferred — inside the service that owns the concern. Only put it here if it has no service home (the `BACKGROUND_PROGRESS` precedent at line 514 was a UI-only side-effect).
-3. **Add a new top-level UI button.**
-   - Add the element + `id` to `main/index.html`.
-   - Add an `initializeXyzButton()` function next to `initializeImportButton()` / `initializeExportButtons()`.
-   - Call it from the bottom of `initialize()` after the existing button initialisers.
-4. **Add a new config field.**
-   - Add to `UIConfig` in [`types/index.ts`](./main__ui__types__index.ts.md#23-uiconfig-extends-deepnestconfig). Update `DEFAULT_CONFIG` in `services/config.service.ts`. Add to `BOOLEAN_CONFIG_KEYS` if checkbox.
-   - Add the input to `main/index.html` with `data-config="<key>"` (and `data-conversion="true"` if it's a unit-scaled value).
-   - `updateForm()` and `initializeConfigForm()` will pick it up automatically — no edit here is required.
-5. **Provide a callback between two existing modules.**
-   - Add the callback type to the affected module's options interface.
-   - Wire the callback in `initializeComponents()`, calling `partsViewService.foo()` or whichever method satisfies it. Keep the wire here, not in the consumer module.
+## 8. Test coverage
 
----
+Direct unit-level coverage: **none**. There is no Jest/Vitest harness for the renderer; the architecture document calls this out as a gap (see [`docs/architecture.md`](../../architecture.md) §8).
 
-## 8. Test coverage status
+Indirect coverage:
 
-- **Unit tests**: none. The composition root is not exercised by Jest/Vitest because no unit-test runner is configured (`architecture.md` §8).
-- **E2E tests**: indirectly covered by `tests/index.spec.ts` (Playwright) — the test launches Electron, which boots `main/index.html`, which executes this file. Failures here typically surface as "config-form selectors not found" or "nest button does nothing" in the spec.
-- **Coverage gap**: no fixture-level test of the boot sequence in isolation. To add one, you'd need to compile `main/ui/index.ts` into a unit-testable shape (currently the `require()` calls hard-bind it to Electron) and stub `ipcRenderer`. Out of scope for this issue.
-- **Manual smoke**: every change to this file should be verified by `npm run start`, opening the Config tab, importing one of `tests/assets/*.svg`, running a single nest, and confirming progress bar + nest result render. The `#progressbar`, `#parts`, and `#nest` panels each cover one of the boot steps end-to-end.
+- Playwright e2e in `tests/index.spec.ts` exercises the full boot path by launching Electron and clicking through the UI. A regression in `initialize()` (e.g. a broken service constructor) will fail the test at first interaction. See [`docs/deep-dive/j/tests__index.spec.ts.md`](../j/tests__index.spec.ts.md).
+- The `data-config` round-trip is implicitly covered by every Playwright assertion that reads a value back from the form.
 
----
+Coverage gaps worth filling:
+
+- **No test for the unit-conversion math.** Switching `inch ↔ mm` is interactive-only.
+- **No test for preset save/load round-trip with cloud tokens.** The `access_token`/`id_token` preserve-and-restore pattern (§5.5) is not asserted.
+- **No test for boot-failure paths.** Unhandled rejections in `initializeServices()` would fail the e2e but not produce a useful error message.
 
 ## 9. Cross-references
 
-- **Sibling deep dive**: [`main__ui__types__index.ts.md`](./main__ui__types__index.ts.md) — full `IPC_CHANNELS` contract and view-data shapes.
-- **Group A** (DEE-12, in progress): `main.js` deep dive — the other side of every IPC channel referenced here.
-- **Group D** (DEE-15): each `services/*.service.ts` deep dive — what `createXService(...)` actually constructs.
-- **Group E** (DEE-16): each `components/*.ts` deep dive — what `initializeComponents()` mounts.
-- **Group F** (DEE-17): `utils/{dom-utils,ui-helpers,conversion}.ts` deep dives.
-- **Architecture context**: `docs/architecture.md` §3.2 (renderer tree), §5 (IPC contract), ADR-005 (window globals), ADR-007 (TS scope).
-- **Component inventory**: `docs/component-inventory.md` "Composition root" section — lighter overview of the same file.
+- [`main__ui__types__index.ts.md`](./main__ui__types__index.ts.md) — companion: every type and IPC channel imported by this file.
+- [`docs/deep-dive/a/main.js.md`](../a/main.js.md) — the Electron main process that supplies the IPC handlers consumed (transitively) here. §3.2 covers `nodeIntegration` / `enableRemoteModule` (required for the `require()` calls at lines 766-774).
+- [`docs/deep-dive/g/main__index.html.md`](../g/main__index.html.md) — the HTML contract surface. Every `data-config` attribute documented there is consumed at lines 193 and 402; every element id (`#parts`, `#configform`, `#progressbar`, `#message`, `#sidenav`, `#presetSelect`, `#savePresetBtn`, `#import`, `#export`, `#exportjson`, `#exportsvg`, `#exportdxf`, `#package-version`, `#setdefault`, `#preset-modal`, `#presetName`, `#confirmSavePreset`, `#deletePresetBtn`, `#loadPresetBtn`, `#message a.close`, `#messagewrapper`) is read by some binder here.
+- [`docs/deep-dive/d/main__ui__services__config.service.md`](../d/main__ui__services__config.service.md) — owns `read-config` / `write-config` and the `BOOLEAN_CONFIG_KEYS` constant.
+- [`docs/deep-dive/d/main__ui__services__preset.service.md`](../d/main__ui__services__preset.service.md) — owns `load-presets` / `save-preset` / `delete-preset`.
+- [`docs/deep-dive/d/main__ui__services__import.service.md`](../d/main__ui__services__import.service.md) — built at line 642 with the seven cross-service callbacks documented in §4.2.
+- [`docs/deep-dive/d/main__ui__services__export.service.md`](../d/main__ui__services__export.service.md) — receives the export button via `setExportButton` (line 675).
+- [`docs/deep-dive/d/main__ui__services__nesting.service.md`](../d/main__ui__services__nesting.service.md) — owns `background-start` / `background-stop` and consumes `displayNestFn` + `saveJsonFn`.
+- [`docs/deep-dive/e/main__ui__components__navigation.md`](../e/main__ui__components__navigation.md), [`parts-view.md`](../e/main__ui__components__parts-view.md), [`nest-view.md`](../e/main__ui__components__nest-view.md), [`sheet-dialog.md`](../e/main__ui__components__sheet-dialog.md) — the four UI components mounted in `initializeComponents()`.
+- [`docs/architecture.md`](../../architecture.md) §5 — full IPC table; §7 — cross-cutting concerns (units, scaling, configuration).

@@ -2,7 +2,7 @@
   "workflow_version": "1.2.0",
   "timestamps": {
     "started": "2026-04-25T23:10:00Z",
-    "last_updated": "2026-04-25T23:55:00Z",
+    "last_updated": "2026-04-26T00:30:00Z",
     "completed": "2026-04-25T23:30:00Z"
   },
   "mode": "deep_dive",
@@ -12,18 +12,78 @@
   "project_knowledge": "/home/paperclip/.paperclip/instances/default/projects/ea6c6a86-05ff-4882-8b8b-8e1b0a941e7e/5c7952c8-33f1-4ce1-82f3-ca976a831550/deepnest-next/docs",
   "current_step": "completed",
   "completed_steps": [
-    {"step": "step_1", "status": "completed", "timestamp": "2026-04-25T23:12:00Z", "summary": "Classified as monolith Electron desktop app, single part"},
-    {"step": "step_2", "status": "completed", "timestamp": "2026-04-25T23:13:00Z", "summary": "Found 5 existing docs (README.md, BUILD.md, CHANGELOG.md, LICENSE, LICENSES.md) plus index.d.ts as canonical type spec"},
-    {"step": "step_3", "status": "completed", "timestamp": "2026-04-25T23:15:00Z", "summary": "Tech stack: Electron 40, TypeScript 5.8 strict, Ractive.js, Playwright, electron-builder, native @deepnest/* addons"},
-    {"step": "step_4", "status": "completed", "timestamp": "2026-04-25T23:18:00Z", "summary": "Conditional analysis: UI components inventoried; no API/database/asset-inventory needed (desktop app, no server)"},
-    {"step": "step_5", "status": "completed", "timestamp": "2026-04-25T23:20:00Z", "summary": "Source tree documented in source-tree-analysis.md"},
-    {"step": "step_6", "status": "completed", "timestamp": "2026-04-25T23:22:00Z", "summary": "Dev/deploy info extracted from BUILD.md, package.json, .github/workflows/*"},
-    {"step": "step_7", "status": "skipped", "timestamp": "2026-04-25T23:22:30Z", "summary": "Single-part project — no inter-part integration architecture needed"},
-    {"step": "step_8", "status": "completed", "timestamp": "2026-04-25T23:24:00Z", "summary": "architecture.md written with 7 ADRs (multi-process compute, GA split, native addons, nodeIntegration risk, window globals, Ractive legacy, strict-TS scope)"},
-    {"step": "step_9", "status": "completed", "timestamp": "2026-04-25T23:27:00Z", "summary": "Wrote project-overview.md, source-tree-analysis.md, component-inventory.md, development-guide.md, deployment-guide.md"},
-    {"step": "step_10", "status": "completed", "timestamp": "2026-04-25T23:29:00Z", "summary": "Master index.md generated"},
-    {"step": "step_11", "status": "completed", "timestamp": "2026-04-25T23:30:00Z", "summary": "No incomplete-doc markers; no follow-up generation needed"},
-    {"step": "step_12", "status": "completed", "timestamp": "2026-04-25T23:30:00Z", "summary": "Workflow complete"}
+    {
+      "step": "step_1",
+      "status": "completed",
+      "timestamp": "2026-04-25T23:12:00Z",
+      "summary": "Classified as monolith Electron desktop app, single part"
+    },
+    {
+      "step": "step_2",
+      "status": "completed",
+      "timestamp": "2026-04-25T23:13:00Z",
+      "summary": "Found 5 existing docs (README.md, BUILD.md, CHANGELOG.md, LICENSE, LICENSES.md) plus index.d.ts as canonical type spec"
+    },
+    {
+      "step": "step_3",
+      "status": "completed",
+      "timestamp": "2026-04-25T23:15:00Z",
+      "summary": "Tech stack: Electron 40, TypeScript 5.8 strict, Ractive.js, Playwright, electron-builder, native @deepnest/* addons"
+    },
+    {
+      "step": "step_4",
+      "status": "completed",
+      "timestamp": "2026-04-25T23:18:00Z",
+      "summary": "Conditional analysis: UI components inventoried; no API/database/asset-inventory needed (desktop app, no server)"
+    },
+    {
+      "step": "step_5",
+      "status": "completed",
+      "timestamp": "2026-04-25T23:20:00Z",
+      "summary": "Source tree documented in source-tree-analysis.md"
+    },
+    {
+      "step": "step_6",
+      "status": "completed",
+      "timestamp": "2026-04-25T23:22:00Z",
+      "summary": "Dev/deploy info extracted from BUILD.md, package.json, .github/workflows/*"
+    },
+    {
+      "step": "step_7",
+      "status": "skipped",
+      "timestamp": "2026-04-25T23:22:30Z",
+      "summary": "Single-part project \u2014 no inter-part integration architecture needed"
+    },
+    {
+      "step": "step_8",
+      "status": "completed",
+      "timestamp": "2026-04-25T23:24:00Z",
+      "summary": "architecture.md written with 7 ADRs (multi-process compute, GA split, native addons, nodeIntegration risk, window globals, Ractive legacy, strict-TS scope)"
+    },
+    {
+      "step": "step_9",
+      "status": "completed",
+      "timestamp": "2026-04-25T23:27:00Z",
+      "summary": "Wrote project-overview.md, source-tree-analysis.md, component-inventory.md, development-guide.md, deployment-guide.md"
+    },
+    {
+      "step": "step_10",
+      "status": "completed",
+      "timestamp": "2026-04-25T23:29:00Z",
+      "summary": "Master index.md generated"
+    },
+    {
+      "step": "step_11",
+      "status": "completed",
+      "timestamp": "2026-04-25T23:30:00Z",
+      "summary": "No incomplete-doc markers; no follow-up generation needed"
+    },
+    {
+      "step": "step_12",
+      "status": "completed",
+      "timestamp": "2026-04-25T23:30:00Z",
+      "summary": "Workflow complete"
+    }
   ],
   "project_classification": {
     "repository_type": "monolith",
@@ -31,14 +91,38 @@
     "primary_tech": "Electron + TypeScript + native NFP addon"
   },
   "project_types": [
-    {"part_id": "deepnest", "project_type_id": "desktop", "display_name": "Electron Desktop App"}
+    {
+      "part_id": "deepnest",
+      "project_type_id": "desktop",
+      "display_name": "Electron Desktop App"
+    }
   ],
   "findings": {
     "technology_stack": "Electron ^40, TypeScript ^5.8.3 strict, Ractive 0.x, axios 1.13.2, form-data 4.0.5, graceful-fs 4.2.11, marked 17.0.1, @deepnest/calculate-nfp (native), @deepnest/svg-preprocessor (native), @electron/remote 2.1.3; build via tsc + electron-builder; package via @electron/packager; tests via @playwright/test ^1.57.0 (Chromium only)",
     "process_topology": "1 main process + 1 visible renderer + 1 hidden background renderer (legacy was 8); notification window on demand",
-    "ipc_channels": ["background-start", "background-response", "background-progress", "background-stop", "read-config", "write-config", "load-presets", "save-preset", "delete-preset", "login-success", "purchase-success", "setPlacements", "test", "get-notification-data", "close-notification"],
+    "ipc_channels": [
+      "background-start",
+      "background-response",
+      "background-progress",
+      "background-stop",
+      "read-config",
+      "write-config",
+      "load-presets",
+      "save-preset",
+      "delete-preset",
+      "login-success",
+      "purchase-success",
+      "setPlacements",
+      "test",
+      "get-notification-data",
+      "close-notification"
+    ],
     "test_coverage": "Single Playwright E2E spec; no unit tests below the UI",
-    "known_todos": ["Background workers not cleanly shut down on close (main.js // todo:)", "Worker count hard-coded to 1", "macOS/Linux release binaries unsigned"]
+    "known_todos": [
+      "Background workers not cleanly shut down on close (main.js // todo:)",
+      "Worker count hard-coded to 1",
+      "macOS/Linux release binaries unsigned"
+    ]
   },
   "outputs_generated": [
     "docs/project-scan-report.json",
@@ -53,47 +137,427 @@
   "incomplete_docs_list": [],
   "resume_instructions": "Documentation generation complete. To deep-dive a specific module (e.g. main/background.js or main/svgparser.js), re-run the bmad-document-project skill and select option 2 (Deep-dive).",
   "deep_dive_completion": {
-    "b": {
-      "issue": "DEE-13",
-      "group_title": "Legacy renderer (window globals)",
+    "a": {
+      "issue": "DEE-33",
+      "supersedes": "DEE-22 (cancelled, salvage workflow)",
+      "group_title": "Main process / privileged Node",
       "status": "completed",
-      "completed_at": "2026-04-25T23:55:00Z",
+      "completed_at": "2026-04-25T23:03:16Z",
+      "integration_branch_merge": "chore/dee-11-integration (this branch)",
+      "workspace_isolation": {
+        "mode": "isolated_workspace",
+        "strategyType": "git_worktree",
+        "branchName": "chore/dee-11-iso/group-a"
+      },
       "files": [
-        {"src": "main/deepnest.js", "doc": "docs/deep-dive/b/main__deepnest.js.md"},
-        {"src": "main/background.js", "doc": "docs/deep-dive/b/main__background.js.md"},
-        {"src": "main/svgparser.js", "doc": "docs/deep-dive/b/main__svgparser.js.md"},
-        {"src": "main/nfpDb.ts", "doc": "docs/deep-dive/b/main__nfpDb.ts.md"},
-        {"src": "main/util/clipper.js", "doc": "docs/deep-dive/b/main__util__clipper.js.md", "kind": "vendored", "upstream": "Clipper 6.2.1 (rev 482)"},
-        {"src": "main/util/domparser.ts", "doc": "docs/deep-dive/b/main__util__domparser.ts.md", "kind": "first_party"},
-        {"src": "main/util/eval.ts", "doc": "docs/deep-dive/b/main__util__eval.ts.md", "kind": "first_party"},
-        {"src": "main/util/geometryutil.js", "doc": "docs/deep-dive/b/main__util__geometryutil.js.md", "kind": "first_party"},
-        {"src": "main/util/HullPolygon.ts", "doc": "docs/deep-dive/b/main__util__HullPolygon.ts.md", "kind": "first_party"},
-        {"src": "main/util/interact.js", "doc": "docs/deep-dive/b/main__util__interact.js.md", "kind": "vendored", "upstream": "interact.js 1.2.6"},
-        {"src": "main/util/matrix.ts", "doc": "docs/deep-dive/b/main__util__matrix.ts.md", "kind": "first_party"},
-        {"src": "main/util/parallel.js", "doc": "docs/deep-dive/b/main__util__parallel.js.md", "kind": "first_party"},
-        {"src": "main/util/pathsegpolyfill.js", "doc": "docs/deep-dive/b/main__util__pathsegpolyfill.js.md", "kind": "vendored", "upstream": "progers/pathseg"},
-        {"src": "main/util/point.ts", "doc": "docs/deep-dive/b/main__util__point.ts.md", "kind": "first_party"},
-        {"src": "main/util/ractive.js", "doc": "docs/deep-dive/b/main__util__ractive.js.md", "kind": "vendored", "upstream": "Ractive 0.8.1"},
-        {"src": "main/util/simplify.js", "doc": "docs/deep-dive/b/main__util__simplify.js.md", "kind": "vendored", "upstream": "mourner/simplify-js (modified by Jack Qiao)"},
-        {"src": "main/util/svgpanzoom.js", "doc": "docs/deep-dive/b/main__util__svgpanzoom.js.md", "kind": "vendored", "upstream": "svg-pan-zoom 3.6.2"},
-        {"src": "main/util/vector.ts", "doc": "docs/deep-dive/b/main__util__vector.ts.md", "kind": "first_party"}
+        {
+          "src": "main.js",
+          "doc": "docs/deep-dive/a/main.js.md"
+        },
+        {
+          "src": "presets.js",
+          "doc": "docs/deep-dive/a/presets.js.md"
+        },
+        {
+          "src": "notification-service.js",
+          "doc": "docs/deep-dive/a/main__notification-service.js.md",
+          "note": "scope correction: file is at repo root, not main/"
+        },
+        {
+          "src": "helper_scripts/sign_windows.js",
+          "doc": "docs/deep-dive/a/helper_scripts__sign_windows.js.md"
+        },
+        {
+          "src": "helper_scripts/playwright_codegen.js",
+          "doc": "docs/deep-dive/a/helper_scripts__playwright_codegen.js.md"
+        }
       ],
       "discovered_files": [],
       "scope_corrections": [
-        "main/util/_unused/ explicitly excluded per DEE-13 scope; noted in docs/deep-dive/b/README.md so future scans don't reopen the question."
+        "notification-service.js lives at repo root, not main/notification-service.js as DEE-11 description claimed."
       ]
     },
     "c": {
-      "issue": "DEE-14",
+      "issue": "DEE-35",
+      "supersedes": "DEE-24 (cancelled, salvage workflow)",
       "group_title": "UI renderer composition",
       "status": "completed",
-      "completed_at": "2026-04-25T23:50:00Z",
+      "completed_at": "2026-04-25T23:11:00Z",
+      "integration_branch_merge": "chore/dee-11-integration",
+      "workspace_isolation": {
+        "mode": "isolated_workspace",
+        "strategyType": "git_worktree",
+        "branchName": "chore/dee-11-iso/group-c"
+      },
       "files": [
-        {"src": "main/ui/index.ts", "doc": "docs/deep-dive/c/main__ui__index.ts.md"},
-        {"src": "main/ui/types/index.ts", "doc": "docs/deep-dive/c/main__ui__types__index.ts.md"}
+        {
+          "src": "main/ui/index.ts",
+          "doc": "docs/deep-dive/c/main__ui__index.ts.md"
+        },
+        {
+          "src": "main/ui/types/index.ts",
+          "doc": "docs/deep-dive/c/main__ui__types__index.ts.md"
+        }
       ],
       "discovered_files": [],
       "scope_corrections": []
+    },
+    "g": {
+      "issue": "DEE-39",
+      "supersedes": "DEE-28 (cancelled), DEE-18 (rev-1)",
+      "group_title": "Static surfaces",
+      "status": "completed",
+      "completed_at": "2026-04-25T23:13:00Z",
+      "integration_branch_merge": "chore/dee-11-integration",
+      "workspace_isolation": {
+        "mode": "isolated_workspace",
+        "strategyType": "git_worktree",
+        "branchName": "chore/dee-11-iso/group-g"
+      },
+      "files": [
+        {
+          "src": "main/index.html",
+          "doc": "docs/deep-dive/g/main__index.html.md"
+        },
+        {
+          "src": "main/notification.html",
+          "doc": "docs/deep-dive/g/main__notification.html.md",
+          "note": "scope correction: not main/notification/* (no such dir), single HTML file"
+        },
+        {
+          "src": "main/img/",
+          "doc": "docs/deep-dive/g/main__img.md",
+          "note": "inventory + naming convention, not per-asset"
+        },
+        {
+          "src": "main/font/",
+          "doc": "docs/deep-dive/g/main__font.md",
+          "note": "inventory + binding, not per-weight"
+        }
+      ],
+      "discovered_files": [],
+      "scope_corrections": [
+        "main/notification/* in DEE-11 description does not exist; only main/notification.html.",
+        "main/img/ and main/font/ are inventoried as single docs with naming-convention sections, not per-asset write-ups."
+      ]
+    },
+    "f": {
+      "issue": "DEE-38",
+      "supersedes": "DEE-27 (cancelled)",
+      "group_title": "UI utilities",
+      "status": "completed",
+      "completed_at": "2026-04-25T23:14:00Z",
+      "integration_branch_merge": "chore/dee-11-integration",
+      "workspace_isolation": {
+        "mode": "isolated_workspace",
+        "strategyType": "git_worktree",
+        "branchName": "chore/dee-11-iso/group-f"
+      },
+      "files": [
+        {
+          "src": "main/ui/utils/dom-utils.ts",
+          "doc": "docs/deep-dive/f/main__ui__utils__dom-utils.ts.md",
+          "note": "~9 of 30 exports actually consumed (5 importers)"
+        },
+        {
+          "src": "main/ui/utils/conversion.ts",
+          "doc": "docs/deep-dive/f/main__ui__utils__conversion.ts.md",
+          "note": "currently unused \u2014 0 importers; three sites duplicate the math inline"
+        },
+        {
+          "src": "main/ui/utils/ui-helpers.ts",
+          "doc": "docs/deep-dive/f/main__ui__utils__ui-helpers.ts.md",
+          "note": "6 importers, 25+ call sites for message()"
+        }
+      ],
+      "discovered_files": [],
+      "scope_corrections": []
+    },
+    "e": {
+      "issue": "DEE-37",
+      "supersedes": "DEE-26 (cancelled)",
+      "group_title": "UI components",
+      "status": "completed",
+      "completed_at": "2026-04-25T23:17:00Z",
+      "integration_branch_merge": "chore/dee-11-integration",
+      "workspace_isolation": {
+        "mode": "isolated_workspace",
+        "strategyType": "git_worktree",
+        "branchName": "chore/dee-11-iso/group-e"
+      },
+      "files": [
+        {
+          "src": "main/ui/components/navigation.ts",
+          "doc": "docs/deep-dive/e/main__ui__components__navigation.md"
+        },
+        {
+          "src": "main/ui/components/parts-view.ts",
+          "doc": "docs/deep-dive/e/main__ui__components__parts-view.md"
+        },
+        {
+          "src": "main/ui/components/nest-view.ts",
+          "doc": "docs/deep-dive/e/main__ui__components__nest-view.md"
+        },
+        {
+          "src": "main/ui/components/sheet-dialog.ts",
+          "doc": "docs/deep-dive/e/main__ui__components__sheet-dialog.md"
+        }
+      ],
+      "discovered_files": [],
+      "scope_corrections": []
+    },
+    "i": {
+      "issue": "DEE-41",
+      "supersedes": "DEE-30 (cancelled), DEE-20 (rev-1)",
+      "group_title": "CI / release",
+      "status": "completed",
+      "completed_at": "2026-04-26T00:25:00Z",
+      "integration_branch_merge": "chore/dee-11-integration",
+      "workspace_isolation": {
+        "mode": "isolated_workspace",
+        "strategyType": "git_worktree",
+        "branchName": "chore/dee-11-iso/group-i"
+      },
+      "files": [
+        {
+          "src": ".github/workflows/build.yml",
+          "doc": "docs/deep-dive/i/.github__workflows__build.yml.md"
+        },
+        {
+          "src": ".github/workflows/build_release.yml",
+          "doc": "docs/deep-dive/i/.github__workflows__build_release.yml.md",
+          "note": "scope correction: filename is build_release.yml not release.yml"
+        },
+        {
+          "src": ".github/workflows/playwright.yml",
+          "doc": "docs/deep-dive/i/.github__workflows__playwright.yml.md"
+        }
+      ],
+      "discovered_files": [],
+      "scope_corrections": [
+        "release.yml in DEE-11 description is actually build_release.yml on disk (workflow name is \"build release\" with a space)."
+      ]
+    },
+    "b": {
+      "issue": "DEE-34",
+      "supersedes": "DEE-23 (cancelled), DEE-13 (rev-1)",
+      "group_title": "Legacy renderer (window globals)",
+      "status": "completed",
+      "completed_at": "2026-04-25T23:17:32Z",
+      "integration_branch_merge": "chore/dee-11-integration",
+      "workspace_isolation": {
+        "mode": "isolated_workspace",
+        "strategyType": "git_worktree",
+        "branchName": "chore/dee-11-iso/group-b"
+      },
+      "files": [
+        {
+          "src": "main/deepnest.js",
+          "doc": "docs/deep-dive/b/main__deepnest.js.md"
+        },
+        {
+          "src": "main/background.js",
+          "doc": "docs/deep-dive/b/main__background.js.md"
+        },
+        {
+          "src": "main/svgparser.js",
+          "doc": "docs/deep-dive/b/main__svgparser.js.md"
+        },
+        {
+          "src": "main/nfpDb.ts",
+          "doc": "docs/deep-dive/b/main__nfpDb.ts.md"
+        },
+        {
+          "src": "main/util/clipper.js",
+          "doc": "docs/deep-dive/b/main__util__clipper.js.md",
+          "note": "vendored: angusj/Clipper 6.2.1 (rev 482)"
+        },
+        {
+          "src": "main/util/interact.js",
+          "doc": "docs/deep-dive/b/main__util__interact.js.md",
+          "note": "vendored: taye/interact.js 1.2.6"
+        },
+        {
+          "src": "main/util/pathsegpolyfill.js",
+          "doc": "docs/deep-dive/b/main__util__pathsegpolyfill.js.md",
+          "note": "vendored: progers/pathseg (unversioned)"
+        },
+        {
+          "src": "main/util/ractive.js",
+          "doc": "docs/deep-dive/b/main__util__ractive.js.md",
+          "note": "vendored: ractivejs/ractive 0.8.1 (commit fd141da)"
+        },
+        {
+          "src": "main/util/simplify.js",
+          "doc": "docs/deep-dive/b/main__util__simplify.js.md",
+          "note": "vendored: mourner/simplify-js (unversioned, ~1.x)"
+        },
+        {
+          "src": "main/util/svgpanzoom.js",
+          "doc": "docs/deep-dive/b/main__util__svgpanzoom.js.md",
+          "note": "vendored: bumbu/svg-pan-zoom 3.6.2"
+        },
+        {
+          "src": "main/util/parallel.js",
+          "doc": "docs/deep-dive/b/main__util__parallel.js.md"
+        },
+        {
+          "src": "main/util/geometryutil.js",
+          "doc": "docs/deep-dive/b/main__util__geometryutil.js.md"
+        },
+        {
+          "src": "main/util/domparser.ts",
+          "doc": "docs/deep-dive/b/main__util__domparser.ts.md"
+        },
+        {
+          "src": "main/util/eval.ts",
+          "doc": "docs/deep-dive/b/main__util__eval.ts.md"
+        },
+        {
+          "src": "main/util/HullPolygon.ts",
+          "doc": "docs/deep-dive/b/main__util__HullPolygon.ts.md"
+        },
+        {
+          "src": "main/util/matrix.ts",
+          "doc": "docs/deep-dive/b/main__util__matrix.ts.md"
+        },
+        {
+          "src": "main/util/point.ts",
+          "doc": "docs/deep-dive/b/main__util__point.ts.md"
+        },
+        {
+          "src": "main/util/vector.ts",
+          "doc": "docs/deep-dive/b/main__util__vector.ts.md"
+        }
+      ],
+      "discovered_files": [],
+      "scope_corrections": [
+        "main/util/_unused/ explicitly excluded \u2014 no production code path loads anything from it; first-pass docs do not reference it. Future reactivation should open a new follow-up ticket."
+      ]
+    },
+    "d": {
+      "issue": "DEE-36",
+      "supersedes": "DEE-25 (cancelled), DEE-15 (rev-1)",
+      "group_title": "UI services",
+      "status": "completed",
+      "completed_at": "2026-04-25T23:17:28Z",
+      "integration_branch_merge": "chore/dee-11-integration",
+      "workspace_isolation": {
+        "mode": "isolated_workspace",
+        "strategyType": "git_worktree",
+        "branchName": "chore/dee-11-iso/group-d"
+      },
+      "files": [
+        {
+          "src": "main/ui/services/config.service.ts",
+          "doc": "docs/deep-dive/d/main__ui__services__config.service.md"
+        },
+        {
+          "src": "main/ui/services/preset.service.ts",
+          "doc": "docs/deep-dive/d/main__ui__services__preset.service.md"
+        },
+        {
+          "src": "main/ui/services/import.service.ts",
+          "doc": "docs/deep-dive/d/main__ui__services__import.service.md"
+        },
+        {
+          "src": "main/ui/services/export.service.ts",
+          "doc": "docs/deep-dive/d/main__ui__services__export.service.md"
+        },
+        {
+          "src": "main/ui/services/nesting.service.ts",
+          "doc": "docs/deep-dive/d/main__ui__services__nesting.service.md"
+        }
+      ],
+      "discovered_files": [],
+      "scope_corrections": []
+    },
+    "j": {
+      "issue": "DEE-42",
+      "supersedes": "DEE-31 (cancelled), DEE-21 (rev-1)",
+      "group_title": "Tests",
+      "status": "completed",
+      "completed_at": "2026-04-25T23:24:21Z",
+      "integration_branch_merge": "chore/dee-11-integration",
+      "workspace_isolation": {
+        "mode": "isolated_workspace",
+        "strategyType": "git_worktree",
+        "branchName": "chore/dee-11-iso/group-j"
+      },
+      "files": [
+        {
+          "src": "tests/index.spec.ts",
+          "doc": "docs/deep-dive/j/tests__index.spec.ts.md"
+        },
+        {
+          "src": "tests/assets/",
+          "doc": "docs/deep-dive/j/tests__assets.md",
+          "note": "inventory + usage doc covering henny-penny.svg + mrs-saint-delafield.svg, not per-file"
+        }
+      ],
+      "discovered_files": [],
+      "scope_corrections": [
+        "tests/assets/* documented as a single inventory file (same shape as Group G's main__img.md / main__font.md), not per-file write-ups."
+      ]
+    },
+    "h": {
+      "issue": "DEE-40",
+      "supersedes": "DEE-29 (cancelled), DEE-19 (rev-1)",
+      "group_title": "Build / config / quality",
+      "status": "completed",
+      "completed_at": "2026-04-25T23:27:23Z",
+      "integration_branch_merge": "chore/dee-11-integration",
+      "workspace_isolation": {
+        "mode": "isolated_workspace",
+        "strategyType": "git_worktree",
+        "branchName": "chore/dee-11-iso/group-h"
+      },
+      "files": [
+        {
+          "src": "package.json",
+          "doc": "docs/deep-dive/h/package.json.md"
+        },
+        {
+          "src": "tsconfig.json",
+          "doc": "docs/deep-dive/h/tsconfig.json.md"
+        },
+        {
+          "src": "playwright.config.ts",
+          "doc": "docs/deep-dive/h/playwright.config.ts.md"
+        },
+        {
+          "src": "eslint.config.mjs",
+          "doc": "docs/deep-dive/h/eslint.config.mjs.md"
+        },
+        {
+          "src": "index.d.ts",
+          "doc": "docs/deep-dive/h/index.d.ts.md"
+        }
+      ],
+      "discovered_files": [],
+      "scope_corrections": [
+        "No electron-builder.json exists in the repo \u2014 full electron-builder configuration lives in package.json's build block (lines 85-146). Reproduced verbatim and walked field-by-field in package.json.md \u00a70 + \u00a74.",
+        "No tsconfig.app.json / tsconfig.node.json / tsconfig.test.json variants exist \u2014 single-tsconfig topology covers main process, renderer, and tests. Documented in tsconfig.json.md \u00a70."
+      ]
     }
+  },
+  "integration": {
+    "branch": "chore/dee-11-integration",
+    "base": "chore/bmad-method-setup",
+    "pre_redo_snapshot_tag": "dee-11-pre-redo-snapshot",
+    "pending_groups": [],
+    "pending_children": [],
+    "merged_groups": [
+      "a",
+      "b",
+      "c",
+      "d",
+      "e",
+      "f",
+      "g",
+      "h",
+      "i",
+      "j"
+    ]
   }
 }

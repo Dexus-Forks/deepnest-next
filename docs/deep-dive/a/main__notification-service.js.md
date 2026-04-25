@@ -237,7 +237,14 @@ The DEE-12 scope lists this file as `main/notification-service.js`. On disk it l
 
 The doc filename `main__notification-service.js.md` follows the DEE-11 path-encoding convention (double-underscore = path separator), so this filename literally claims a `main/` location. Given the issue's prescribed output path is the contract, the filename has been kept; this section is the canonical record of the actual on-disk location. If a follow-up moves the file under `main/` (which would match the architecture's "main process module" grouping), the doc filename is already correct.
 
-## 12. Cross-references
+## 12. Test coverage
+
+- **None automated.** `tests/index.spec.ts` (see `docs/deep-dive/j/tests__index.spec.ts.md`) does instantiate `NotificationService` indirectly (the constructor runs at module load when `main.js` is required by Electron), but the test does not wait long enough for the 3 s initial poll, does not stub the `app_notifications.json` / GitHub fetches, and does not assert on the dedupe state. The notification window itself is never opened during the spec — see also `docs/deep-dive/g/main__notification.html.md` §9.
+- **Debug-mode override is the only practical fixture seam.** Setting `deepnest_debug=1` switches `getAppNotifications()` to read `examples/app_notifications.json` (`notification-service.js:117-132`); a future spec can use that to drive a deterministic notification through the entire stack.
+- **Not covered**: dedupe by UUID, the merged-important-notifications branch, the GitHub release branch, the broken `cleanupOldNotifications` predicate (§4.5), the 90-day eviction, and every variant of the schema returned to the renderer (§5).
+- **Smallest meaningful unit test** would target `formatReleaseContent`, `formatFileSize`, and the `loadSeenData` legacy-array migration — all are pure transforms over inputs and need no Electron host.
+
+## 13. Cross-references
 
 - `docs/deep-dive/a/main.js.md` §3.3 — notification BrowserWindow construction; §5.5 — IPC handlers (`get-notification-data`, `close-notification`).
 - `docs/architecture.md` §3.1 — module table mentions this file under "main process".

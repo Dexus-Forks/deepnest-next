@@ -1,9 +1,9 @@
 # `main/img/` — Deep Dive
 
-**Generated:** 2026-04-26 by Paige (Tech Writer) for [DEE-18](/DEE/issues/DEE-18) (parent: [DEE-11](/DEE/issues/DEE-11)).
+**Generated:** 2026-04-26 by Paige (Tech Writer); **re-verified** 2026-04-26 against `HEAD` for [DEE-39](/DEE/issues/DEE-39) (Paperclip-isolated full redo of the Group G deep-dive; parent: [DEE-11](/DEE/issues/DEE-11)).
 **Group:** G — deep-dive static surfaces.
 **Surface:** `main/img/` (35 files = 34 SVGs + 1 PNG).
-**Mode:** Single write-up — naming convention + inventory + cleanup candidates.
+**Mode:** Single write-up — naming convention + inventory + cleanup candidates. The unused-icon list (auth0logo, background.png, logo.svg, progress.svg, stop.svg) was re-confirmed by `grep -r 'img/(auth0logo|background\.png|logo\.svg|progress\.svg|stop\.svg)' main/` on 2026-04-26 — zero hits.
 
 ## 1. Naming convention
 

@@ -107,7 +107,14 @@ Note that `presets.js` imports `fs` directly, while `main.js` and `notification-
 
 None. The file is 30 lines and has no inline markers. The deficiencies (no atomicity, no validation) are not flagged in the source — they are discovered by reading; this document is the canonical record.
 
-## 10. Cross-references
+## 10. Test coverage
+
+- **None.** Neither the unit-test surface nor `tests/index.spec.ts` (the sole Playwright spec — see `docs/deep-dive/j/tests__index.spec.ts.md`) drives `load-presets` / `save-preset` / `delete-preset`. The spec runs a full nesting flow but never opens the preset modal.
+- **Renderer-side `PresetService`** (`main/ui/services/preset.service.ts`) has no automated tests either; both layers depend on manual QA today.
+- **Manually verifiable**: `userData/presets.json` mutates after every preset save in the running app; the URL-rewrite invariant (§5) is observable by editing the JSON to insert a legacy `convert.deepnest.io` URL and reloading.
+- **If this needs coverage**: a renderer-process Vitest can stub `ipcRenderer.invoke` and round-trip `PresetService` against an in-memory map; a main-process unit test can call `loadPresets`/`savePreset`/`deletePreset` directly with a temp `userData` path injected via `app.setPath('userData', tmpdir)`.
+
+## 11. Cross-references
 
 - `docs/architecture.md` §3.1 (module table), §5.2 (IPC table — config & presets row).
 - `docs/deep-dive/a/main.js.md` §5.3 — IPC handler bodies.

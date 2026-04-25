@@ -1,178 +1,132 @@
-# `tests/assets/` — E2E spec input fixtures
+# Deep Dive — `tests/assets/`
 
-Two SVG fixtures consumed by [`tests/index.spec.ts`](../../../tests/index.spec.ts).
-The test enumerates this directory at runtime
-([`tests/index.spec.ts:121-124`](../../../tests/index.spec.ts)),
-filters by `.svg`, and stubs Electron's `dialog.showOpenDialog` to
-return the absolute paths.
+> **Group**: J (test suite) · **Issue**: [DEE-42](../../../) · **Parent**: [DEE-11](../../index.md) · **Author**: Paige · **Generated**: 2026-04-26
+>
+> Per-file deep dive following the [DEE-11 shared template](../b/README.md#per-file-template), batched into a single doc per the issue scope (one inventory write-up rather than one stub per asset). Companion file in this group: [`tests__index.spec.ts.md`](./tests__index.spec.ts.md).
 
+| Field | Value |
+|---|---|
+| Path | [`tests/assets/`](../../../tests/assets/) |
+| File count | 2 (both `*.svg`) |
+| Total bytes | 96 481 |
+| Consumer | [`tests/index.spec.ts`](../../../tests/index.spec.ts) `Upload files` step ([:120-133](../../../tests/index.spec.ts)) |
+
+---
+
+## 1. Purpose
+
+The two SVG files in this directory are the **input parts** for the single end-to-end nesting test. They are intentionally complex, glyph-derived outlines (single `<path>` element each with dozens of closed sub-paths) that exercise the SVG parser's multi-subpath decomposition, the GA's per-rotation polygon evaluation, and the rendering pipeline through to SVG export. Together they produce the `54/54` placement count asserted at [`tests/index.spec.ts:185-186`](../../../tests/index.spec.ts).
+
+The directory is **enumerated dynamically** by the test:
+
+```ts
+const inputDir = path.resolve(__dirname, "assets");
+const files = (await readdir(inputDir))
+  .filter((file) => path.extname(file) === ".svg")
+  .map((file) => path.resolve(inputDir, file));
 ```
-tests/assets/
-├── henny-penny.svg         <- 70 200 bytes, 36 closed sub-paths
-└── mrs-saint-delafield.svg <- 26 281 bytes, 44 closed sub-paths
+([`tests/index.spec.ts:121-124`](../../../tests/index.spec.ts))
+
+— meaning any additional `*.svg` dropped here will be picked up automatically. The literal `2` at `:132` (`#importsnav li` count) and the `54/54` placement count at `:185-186` would then have to be updated in lockstep.
+
+---
+
+## 2. Public surface (file inventory)
+
+| File | Bytes | `<path>` elements | Closed sub-paths (`M…Z`) | Approx. coordinate extent | Used by test step | Cleanup status |
+|---|---:|---:|---:|---|---|---|
+| [`henny-penny.svg`](../../../tests/assets/henny-penny.svg) | 70 200 | 1 | 36 | x ≈ 0–1188, y ≈ 0–110 (no `viewBox`, no `width`/`height`) | `Upload files` ([:120-133](../../../tests/index.spec.ts)) — half of the 2 imports | Active fixture (in use) |
+| [`mrs-saint-delafield.svg`](../../../tests/assets/mrs-saint-delafield.svg) | 26 281 | 1 | 44 | x ≈ 0–688, y ≈ 0–102 (no `viewBox`, no `width`/`height`) | `Upload files` ([:120-133](../../../tests/index.spec.ts)) — the other import | Active fixture (in use) |
+
+Both files share the same minimal envelope: `<svg xmlns="http://www.w3.org/2000/svg"><path d="…"/></svg>` — a single `<path>` whose `d` attribute is a long bezier-quadratic sequence (`Q` and `L` segments only, no `C` or arcs). No grouping (`<g>`), no embedded styles, no `<text>`, no `viewBox`.
+
+The 36 + 44 = 80 closed sub-paths do **not** map 1:1 to nested parts. After [`main/svgparser.js`](../b/main__svgparser.js.md) cleans the input and [`main/deepnest.js`](../b/main__deepnest.js.md) `importsvg` runs, parent/child polygon nesting (holes inside outer outlines) collapses some sub-paths into hole relationships rather than separate placements. The net result is the `54` nestable parts asserted by the test.
+
+---
+
+## 3. IPC / global side-effects
+
+None — these are static fixtures. They reach the renderer through the file-picker monkeypatch in [`tests/index.spec.ts:125-130`](../../../tests/index.spec.ts):
+
+```ts
+await electronApp.evaluate(({ dialog }, paths) => {
+  dialog.showOpenDialog = async (): Promise<OpenDialogReturnValue> => ({
+    filePaths: paths,
+    canceled: false,
+  });
+}, files);
+await mainWindow.click("id=import");
 ```
 
-Both files are **path-only outlines of script-font glyphs**, dropped
-in to give the Genetic-Algorithm nesting loop a sufficiently
-non-trivial input to (a) produce more than a handful of distinct
-parts, (b) include glyphs with internal holes (so the polygon-tree
-exercises hole-nesting), and (c) be small enough to nest into a
-`300 mm × 200 mm` sheet quickly enough to land at least one
-`background-response` iteration before Playwright's default poll
-budget runs out.
+The `#import` button delegates to [`main/ui/services/import.service.ts`](../d/main__ui__services__import.service.md), which reads the file with `fs.readFile`, hands it to `DeepNest.importsvg(...)`, and pushes the resulting parts onto `DeepNest.parts`. Because the `.svg` extension is recognised directly, **the conversion server is not involved** — the asset choice keeps the test offline.
 
-## Inventory
+---
 
-| File | Size | Sub-paths | Single `<path>`? | viewBox / width / height | Stroke / fill attrs |
-| --- | --- | --- | --- | --- | --- |
-| `henny-penny.svg` | 70 200 B | 36 (`M…Z` runs) | yes | none — coordinate space is implicit (~0 to ~1187 on x, ~0 to ~107 on y for visible glyphs) | none — relies on the renderer default `fill: black` |
-| `mrs-saint-delafield.svg` | 26 281 B | 44 (`M…Z` runs) | yes | none — coordinate space is implicit (~0 to ~688 on x, ~38 to ~144 on y) | none — relies on the renderer default `fill: black` |
+## 4. Dependencies (in / out)
 
-Both files share the same minimal envelope:
+| Direction | What |
+|---|---|
+| **In (consumed by)** | [`tests/index.spec.ts`](../../../tests/index.spec.ts) `Upload files` step. No production code references these files. |
+| **Out (depends on)** | None — pure data files. The SVG content depends only on the W3C SVG 1.1 path grammar (the `M`, `L`, `Q`, `Z` subset). |
 
-```xml
-<svg xmlns="http://www.w3.org/2000/svg"><path d="M… Q… L… Z M… Q… L… Z …"/></svg>
-```
+The asset directory is **not** packaged into the Electron build: [`package.json`](../../../package.json) `build.files` excludes `!test**` ([`:104`](../../../package.json)).
 
-There is no `viewBox`, no `width` / `height` attribute, no `<g>`,
-`<rect>`, `<polygon>`, `<text>`, or any other element. Curves are
-all quadratic Béziers (`Q`) and straight segments (`L`); no cubics,
-no arcs.
+---
 
-## Per-asset usage notes
+## 5. Invariants & gotchas
 
-### `henny-penny.svg`
+1. **Asset count and placement count are coupled**. The `Upload files` step asserts `#importsnav li` = `2` ([:132](../../../tests/index.spec.ts)); the placement assertion expects `54/54` ([:186](../../../tests/index.spec.ts)). Adding or removing a file under `tests/assets/` requires both literals to be re-derived from a fresh test run.
+2. **Both SVGs lack `viewBox` and `width`/`height` attributes**. The browser falls back to `300 × 150` per CSS, but [`main/svgparser.js`](../b/main__svgparser.js.md) reads from the path coordinates directly, so the missing dimensions do not affect nesting. They would matter if the test ever rendered the imported SVG into a visible element for screenshot comparison.
+3. **Single `<path>` with many subpaths**. The SVG parser must split the path on each `M…Z` subpath. A regression in subpath handling would change the `54/54` count without breaking the file format. The `54/54` magic number is therefore the canary for that pipeline.
+4. **Offline by design**. Both files are `.svg` — they take the direct import path in [`import.service.ts`](../d/main__ui__services__import.service.md) and never round-trip through the conversion server. The test passes without network access. Adding a `.dxf` / `.dwg` / `.eps` / `.ps` fixture here would silently turn the test into an online test.
+5. **No metadata (license, author, source attribution) is committed alongside the files**. The names match Google Fonts (`Henny Penny`, `Mrs Saint Delafield`), both available under the SIL Open Font License — but no `LICENSE` or `README` in `tests/assets/` records this. If the project's [`LICENSES.md`](../../../LICENSES.md) does not already cover bundled font glyphs, this is a paperwork gap, not a test gap.
+6. **Bytes-on-disk are large for path-only SVGs** (96 KB combined). Decimal precision in `Q` control points (two decimal places everywhere) dominates. Stripping to one decimal would shrink files by ~20% and would not change the `54/54` count materially — but it *would* drift the GA-derived placement coordinates.
+7. **Asset content drift breaks the test silently**. Re-exporting either glyph from a new font version, or any tool that re-orders subpaths, would change polygon count. There is no checksum or snapshot of these files.
+8. **`__dirname` resolution in TypeScript ESM**. The spec uses `path.resolve(__dirname, "assets")` ([:121](../../../tests/index.spec.ts)). This works because [`tsconfig.json`](../h/tsconfig.json.md) compiles to CommonJS, where `__dirname` is a real binding. A future move to native ESM would require `import.meta.url` + `fileURLToPath`.
 
-**What it is.** Path-data export of the word(s) "Henny Penny" rendered
-in the [Henny Penny](https://fonts.google.com/specimen/Henny+Penny)
-display font (Google Fonts, OFL). The 36 sub-paths correspond to the
-outer letterforms plus the internal holes of glyphs that have one
-(`e`, `n` counters, `P`, `H` cross-bar arches, etc.). Once
-[`main/svgparser.js`](../../../main/svgparser.js) has flattened the
-quadratic Béziers (using the configured `curveTolerance: 0.72` from
-`DEFAULT_CONFIG`) and built the polygon tree, the holes are nested
-into their containing letterforms — so the **part count after parse
-is lower than the sub-path count**.
+---
 
-**Why it was chosen.** Combined with `mrs-saint-delafield.svg`, the
-two files together produce **54 outer parts** after polygon-tree
-extraction (asserted by
-[`tests/index.spec.ts`](../../../tests/index.spec.ts) as
-`#nestinfo h1:nth(1) === "54/54"`). 54 is enough that:
+## 6. Known TODOs
 
-- The GA's pairwise NFP cache builds non-trivially (54 × 54 part
-  pairs at 4 rotations each; the test sets `rotations: 4`).
-- The placement step is more than a one-shot bin pack — multiple
-  iterations produce distinguishable best-fitness candidates in
-  `#nestlist`.
-- The result still fits on the configured `300 × 200 mm` sheet, so
-  the test asserts `1` sheet used (single-sheet placement).
+None. No companion `README`, `LICENSE`, or `MANIFEST` exists in `tests/assets/` to carry TODO markers. The directory is treated as a flat fixture bag.
 
-**Used by which test case.** The single `Nest` test in
-`tests/index.spec.ts`, in the `Upload files` step
-([`tests/index.spec.ts:120-133`](../../../tests/index.spec.ts)).
-Imported as one of two files; appears as one `<li>` entry in
-`#importsnav` (the test asserts the count is `2`).
+Implicit follow-ups discovered during this deep dive:
 
-**Size / glyph constraints that matter.**
+- Document the licence / origin of each glyph SVG (see invariant #5).
+- Consider a `tests/assets/README.md` recording: source font, version, glyph(s) extracted, conversion tool, expected `M…Z` count.
+- Consider a checksum or snapshot of placement count to make the asset / test coupling explicit (invariant #7).
 
-| Constraint | Effect on the test |
-| --- | --- |
-| No `viewBox` | The SVG parser treats coordinates as raw SVG units (1 unit ≈ 1/72 inch under `scale: 72`). The visible coordinate range (~1187 × ~107) is well below the 300 × 200 mm sheet (which translates to ≈ 850 × 567 SVG units after the `mm × scale ÷ 25.4` conversion that `sheet-dialog` performs). All 36 sub-paths fit on one sheet. |
-| All curves are quadratic | The `curveTolerance: 0.72` flattening produces enough segments for hole-nesting to work, but few enough that NFP generation finishes inside Playwright's poll budget. |
-| Single `<path>` element | Hole / outer-loop relationships come from sub-path winding direction, not from explicit `<path>` parents. Exercises `main/svgparser.js`'s polygon-tree builder. |
-| No `id`, `class`, `fill`, `stroke` | Parts inherit the renderer's default presentation. The export step (`#exportsvg`) round-trips them with whatever attributes `ExportService` synthesises. |
-| 70 200 bytes / single line | Big enough that an accidental editor-driven reformat (e.g. running the tree through Prettier) would risk corrupting the path data; small enough that it's checked into the repo without LFS. |
+---
 
-### `mrs-saint-delafield.svg`
+## 7. Extension points
 
-**What it is.** Path-data export of "Mrs Saint Delafield" rendered in
-the [Mrs Saint Delafield](https://fonts.google.com/specimen/Mrs+Saint+Delafield)
-script font (Google Fonts, OFL). The 44 sub-paths correspond to
-letterforms with their swashes and counters. Coordinate range for
-the visible glyphs is roughly `(0, 38)` to `(688, 144)` (x, y in
-SVG units).
+| Extension | How |
+|---|---|
+| Add a third glyph fixture | Drop the `*.svg` here. Run the test, observe the new `#importsnav li` count and the new `H1[1]` placement text, update both literals in [`tests/index.spec.ts`](../../../tests/index.spec.ts). |
+| Add a `.dxf` fixture (exercise the conversion server) | Drop `foo.dxf` here, then update the filter at `:123` from `=== ".svg"` to a multi-extension predicate. The test will become online-dependent. |
+| Replace the glyphs with simpler shapes | Any SVG with a single `<path>` works. Simpler shapes will speed the GA up; the `54/54` literal will drop. |
+| Strip path precision to shrink the files | Run an SVGO pass with two-decimal precision; verify the placement count survives. |
 
-**Why it was chosen.** Pairs with `henny-penny.svg` to reach the
-54-part target. The script font also gives the polygon-tree some
-glyphs with **multiple holes per outer letter** (e.g. lowercase `e`
-and `a`), exercising deeper nesting in the polytree.
+---
 
-**Used by which test case.** Same as above — the `Nest` test's
-`Upload files` step.
+## 8. Test coverage status
 
-**Size / glyph constraints that matter.**
+The fixtures themselves are **not** test-covered (they are static data). Their *consumption* is covered by every assertion in [`tests/index.spec.ts`](../../../tests/index.spec.ts) downstream of the `Upload files` step. Specifically:
 
-| Constraint | Effect on the test |
-| --- | --- |
-| Smaller coordinate range than `henny-penny.svg` | Together with the larger file, the union spans easily fits the 300 × 200 mm sheet without rotations being mandatory. |
-| Y-coordinate origin at ~38 | The polygon-tree's bounding-box maths (`GeometryUtil.getPolygonBounds`) correctly recovers a tight box, but if a future asset goes negative on `y`, the Ractive parts-view rendering will need to verify it still positions correctly relative to the sheet origin. |
-| Same `<svg xmlns=…><path d=…/></svg>` envelope | Identical parsing path to `henny-penny.svg`. |
-| 26 281 bytes | Small enough that the overall test fixture footprint stays under 100 KB. |
+- ✅ Both files reach `#importsnav` and produce two list items.
+- ✅ Their combined polygon count drives the `54/54` assertion.
+- ✅ Their geometry is rendered to the exported SVG attached as `nesting.svg`.
+- ❌ No integrity check (hash / dimension assertion) on the files themselves.
+- ❌ No assertion that both files contributed parts (a regression that drops one file silently could still hit the right count if the other file's geometry doubled).
 
-## Test-case linkage
+---
 
-Per-asset → test-case map (only one test case exists; both assets are
-used in it):
+## 9. References
 
-| Asset | Test case | Step | Notes |
-| --- | --- | --- | --- |
-| `henny-penny.svg` | `Nest` ([`tests/index.spec.ts:17`](../../../tests/index.spec.ts)) | `Upload files` ([`tests/index.spec.ts:120-133`](../../../tests/index.spec.ts)) | Imported via stubbed `dialog.showOpenDialog`. Contributes ≈ 28 of the 54 placed parts. |
-| `mrs-saint-delafield.svg` | `Nest` (same) | `Upload files` (same) | Imported in the same call. Contributes ≈ 26 of the 54 placed parts. |
-
-The *exact* split between the two files (28/26 vs another partition)
-is not asserted; the spec only asserts the **total** of `54/54`. If
-either asset is replaced and the new total differs, update the
-`expect(...).toHaveText("54/54")` line in
-[`tests/index.spec.ts:185-187`](../../../tests/index.spec.ts).
-
-## Cleanup flags
-
-| Flag | Asset | Status | Recommendation |
-| --- | --- | --- | --- |
-| Unused asset? | `henny-penny.svg` | **In use** by the `Upload files` step. | Keep. |
-| Unused asset? | `mrs-saint-delafield.svg` | **In use** by the `Upload files` step. | Keep. |
-| Hard-coded count `54/54` | both | The 54 number is asset-derived, not a property of the GA. | Document here so future asset edits don't silently drift; treat the assertion as a snapshot of these specific files at this curve-tolerance default. |
-
-No assets in this directory are unused at the time of this scan.
-
-## Why the assets live under `tests/assets/`
-
-The test discovers them by enumerating
-`path.resolve(__dirname, "assets")` at runtime
-([`tests/index.spec.ts:121`](../../../tests/index.spec.ts)). Anything
-ending in `.svg` will be picked up, so:
-
-- Adding a third `.svg` here without updating the `54/54` and the
-  `#importsnav li toHaveCount(2)` assertions **will break the test**.
-- Adding a non-SVG file (`.txt`, `.dxf`, `.png`) is ignored by the
-  filter and is harmless. There is currently no DXF / DWG / EPS / PS
-  fixture in this directory, which is why those import paths are not
-  E2E-covered (see [`tests__index.spec.ts.md`](./tests__index.spec.ts.md)
-  → "What this spec implicitly tests").
-
-## License / provenance reminder
-
-Both fonts are Google-Fonts OFL releases. The committed files are
-**path-data outlines** (the SVG version of "outline" tracing), not
-the original `.ttf` / `.otf` font files, so no `@font-face` is
-involved and the OFL's redistribution clauses are satisfied by the
-fact that the path data is a derivative work permitted by the OFL.
-If a future change replaces these with a font with a more
-restrictive license, this note should be revisited.
-
-## References
-
-- [`tests/index.spec.ts`](../../../tests/index.spec.ts) — the only
-  consumer.
-- [`tests/index.spec.ts:120-133`](../../../tests/index.spec.ts) —
-  `Upload files` step.
-- [`main/svgparser.js`](../../../main/svgparser.js) — polygon-tree
-  builder that turns sub-paths into the 54 parts.
-- [`main/ui/services/import.service.ts`](../../../main/ui/services/import.service.ts) —
-  SVG import path; reads files via `fs.readFile` (renderer-side, see
-  Group D security smell summary).
-- [`main/ui/components/sheet-dialog.ts`](../../../main/ui/components/sheet-dialog.ts) —
-  the `300 × 200 mm` sheet that hosts the placements.
-- [`docs/deep-dive/j/tests__index.spec.ts.md`](./tests__index.spec.ts.md) —
-  full deep-dive on the E2E spec.
+- [`tests/assets/henny-penny.svg`](../../../tests/assets/henny-penny.svg)
+- [`tests/assets/mrs-saint-delafield.svg`](../../../tests/assets/mrs-saint-delafield.svg)
+- [`tests/index.spec.ts`](../../../tests/index.spec.ts) — sole consumer; deep dive [`tests__index.spec.ts.md`](./tests__index.spec.ts.md)
+- [`main/svgparser.js`](../../../main/svgparser.js) — subpath decomposition; deep dive [`docs/deep-dive/b/main__svgparser.js.md`](../b/main__svgparser.js.md)
+- [`main/deepnest.js`](../../../main/deepnest.js) — `importsvg` consumer; deep dive [`docs/deep-dive/b/main__deepnest.js.md`](../b/main__deepnest.js.md)
+- [`main/ui/services/import.service.ts`](../../../main/ui/services/import.service.ts) — `#import` click handler; deep dive [`docs/deep-dive/d/main__ui__services__import.service.md`](../d/main__ui__services__import.service.md)
+- [`package.json`](../../../package.json) `build.files` exclusion — keeps `tests/` out of the packaged app

@@ -1,9 +1,9 @@
 # `main/notification.html` — Deep Dive
 
-**Generated:** 2026-04-25 by Paige (Tech Writer) for [DEE-18](/DEE/issues/DEE-18) (parent: [DEE-11](/DEE/issues/DEE-11)).
+**Generated:** 2026-04-25 by Paige (Tech Writer); **re-verified** 2026-04-26 against `HEAD` for [DEE-39](/DEE/issues/DEE-39) (Paperclip-isolated full redo of the Group G deep-dive; parent: [DEE-11](/DEE/issues/DEE-11)).
 **Group:** G — deep-dive static surfaces.
 **File:** `main/notification.html` (218 LOC, single file).
-**Mode:** Exhaustive deep-dive.
+**Mode:** Exhaustive deep-dive — every line citation below has been spot-checked against `HEAD` on 2026-04-26.
 
 ## Scope correction (vs DEE-11)
 

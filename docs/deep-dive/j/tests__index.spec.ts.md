@@ -1,289 +1,199 @@
-# `tests/index.spec.ts` — Playwright Electron E2E spec
+# Deep Dive — `tests/index.spec.ts`
 
-The single end-to-end Playwright spec in this repository. Launches the
-Electron app via `_electron.launch`, drives the renderer through the
-"open the app → set config → import parts → add a sheet → start nest →
-download SVG → stop nest" happy path, and attaches every produced
-artifact (video, console log, output SVG, nesting JSON) to the test
-report. This is the **only** automated coverage of the renderer: every
-other deep-dive in the project that says "covered by `tests/index.spec.ts`"
-points to the test described below.
+> **Group**: J (test suite) · **Issue**: [DEE-42](../../../) · **Parent**: [DEE-11](../../index.md) · **Author**: Paige · **Generated**: 2026-04-26
+>
+> Per-file deep dive following the [DEE-11 shared template](../b/README.md#per-file-template). Companion file in this group: [`tests__assets.md`](./tests__assets.md). Configured by [`playwright.config.ts`](../h/playwright.config.ts.md).
 
-- File: [`tests/index.spec.ts`](../../../tests/index.spec.ts)
-- Runner config: [`playwright.config.ts`](../../../playwright.config.ts)
-- Project under test: the unpackaged Electron app entry
-  [`main.js`](../../../main.js) loading
-  [`main/index.html`](../../../main/index.html).
+| Field | Value |
+|---|---|
+| Path | [`tests/index.spec.ts`](../../../tests/index.spec.ts) |
+| Lines | 230 |
+| Format | Playwright TypeScript spec (ESM-style imports, CommonJS interop) |
+| Driven by | `npm test` → `playwright test` (auto-discovered from `testDir: "./tests"`) |
+| Test count | 1 (`test("Nest", …)`) plus a `test.afterAll` hook |
+| Browser project | `chromium` only — Electron's bundled Chromium, headed |
 
-## Role in the architecture
+---
 
-```
-+-----------------------+   electron.launch(args:["main.js"])   +-------------------+
-|  Playwright runner    | ------------------------------------> |  Electron main    |
-|  (chromium project)   |                                       |  (main.js)        |
-+-----------+-----------+                                       +---------+---------+
-            |                                                             |
-            | mainWindow = electronApp.firstWindow()                      |
-            v                                                             v
-+-----------------------+   DOM clicks / fills / locator queries   +-------------------+
-|  Renderer #main       | <--------------------------------------- |  main/index.html  |
-|  (page.js + ui/...)   |                                          |  + main/ui/*      |
-+-----------+-----------+                                          +-------------------+
-            |
-            | mainWindow.evaluate(() => window.config | window.DeepNest)
-            v
-+--------------------------+
-|  Assertions on:          |
-|   - window.config         |
-|   - window.DeepNest config|
-|   - #importsnav li count  |
-|   - #progressbar visible  |
-|   - #nestlist span n=1    |
-|   - #nestinfo h1[0] = "1" |
-|   - #nestinfo h1[1]="54/54"|
-+--------------------------+
-```
+## 1. Purpose
 
-## Test inventory
+The single end-to-end smoke test for the visible Electron app. Boots Electron via `_electron.launch({ args: ["main.js"] })`, drives the renderer through the **full happy-path nesting flow** — config form, file import, sheet creation, GA placement, SVG export — and attaches every artefact (output SVG, raw nest result JSON, console dump, video, screenshots) to the Playwright report. It is the **only** Playwright spec in the project; every other group's deep dive that says "covered by `tests/index.spec.ts`" means a step in this file exercises that surface.
 
-There is exactly **one** `test(...)` declaration plus an `afterAll` hook.
-The single test is structured as a sequence of `test.step(...)` blocks
-(steps appear as nested entries in the Playwright report and are
-treated as a soft outline, not as separate Playwright tests).
+The test does not assert nesting *quality* — only that the GA reaches at least one iteration and that placement progress reads `"54/54"` for the two seeded SVG glyphs (see [`tests__assets.md`](./tests__assets.md)). Quality regressions slip through; integration regressions do not.
 
-| Test name | Preconditions | Actions (steps) | Assertions | Known flake risks |
-| --- | --- | --- | --- | --- |
-| `Nest` | Electron-runnable host with a display (`headless: false` in `playwright.config.ts:35`); `main.js` present in cwd; `tests/assets/*.svg` exists; runner has filesystem access to write `console.txt` and `output.svg` under `testInfo.outputDir`. | (1) Launch Electron with `args: ["main.js"]` and `recordVideo`. (2) Optional `Pipe browser console logs` step (only when `metadata.pipeConsole = true`, see "pipeConsole flag" below). (3) `Config` step — set defaults, `units = mm`, `spacing = 10`, `placementType = gravity`. (4) `Upload files` — stub `dialog.showOpenDialog` to return both `tests/assets/*.svg` paths, click `#import`. (5) `Add sheet` — open `#addsheet`, fill `#sheetwidth = 300`, `#sheetheight = 200`, confirm. (6) Click `#startnest`. (7) Wait for first GA iteration. (8) `Attachments` — stub `dialog.showSaveDialogSync`, download SVG via `#export` → `#exportsvg`, attach SVG / nesting JSON / piped console JSON. (9) `Stop nesting` — click `#stopnest`, assert button text returns to `Start nest`. | `window.config.getSync()` matches a `sharedConfig` shape **plus** main-process-only fields (`conversionServer`, `dxfExport/ImportScale`, `endpointTolerance`, `units: "mm"`). `window.DeepNest.config()` matches `sharedConfig` plus the GA-only `clipperScale: 10000000`. `#importsnav li` has count `2` (one entry per imported file). `#progressbar` is visible after `#startnest`. `#nestlist span:nth-child(1)` is visible (first GA iteration produced a nest). `#nestinfo h1:nth(0)` = `"1"` (one sheet used). `#nestinfo h1:nth(1)` = `"54/54"` (all 54 polygon-tree parts placed). After `#stopnest` is clicked, the same button shows text `Start nest`. | • **Long polling on `54/54`** — uses `expect.poll`/`.toPass()` waiting for the GA to converge to a 100 %-placed solution. On a slow CI runner the GA may need many seconds; default Playwright `expect` timeout (5 s × `toPass` retry budget) usually wins, but is the most likely flake source.<br>• **Iteration #1 visibility** — `waitForIteration(1)` polls `#nestlist span:nth(0)` for visibility. The first iteration arrives only after the NFP cache populates (parts × parts pairwise NFPs). With 54 parts, NFP generation takes several seconds.<br>• **Console pipe race** — `mainWindow.on("console", ...)` and `electronApp.on("window", ...)` are wired *after* `electronApp.firstWindow()` resolves; messages emitted between launch and listener attachment are lost. Only matters for log completeness, not pass/fail.<br>• **Dialog stubs** — `dialog.showOpenDialog` and `dialog.showSaveDialogSync` are replaced inside `electronApp.evaluate(...)`. The save-dialog stub uses **synchronous** `showSaveDialogSync` because that is what the renderer's export path calls; if a future refactor switches to `showSaveDialog` the stub silently fails and the test hangs.<br>• **Cwd assumptions** — `args: ["main.js"]` is resolved relative to Playwright's cwd. Running `npx playwright test` from a subdirectory will fail to launch.<br>• **Output dir collision** — `mkdir(testInfo.outputDir, { recursive: true })` is wrapped in an `existsSync` guard with inverted intent (the directory is `mkdir`'d only when it already exists). Harmless because Playwright pre-creates the output dir, but the guard does not do what it reads as. Worth flagging for cleanup. |
-| `afterAll` hook | Test ran to completion (pass or fail). | Reads every file under `testInfo.outputDir` and re-attaches it to the test info. | None. | Attaches *all* files in `outputDir`, including the recorded video and the raw `console.txt`. On large/long runs this inflates the HTML report. Files are also re-attached after the test step has already attached them under different names — this is intentional duplication so artefacts survive in the report even if a step failed before its dedicated `attach()` ran. |
+---
 
-## Public surface
+## 2. Public surface
 
-The spec has no exports. The relevant programmatic surface it exercises:
+The file has no module exports — Playwright discovers it by directory and registers the `test()` calls.
 
-| Surface | Where read/written | Test interaction |
-| --- | --- | --- |
-| `window.config` (`ConfigService`) | [`main/ui/services/config.service.ts`](../../../main/ui/services/config.service.ts), assigned in [`main/ui/index.ts`](../../../main/ui/index.ts) | `mainWindow.evaluate(() => window.config.getSync())` after the Config step. |
-| `window.DeepNest` (GA loop) | [`main/deepnest.js`](../../../main/deepnest.js) `DeepNest` class | `mainWindow.evaluate(() => window.DeepNest.config())` and `() => window.DeepNest.nests` for the JSON snapshot. |
-| `dialog.showOpenDialog` (Electron) | [`main/ui/services/import.service.ts`](../../../main/ui/services/import.service.ts) → `@electron/remote.dialog` | `electronApp.evaluate(({ dialog }, paths) => { dialog.showOpenDialog = async () => ({ filePaths: paths, canceled: false }) }, files)`. |
-| `dialog.showSaveDialogSync` (Electron) | [`main/ui/services/export.service.ts`](../../../main/ui/services/export.service.ts) → `@electron/remote.dialog` | `electronApp.evaluate(({ dialog }, path) => { dialog.showSaveDialogSync = () => path }, file)`. |
-| `#config_tab`, `#home_tab` | [`main/index.html:124-125`](../../../main/index.html) | Tab switching via `.click()`. |
-| `#config a:has-text("set all to default")` | [`main/index.html:504`](../../../main/index.html) `#setdefault` | Triggers `ConfigService.resetToDefaultsSync()`. |
-| `#config input[type=radio]:nth(1)` | First radio after `inches` is `mm` (see `main/index.html:225`). | Sets `units = "mm"`. |
-| `#config input[type=number]:first-of-kind` | First spinbutton is `data-config="spacing" data-conversion="true"` ([`main/index.html:231-239`](../../../main/index.html)). | Filled with `"10"` (mm). With `data-conversion="true"`: 10 mm × scale (72) ÷ 25.4 = **28.34645669291339** SVG units, asserted in `sharedConfig.spacing`. |
-| `#config select[name="placementType"]` | [`main/index.html:272`](../../../main/index.html). | Set to `"gravity"`. |
-| `#import` | [`main/index.html:136`](../../../main/index.html) `<li id="import">Import</li>`. | Click triggers `ImportService.handleImport(...)` which opens the (stubbed) `dialog.showOpenDialog`. |
-| `#importsnav li` | Rendered by Ractive `{{#each imports}}` ([`main/index.html:185-192`](../../../main/index.html)). One `<li>` **per imported file**, not per part. | Asserted `toHaveCount(2)` after both `tests/assets/*.svg` are imported. |
-| `#addsheet`, `#sheetwidth`, `#sheetheight`, `#confirmsheet` | [`main/index.html:167, 173-176`](../../../main/index.html) `sheet-dialog` template; backed by [`main/ui/components/sheet-dialog.ts`](../../../main/ui/components/sheet-dialog.ts). | Open dialog, fill `300`/`200` (mm), confirm. Sheet is added to `DeepNest.parts` with `sheet: true`. |
-| `#startnest` | [`main/index.html:137`](../../../main/index.html). | Click triggers `NestingService.startNesting()` → `DeepNest.start(progressCb, displayCb)`. |
-| `#progressbar` | [`main/index.html:87`](../../../main/index.html). Subscribed by `initializeBackgroundProgress()` in `main/ui/index.ts` to `background-progress` IPC. | Asserted visible after `#startnest`. |
-| `#nestlist span:nth(n-1)` | [`main/index.html:100-110`](../../../main/index.html), Ractive `{{#each nests}}`. One span per "best nest so far". | `waitForIteration(n)` asserts the nth span is visible. |
-| `#nestinfo h1` | [`main/index.html:94-99`](../../../main/index.html). `h1[0]` = sheets-used count, `h1[1]` = `getPartsPlaced()` formatted as `"placed/total"` (see [`main/ui/components/nest-view.ts:387-414`](../../../main/ui/components/nest-view.ts)). | Asserted `"1"` and `"54/54"`. |
-| `#export`, `#exportsvg` | [`main/index.html:41`](../../../main/index.html). | Click `#export` opens the export menu, click `#exportsvg` triggers `ExportService.exportSvg()` which calls `dialog.showSaveDialogSync()` (stubbed) and writes to disk. |
-| `#stopnest` | [`main/index.html:37`](../../../main/index.html). | Click triggers `NestingService.stopNesting()`. Button text returns to `"Start nest"` once the GA loop releases. |
+| Symbol (line) | Kind | Notes |
+|---|---|---|
+| `test("Nest", async ({}, testInfo) => { … })` ([:17](../../../tests/index.spec.ts)) | Playwright test | Empty fixture object pattern; the file-top ESLint override at `:1` allows this idiom. |
+| `test.afterAll(async ({}, testInfo) => { … })` ([:221](../../../tests/index.spec.ts)) | Playwright hook | Attaches every file under `testInfo.outputDir` to the report regardless of pass/fail. |
+| Inline `test.step(...)` calls | Step builders | See [§4 step map](#4-step-by-step-map) for the table. |
+| Local helpers `stopNesting` ([:148](../../../tests/index.spec.ts)), `downloadSvg` ([:155](../../../tests/index.spec.ts)), `waitForIteration` ([:167](../../../tests/index.spec.ts)) | Closures | Each wraps its body in a `test.step`. |
 
-## Fixtures and harness contracts
+**Configuration / environment contract**:
 
-Playwright fixtures used (all from `@playwright/test` — no custom
-fixtures are defined in this spec or repo):
+| Surface | Source | Effect |
+|---|---|---|
+| `testInfo.config.metadata.pipeConsole` | `playwright.config.ts metadata` ([config :44](../../../playwright.config.ts)) → `!process.env.CI` | When `true`, registers `mainWindow.on("console", ...)` listeners and writes a per-message JSON record to `console.txt`. |
+| `testInfo.outputDir` | Playwright per-test temp dir | Holds video (`recordVideo`), `console.txt` (if pipe enabled), and any `testInfo.outputPath(...)` files (currently `output.svg`). |
+| `testInfo.outputPath("console.txt")` ([:30](../../../tests/index.spec.ts)) | Computed | Console JSONL accumulator. |
+| `testInfo.outputPath("output.svg")` ([:157](../../../tests/index.spec.ts)) | Computed | Target file for the export step's monkeypatched `showSaveDialogSync`. |
+| `process.env.CI` | OS env | Only referenced indirectly via the commented-out `slowMo` line `:15` and through `metadata.pipeConsole`. The spec body itself does not branch on `CI`. |
 
-| Fixture | Source | Usage in spec |
-| --- | --- | --- |
-| `test`, `expect` | `@playwright/test` | Standard. |
-| `_electron as electron` | `@playwright/test` | `electron.launch({ args: ["main.js"], recordVideo: { dir: testInfo.outputDir } })`. The `electron` API is the official Playwright Electron driver, **not** the npm `electron` package. |
-| `ConsoleMessage` | `@playwright/test` (type only) | Typed parameter for `logMessage`. |
-| `OpenDialogReturnValue` | `electron` (type only) | Typed return for the `dialog.showOpenDialog` stub. |
-| `testInfo` (second arg of test fn) | `@playwright/test` | Reads `outputDir`, `outputPath()`, `config.metadata`, `attach()`. |
-| `existsSync`, `mkdir`, `appendFile`, `readdir`, `readFile` | `node:fs` / `node:fs/promises` | Output-dir bootstrap, console.txt write/read, asset enumeration, downloaded-SVG read. |
-| `fileURLToPath` from `node:url`, `path` | Node | Resolve absolute paths for `tests/assets/` and convert console-log `file://` URLs to repo-relative paths for nicer logs. |
-| `DeepNestConfig`, `NestingResult` | [`index.d.ts`](../../../index.d.ts) at the repo root | Type-only imports for the `evaluate` return values. |
+---
 
-The spec relies on the **Playwright Electron API** rather than the
-plain Page fixture, so it does not use a `webServer`, base URL, or
-storage-state fixture — these are commented out in
-[`playwright.config.ts:7-9, 28-30, 51-56`](../../../playwright.config.ts).
+## 3. IPC / global side-effects
 
-## The Electron launch hook
+The spec is a renderer-driver — every "side effect" is a deliberate hook into Electron / Playwright surfaces:
 
-```ts
-const electronApp = await electron.launch({
-  args: ["main.js"],
-  recordVideo: { dir: testInfo.outputDir },
-});
-const mainWindow = await electronApp.firstWindow();
-```
+| Mechanism | Site | Direction | Purpose |
+|---|---|---|---|
+| `_electron.launch({ args: ["main.js"], recordVideo: { dir: testInfo.outputDir } })` ([:23](../../../tests/index.spec.ts)) | spec → main process | Spawn the app under test. The `args` array passes `main.js` as the entry; `recordVideo` makes Playwright capture every BrowserWindow video into the per-test outputDir. See [`docs/deep-dive/a/main.js.md`](../a/main.js.md). |
+| `electronApp.firstWindow()` ([:28](../../../tests/index.spec.ts)) | spec → main → first BrowserWindow | Returns the visible renderer; the rest of the spec drives it as `mainWindow`. There are also up to four **background** BrowserWindows created by `main.js` for the GA workers — the test never touches them but they spawn during `#startnest`. |
+| `mainWindow.on("console", logMessage)` and `electronApp.on("window", win => win.on("console", logMessage))` ([:66-67](../../../tests/index.spec.ts)) | renderer → spec | Captures console messages from the main window **and every subsequent window** (i.e. background workers) when `pipeConsole` is on. `logMessage` flattens the message via `message.args().map(x => x.jsonValue())` and appends to `console.txt`. |
+| `mainWindow.evaluate(() => window.config.getSync())` ([:86-87](../../../tests/index.spec.ts)) | spec → renderer (eval in page) | Reads the live `ConfigService` snapshot — works because [`main.js`](../a/main.js.md) sets `nodeIntegration: true` + `contextIsolation: false`, which exposes `window.config` (assigned by [`main/ui/index.ts`](../c/main__ui__index.ts.md)) to evaluate. See [`docs/deep-dive/d/main__ui__services__config.service.md`](../d/main__ui__services__config.service.md). |
+| `mainWindow.evaluate(() => window.DeepNest.config())` ([:89-91](../../../tests/index.spec.ts)) | spec → renderer | Reads the GA-side config copy. Source: [`docs/deep-dive/b/main__deepnest.js.md`](../b/main__deepnest.js.md) — `DeepNest.config()` returns a superset that adds `clipperScale: 10000000`. |
+| `mainWindow.evaluate(() => window.DeepNest.nests)` ([:191-192](../../../tests/index.spec.ts)) | spec → renderer | Pulls the structured `NestingResult[]` (typed in [`index.d.ts`](../h/index.d.ts.md)) for the JSON attachment. |
+| `electronApp.evaluate(({ dialog }, paths) => { dialog.showOpenDialog = … }, files)` ([:125-130](../../../tests/index.spec.ts)) | spec → main process | **Monkeypatches** the Electron `dialog` so the renderer-side `#import` button receives the two SVG paths without a real file picker. Note: the file-open dialog is the **async** variant (`showOpenDialog`, returns a `Promise<OpenDialogReturnValue>`) — used by [`main/ui/services/import.service.ts`](../d/main__ui__services__import.service.md). |
+| `electronApp.evaluate(({ dialog }, path) => { dialog.showSaveDialogSync = () => path; }, file)` ([:158-160](../../../tests/index.spec.ts)) | spec → main process | Monkeypatches the **sync** save dialog used by [`main/ui/services/export.service.ts`](../d/main__ui__services__export.service.md). The promise from `evaluate` is **not awaited** — see §6. |
+| `appendFile(consoleDump, …, ",\n\n")` ([:47-60](../../../tests/index.spec.ts)) | spec → fs | Writes a comma-and-blank-line-separated stream of pretty-printed JSON records. The `afterAll` re-parses by splitting on `",\n\n"` and `JSON.parse`-ing each chunk. |
+| `testInfo.attach("nesting.svg" / "nesting.json" / "console.json", …)` ([:194-214](../../../tests/index.spec.ts)) | spec → Playwright report | Three primary report attachments. The `console.json` attachment is conditional on `existsSync(consoleDump)` — i.e. only when `pipeConsole` was enabled. |
+| `mkdir(testInfo.outputDir, { recursive: true })` ([:20](../../../tests/index.spec.ts)) | spec → fs | **Inverted condition** (see §6). Even if the path were correct, this `mkdir` is **not awaited** — fire-and-forget. |
 
-What this triggers:
+The renderer-side IPC the spec implicitly exercises (via clicks and dialog mocks) covers: `read-config`, `write-config`, `background-start`, `background-progress`, `background-response`, `background-stop`, `setPlacements` — everything documented in [Group D's IPC channel summary](../d/README.md#ipc-channel-summary).
 
-1. Playwright spawns Electron with the `electron` npm dependency
-   resolved from the test process's `node_modules`. The `args` array
-   is passed to Electron as if `electron main.js` had been run from
-   the project root.
-2. `main.js` starts ([`main.js:1-200+`](../../../main.js)), creates
-   the main `BrowserWindow` (`nodeIntegration: true`,
-   `contextIsolation: false`, `enableRemoteModule: true`), and loads
-   `main/index.html`.
-3. `recordVideo: { dir: testInfo.outputDir }` writes a `*.webm` per
-   page into the per-test output directory. Playwright's
-   `playwright.config.ts:33` also sets `video: "on"` locally and
-   `"retain-on-failure"` on CI; these settings cooperate, with the
-   per-launch `recordVideo` taking precedence.
-4. `electronApp.firstWindow()` resolves to the **first** BrowserWindow.
-   `main.js` opens additional offscreen background renderers
-   (`backgroundWindows[]`) for the GA / NFP workers; those windows
-   are **not** the `mainWindow` and the spec deliberately ignores
-   them, except via the optional `electronApp.on("window", ...)`
-   subscription that pipes their console output too.
+---
 
-There is no explicit `electronApp.close()`. The Playwright runner
-shuts the Electron process down at the end of the test by destroying
-all pages and the Electron app context. This is intentional —
-`#stopnest` only stops the GA loop, not the app.
+## 4. Step-by-step map
 
-## Environment variables
+Single test, called `Nest`. The table below is the source of truth for what every other group's deep dive means by "covered by `tests/index.spec.ts`":
 
-The spec itself does not read `process.env` directly. Indirect
-behaviour driven by env vars:
+| # | Step name (line) | Preconditions | Actions | Assertions | Surface exercised | Flake risk |
+|---|---|---|---|---|---|---|
+| 0 | `Pipe browser console logs` ([:32](../../../tests/index.spec.ts)) | `metadata.pipeConsole === true` (i.e. local, not CI). | Registers `console` listeners on `mainWindow` and on every later window; appends each message as JSON to `console.txt`. | None — pure data capture. | Renderer / background-window console output. | None — write-only. `appendFile` failures swallowed because logs are best-effort. |
+| 1 | `Config` parent ([:72](../../../tests/index.spec.ts)) | `mainWindow` ready. | Click `#config_tab` → click "set all to default" link inside `#config`. | Config tab opens; reset link is present. | [`main/index.html`](../g/main__index.html.md) (`#config_tab`, `#config`); [`main/ui/components/navigation.md`](../e/main__ui__components__navigation.md); [`config.service.md`](../d/main__ui__services__config.service.md) reset path. | Low. The `set all to default` link uses `getByRole("link", { name: "set all to default" })` — text-based, fragile to copy changes. |
+| 1a | `units mm` ([:76-77](../../../tests/index.spec.ts)) | Inside `Config`. | `configTab.getByRole("radio").nth(1).check()`. | Radio at index 1 is now checked. | `data-config="units"` radio group in [`main/index.html`](../g/main__index.html.md). | **Medium** — index-based selector. Adding a radio above it (or reordering) silently breaks the test by selecting the wrong unit. |
+| 1b | `spacing 10mm` ([:78-81](../../../tests/index.spec.ts)) | `units` already set to mm. | `getByRole("spinbutton").first().fill("10")` then `.blur()`. | None inline — implicit through later `expect(config).toMatchObject({ spacing: 28.34645669291339, … })`. | `data-config="spacing"` spinbutton; `change` handler in [`main/ui/index.ts`](../c/main__ui__index.ts.md) (`initializeConfigForm`); mm→inches conversion in [`config.service.md`](../d/main__ui__services__config.service.md). | **Medium** — index-based selector (`first()`); same fragility as 1a. The `.blur()` is required because `change` only fires on blur for `<input type="number">`. |
+| 1c | `placement type gravity` ([:82-85](../../../tests/index.spec.ts)) | Inside `Config`. | `<select name="placementType">` → option `"gravity"`. | None inline — implicit through `placementType: "gravity"` in `toMatchObject`. | `data-config="placementType"` `<select>` in [`main/index.html`](../g/main__index.html.md). | Low — selector keys on `name` attribute, stable. |
+| 1d | (anonymous, after 1a–1c) ([:86-117](../../../tests/index.spec.ts)) | All three writes complete. | Two `evaluate()` calls reading `window.config.getSync()` and `window.DeepNest.config()`; click `#home_tab`. | `expect(config).toMatchObject({ …sharedConfig, conversionServer: "https://converter.deepnest.app/convert", dxfExportScale: 1, dxfImportScale: 1, endpointTolerance: 0.36, units: "mm" })`. `expect(deepNestConfig).toMatchObject({ …sharedConfig, clipperScale: 10000000 })`. | Asserts the legacy URL rewrite and the field-by-field defaults documented in [`config.service.md`](../d/main__ui__services__config.service.md). | Low. **But**: any defaults change (e.g. bumping `endpointTolerance` from `0.36`) needs this assertion updated in lockstep. |
+| 2 | `Upload files` ([:120-133](../../../tests/index.spec.ts)) | On home tab. | Read `tests/assets/*.svg` via `node:fs/promises.readdir`; monkeypatch `dialog.showOpenDialog` to return them; click `#import`. | `expect(mainWindow.locator("#importsnav li")).toHaveCount(2)`. | [`main/ui/services/import.service.ts`](../d/main__ui__services__import.service.md) SVG path; [`main/ui/components/parts-view.md`](../e/main__ui__components__parts-view.md) (`#importsnav`). | Low if assets count stays at 2. **High** if a third asset is added — the literal `2` would have to be updated. |
+| 3 | `Add sheet` ([:135-141](../../../tests/index.spec.ts)) | Files imported. | Click `#addsheet`; fill `#sheetwidth=300`, `#sheetheight=200`; click `#confirmsheet`. | None inline. | [`main/ui/components/sheet-dialog.md`](../e/main__ui__components__sheet-dialog.md). | Low. Sheet dimensions are implicit constants in the test. |
+| 4 | (no step wrapper) ([:146](../../../tests/index.spec.ts)) | One sheet present, two parts imported. | Click `#startnest`. | None inline. | [`main/ui/services/nesting.service.md`](../d/main__ui__services__nesting.service.md) → [`main/deepnest.js`](../b/main__deepnest.js.md) `DeepNest.start()` → [`main/background.js`](../b/main__background.js.md). | None at click-time. |
+| 5 | (no step wrapper) ([:178-187](../../../tests/index.spec.ts)) | GA running. | `expect(#progressbar).toBeVisible()`; `waitForIteration(1)`; `expect(nestinfo h1[0]).toHaveText("1")`; `expect(nestinfo h1[1]).toHaveText("54/54")` wrapped in `toPass()`. | Iteration 1 reached and 54 of 54 placements completed. | `#progressbar`, `#nestlist`, `#nestinfo` rendered by [`main/ui/components/nest-view.md`](../e/main__ui__components__nest-view.md). | **High** for the `54/54` — the count is asset-derived (see [`tests__assets.md`](./tests__assets.md)). Editing either SVG, the spacing, the sheet size, or the GA defaults can flip the placement count. The `toPass()` retry hides timing flake but not count drift. |
+| 6 | `Attachments` ([:189-216](../../../tests/index.spec.ts)) | At least one iteration done. | Call `downloadSvg()` helper; read `window.DeepNest.nests`; attach `nesting.svg`, `nesting.json`, and conditionally `console.json`. | `downloadSvg` asserts `#exportsvg` visible. | [`main/ui/services/export.service.md`](../d/main__ui__services__export.service.md); [`main/index.html`](../g/main__index.html.md) (`#export`, `#exportsvg`). | Medium. The unawaited `electronApp.evaluate(...)` in `downloadSvg` (`:158-160`) races the click — see §6. |
+| 7 | `Stop nesting` ([:148-153](../../../tests/index.spec.ts), called at `:218`) | GA running and iteration captured. | Click `#stopnest`; wait for the same button to read `"Start nest"`. | Button label flips. | [`nesting.service.md`](../d/main__ui__services__nesting.service.md) `stopNesting`; `background-stop` IPC in [`main.js`](../a/main.js.md). | Low — `toPass` retries. |
+| 8 | `test.afterAll` ([:221-230](../../../tests/index.spec.ts)) | Test concluded. | `readdir(outputDir)` → attach every file by path. | None. | Captures the Playwright video file written by `recordVideo`, plus `console.txt` and `output.svg`. | Low. Files added by `testInfo.attach(name, { body })` may already be in the report; this re-attaches the on-disk twin by path. |
 
-| Env var | Read where | Effect |
-| --- | --- | --- |
-| `CI` | [`playwright.config.ts:19, 21, 23, 25, 33, 38`](../../../playwright.config.ts) | When set: `forbidOnly: true`, `retries: 2`, `workers: 1`, `reporter` includes `"github"`, `video: "retain-on-failure"`, `metadata.pipeConsole: false`. |
-| `metadata.pipeConsole` | `tests/index.spec.ts:18`, derived from `!process.env.CI` in `playwright.config.ts:38` | If `true`, the renderer's `console.*` messages are appended to `console.txt`, then re-attached as a parsed `console.json`. **Disabled on CI** to avoid noisy logs in GitHub-Actions output. |
-| Implicit via `process.env.CI` in commented `slowMo` line | [`tests/index.spec.ts:15`](../../../tests/index.spec.ts) (commented out) | The disabled line `!process.env.CI && test.use({ launchOptions: { slowMo: 500 } })` would slow Electron's interactions to 500 ms locally. Kept as a debugging hint. |
+`testInfo.config.metadata.pipeConsole` is the only branch in the spec body. Every other branch (`process.env.CI`-driven) lives in [`playwright.config.ts`](../h/playwright.config.ts.md).
 
-The spec does not read any `process.env.DEEPNEST_*` or app-specific
-variables. Conversion-server, scale, and unit choices are driven
-purely through the UI flow.
+---
 
-## Output dir contract
+## 5. Magic numbers and asset-coupled constants
 
-For each run Playwright provisions
-`test-results/index-Nest/<retry-suffix>/` (path resolves through
-`testInfo.outputDir`). The spec writes / attaches:
+The spec encodes several numbers that link the test to the seeded fixtures or the default config. Any change to these requires a paired update:
 
-| Artefact | When | Source |
-| --- | --- | --- |
-| `*.webm` (video) | Always (locally `on`, on CI `retain-on-failure`) | Playwright's `recordVideo`. |
-| `console.txt` | Locally only (`pipeConsole = !CI`) | Appended by `logMessage()` per console event, NDJSON-with-`,\n\n`-separator. |
-| `console.json` | Locally only, attached during `Attachments` step | Re-parsed `console.txt`. |
-| `output.svg` | Always | Written by `ExportService.exportSvg` via the stubbed `dialog.showSaveDialogSync`. |
-| `nesting.svg` | Always, attached in `Attachments` step | The same content as `output.svg`, attached as `image/svg+xml`. |
-| `nesting.json` | Always, attached in `Attachments` step | `JSON.stringify(window.DeepNest.nests, null, 2)`. |
-| Re-attachments of all of the above | Always, in `afterAll` | `(await readdir(outputDir)).map(file => testInfo.attach(file, { path: ... }))`. |
+| Constant | Where | Derivation / coupling |
+|---|---|---|
+| `28.34645669291339` ([:101](../../../tests/index.spec.ts)) | `sharedConfig.spacing` | `10 mm × (72 / 25.4)` — converts the user-typed `10` to internal SVG units. Must change in lockstep with `scale` (default `72`) or the unit conversion in [`config.service.md`](../d/main__ui__services__config.service.md) (`setSync` for `spacing` when `units === "mm"`). |
+| `0.72` ([:96](../../../tests/index.spec.ts)) | `sharedConfig.curveTolerance` | `DEFAULT_CONFIG.curveTolerance` from [`config.service.md`](../d/main__ui__services__config.service.md). |
+| `4` (`rotations`, `threads`) ([:98, :102](../../../tests/index.spec.ts)) | `sharedConfig` | Both default; `threads: 4` also drives the number of background BrowserWindows started by `main.js`. |
+| `10` (`mutationRate`, `populationSize`) ([:97, :99](../../../tests/index.spec.ts)) | `sharedConfig` | GA defaults. |
+| `72` ([:100](../../../tests/index.spec.ts)) | `sharedConfig.scale` | DEFAULT scale; the `28.34645…` derivation depends on it. |
+| `0.5` ([:103](../../../tests/index.spec.ts)) | `sharedConfig.timeRatio` | Default. |
+| `https://converter.deepnest.app/convert` ([:107](../../../tests/index.spec.ts)) | `conversionServer` assertion | Asserts the legacy `convert.deepnest.io` → `converter.deepnest.app/convert` rewrite performed by `ipcMain.handle("read-config")` in [`main.js`](../a/main.js.md). |
+| `0.36` ([:110](../../../tests/index.spec.ts)) | `endpointTolerance` | Default. |
+| `10000000` ([:115](../../../tests/index.spec.ts)) | `clipperScale` | Default; only present in the `DeepNest.config()` shape, not in the persisted UI config. |
+| `(width: 300, height: 200)` ([:136](../../../tests/index.spec.ts)) | Sheet dimensions | Arbitrary mm dimensions. The combined glyph parts must fit inside this sheet to make `54/54` placements achievable. |
+| `2` ([:132](../../../tests/index.spec.ts)) | `#importsnav li` count | 1 per imported SVG file → equal to `tests/assets/*.svg` file count. |
+| `54/54` ([:185-186](../../../tests/index.spec.ts)) | `#nestinfo h1[1]` text | Total polygon parts produced by importing `henny-penny.svg` + `mrs-saint-delafield.svg` (asset glyphs decompose into `54` distinct nest-able sub-polygons combined). See [`tests__assets.md`](./tests__assets.md) for the per-file breakdown. |
 
-The duplicated attachments in `afterAll` are intentional. They guarantee
-the artefacts survive in the report when a step fails before its
-`attach()` call.
+---
 
-## What this spec implicitly tests in the rest of the codebase
+## 6. Invariants & gotchas
 
-Because there is only one E2E test, **every** group's deep-dive
-"Test coverage" section keys off this single happy path. The mapping
-is:
+1. **Inverted `mkdir` guard** ([:19-21](../../../tests/index.spec.ts)) — `if (existsSync(testInfo.outputDir)) { mkdir(testInfo.outputDir, { recursive: true }); }` only `mkdir`s when the directory **already exists**. Likely a bug — the intended guard was the negation. Today this is harmless because Playwright pre-creates `testInfo.outputDir` before the test body runs, but the line is misleading.
+2. **`mkdir` is not awaited** ([:20](../../../tests/index.spec.ts)) — fire-and-forget Promise. If the directory ever did need to be created here, later `appendFile` calls could race the create.
+3. **`electronApp.evaluate(...)` for the save dialog mock is not awaited** ([:158-160](../../../tests/index.spec.ts)) — the mock injection races the very next line's `await mainWindow.click("id=export")`. In practice the click dispatches event-loop work that the eval likely wins, but this is timing-dependent. **Flake hazard** if the export click ever shrinks its async chain.
+4. **Empty fixture pattern** ([:17, :221](../../../tests/index.spec.ts)) — `async ({}, testInfo) => …` violates `no-empty-pattern` by default; the file's first line `/*eslint no-empty-pattern: ["error", { "allowObjectPatternsAsParameters": true }]*/` is required and must stay or ESLint will fail the file.
+5. **Console pipe is asymmetric** ([:32-71](../../../tests/index.spec.ts)) — inside the `Pipe browser console logs` step, the listener wiring is performed but the step itself is **not awaited** in the parent body. The listener registrations execute synchronously in the step body, so this works, but the lack of `await test.step(...)` is unusual and means the step is "orphan" in the trace.
+6. **`pipeConsole` defaults `true` locally** — every local run accumulates a `console.txt` per test; they live under Playwright's `test-results/` and are attached as `console.json`. CI runs (`pipeConsole: false`) skip the listener wiring entirely — locally-only flake hidden by the CI matrix is therefore not impossible.
+7. **The legacy URL rewrite assertion is one-way** ([:107](../../../tests/index.spec.ts)) — the test passes regardless of whether `settings.json` previously contained the legacy URL or the new one. It only documents the *expected* shape.
+8. **No `electronApp.close()`** — Playwright tears down the spawned Electron at test end via the launch handle, but there is no explicit `await electronApp.close()`. If the GA loop is still running at `Stop nesting`, background BrowserWindows linger until Playwright kills the process tree.
+9. **`fileURLToPath` swallow** ([:41-46](../../../tests/index.spec.ts)) — wraps the conversion in a try/catch with `// ignore`. Console messages whose `url` is not a `file://` URL fall back to the raw URL string. Required because Chromium reports renderer-process URLs (e.g. `devtools://`, blob URLs) that `fileURLToPath` rejects.
+10. **`fullyParallel: true` × single test** — set in [`playwright.config.ts`](../h/playwright.config.ts.md). The flag is forward-looking; today there is one test, so no parallelism happens. Adding a second test would spawn a second Electron in parallel locally (RAM hazard).
+11. **Background workers print to the same console pipe** ([:67](../../../tests/index.spec.ts)) — `electronApp.on("window", win => win.on("console", logMessage))` covers every later window, including the `threads` background renderers. Their output is interleaved into `console.txt` — caller has to disambiguate by `location.url`.
 
-| Module / area | Covered? | What this spec exercises |
-| --- | --- | --- |
-| `main/ui/services/config.service.ts` | Yes | `read-config` IPC at boot; `setSync` / `resetToDefaultsSync` on the form change handlers; mm ↔ inch conversion (`spacing` and `curveTolerance` round-trip through `data-conversion="true"` math). |
-| `main/ui/services/import.service.ts` | Partially | SVG-only import path (no DXF/DWG/EPS/PS round-trip through the conversion server). `dialog.showOpenDialog` is stubbed; `loadInitialFiles()` is **not** exercised because the test does not drop files into `NEST_DIRECTORY` before launch. |
-| `main/ui/services/export.service.ts` | Partially | SVG export only. DXF and JSON exports (`#exportdxf`, `#exportjson`) are **not** clicked. The conversion-server round-trip on DXF export is not covered. |
-| `main/ui/services/nesting.service.ts` | Yes | `startNesting()` → first iteration; `stopNesting()` (via the button text round-trip). `goBack()` is **not** covered. |
-| `main/ui/services/preset.service.ts` | **No** | The preset modal, `load-presets` / `save-preset` / `delete-preset` IPC are not touched. |
-| `main/ui/components/parts-view.ts` | Indirectly | Parts are rendered after import (the spec does not assert against `#parts`). |
-| `main/ui/components/nest-view.ts` | Yes via `#nestinfo` / `#nestlist` text | `getPartsPlaced()` / sheets-used computation is asserted. |
-| `main/ui/components/sheet-dialog.ts` | Yes | The `#addsheet` → fill → `#confirmsheet` flow. |
-| `main/ui/components/navigation.ts` | Yes via tab clicks | `#config_tab` / `#home_tab` switching. |
-| `main/deepnest.js` (GA loop) | Yes | `DeepNest.config()`, `DeepNest.start()`, `DeepNest.nests`, the `background-response` → `nests` push path (asserted via `getPartsPlaced()` reaching `54/54`). |
-| `main/background.js` (worker side) | Yes (smoke) | The fact that `#nestlist span:nth(0)` becomes visible proves at least one iteration produced a payload via `background-response` IPC. NFP correctness is not directly asserted. |
-| `main/svgparser.js` | Yes via 54-part assertion | Polygon-tree extraction from the two glyph SVGs is implicitly correct only if it produces 54 outer letterforms. |
-| `main/util/clipper.js`, `main/util/geometryutil.js`, `main/util/HullPolygon.ts`, `main/util/matrix.ts`, `main/util/vector.ts`, `main/util/point.ts` | Indirectly | Used by the GA loop to reach the placed solution. |
-| `main.js` IPC handlers | Yes | `read-config`, `write-config`, `background-start`, `background-stop`, `background-progress`, `background-response`, `setPlacements`. |
-| `presets.js` | **No** | Not exercised. |
-| `notification-service.js` | **No** | Update-check / notification path not exercised. |
-| Auth0 / `access_token` / `id_token` flow | **No** | Login modal not opened. |
+---
 
-## Invariants and gotchas
+## 7. Known TODOs
 
-- The expected `sharedConfig` object pins exact float values that come
-  from the `inch ↔ mm` conversion (`spacing: 28.34645669291339`,
-  `curveTolerance: 0.72`). If `DEFAULT_CONFIG.scale` ever changes from
-  `72`, this assertion will fail; if `25.4` is replaced by a higher-
-  precision millimetres-per-inch constant, the spacing assertion needs
-  the new exact value.
-- `expect(config).toMatchObject(...)` is **partial** — extra keys in
-  the live config are tolerated. Adding new persisted UI keys does not
-  break this test, but **removing** an asserted key will.
-- `mkdir(testInfo.outputDir, { recursive: true })` runs only when the
-  directory **already** exists (`if (existsSync(...))`). This is a
-  no-op in practice because Playwright pre-creates the dir; the
-  inverted condition is misleading. Worth flagging as cleanup.
-- The console-pipe `appendFile` calls are not awaited at the call
-  site (each `logMessage` is itself awaited inside the `box`-wrapped
-  step, but multiple `console` events can interleave concurrent
-  writes to `console.txt`). The chosen separator `,\n\n` is robust to
-  interleaving in practice, but parsing `console.json` will throw
-  silently-truncated JSON if the test crashes mid-write.
-- `electronApp.evaluate(...)` for the dialog stubs **mutates** the
-  Electron main process's global `dialog` object. There is no cleanup
-  after the test. This is fine because the Electron app is destroyed
-  at end-of-test, but it means a future second test in the same file
-  would inherit a broken `dialog` until launch.
-- The `Stop nesting` step asserts `expect(button).toHaveText("Start nest")`
-  inside `expect.poll`-style `.toPass()`. The GA loop has to
-  acknowledge `background-stop` IPC and flush the in-flight worker
-  responses before the button text flips. Slow CI may occasionally
-  exceed the default 5 s polling budget.
+No `// TODO` or `// FIXME` markers exist in this file. Two pieces of dead-but-illustrative code remain:
 
-## Known TODOs
+| Line | Snippet | Note |
+|---|---|---|
+| `:15` | `// !process.env.CI && test.use({ launchOptions: { slowMo: 500 } });` | Opt-in slow-motion for local debugging. Commented out so default runs are fast. |
+| `:143-145` | `// await expect(window).toHaveScreenshot("loaded.png", { clip: { x: 100, y: 100, width: 2000, height: 1000 } });` | The intended visual-regression checkpoint after sheet creation. Disabled — would require committed snapshot baselines under the path templated by `snapshotPathTemplate` in [`playwright.config.ts`](../h/playwright.config.ts.md). |
 
-Source markers grepped at the time of this scan:
+The first inverted-`existsSync`/non-awaited-`mkdir` issue (§6 #1, #2) is implicitly a bug to address but not flagged in the source.
 
-- `tests/index.spec.ts:15` — commented-out `slowMo` line preserved as
-  a manual-debug hint.
-- `tests/index.spec.ts:143-145` — commented-out screenshot assertion
-  (`window.toHaveScreenshot("loaded.png", ...)`). A visual baseline
-  was considered and rejected (no committed snapshots under
-  `tests/index.spec.ts-snapshots/` despite
-  `playwright.config.ts:41` configuring the path).
+---
 
-No `// todo:` / `// FIXME` / `// HACK` markers in the spec source.
+## 8. Extension points
 
-## Extension points
+| Extension | How |
+|---|---|
+| Add another fixture file | Drop the `*.svg` into [`tests/assets/`](../../../tests/assets/) and update the literal `2` at `:132`. The expected `54/54` placement count will also change — re-derive from a fresh run and update `:186`. |
+| Different sheet dimensions | Edit the `sheet` constant at `:136`. The placement count will change with sheet area. |
+| Skip the console pipe locally | Override the metadata flag for a single run: `playwright test --grep Nest -j 1` cannot do this directly; the cleanest route is `CI=1 npm test`. |
+| Re-enable visual regression | Uncomment `:143-145`, run `npx playwright test --update-snapshots`, commit the produced PNG under the template path. |
+| Drive the test from JS rather than TS | Not possible without a TS transpile step — `playwright.config.ts` is itself TS, so the project is locked to `tsx`-style runtime resolution. |
+| Run multiple browsers | Add another entry to `projects` in [`playwright.config.ts`](../h/playwright.config.ts.md). The spec is not actually browser-portable: `_electron.launch` only works under the Chromium project. |
+| Capture more attachments | The `Attachments` step is the natural splice point; `testInfo.attach(name, { body, contentType })` is already used three times. |
+| Test individual services in isolation | Out of scope here — the renderer services in [Group D](../d/README.md) are dependency-injected and unit-testable without Electron, but no unit-test framework is currently wired up. |
 
-The spec is monolithic and uses no Playwright fixtures of its own.
-Adding new test cases (e.g. DXF export, presets, login flow) means:
+---
 
-1. Adding a new top-level `test(...)` block in this file or a new
-   `*.spec.ts` under `tests/`. The runner picks it up via
-   [`playwright.config.ts:15` `testDir: "./tests"`](../../../playwright.config.ts).
-2. Stubbing any new dialogs through
-   `electronApp.evaluate(({ dialog }, ...) => { dialog.X = ... })`.
-3. Mirroring the `Attachments` step if new artefacts need to land in
-   the report.
+## 9. Test coverage status
 
-## Test surface (this is it)
+This **is** the test surface. It exercises:
 
-- This file is itself the test surface. There is no separate "this
-  file is covered by ..." entry — every other group's `Test coverage`
-  bullet either says "covered by `tests/index.spec.ts` happy path"
-  (and points here) or "not covered" (and the entry above shows why).
+- ✅ Config tab: open, reset, change units / spacing / placement type, verify defaults round-trip.
+- ✅ SVG file import (the only file type tested — DXF/DWG/EPS/PS conversion paths are **not** exercised).
+- ✅ Sheet creation via the sheet dialog.
+- ✅ GA `start` → first iteration → `stop` lifecycle.
+- ✅ SVG export via the save dialog (the JSON / DXF export paths are **not** exercised — only the SVG button is clicked).
+- ✅ Console + video + report attachments.
 
-## References
+It does **not** exercise (the source of "not covered" claims in other groups):
 
-- [`tests/index.spec.ts`](../../../tests/index.spec.ts)
-- [`playwright.config.ts`](../../../playwright.config.ts)
-- [`tests/assets/`](../../../tests/assets/) — see
-  [tests__assets.md](./tests__assets.md) for the asset inventory.
-- [`main.js`](../../../main.js) — Electron entry, dialog globals,
-  IPC handlers.
-- [`main/index.html`](../../../main/index.html) — selectors used by
-  the spec.
-- [`main/ui/index.ts`](../../../main/ui/index.ts) — composition root
-  that wires the services this test exercises.
-- [`main/ui/services/config.service.ts`](../../../main/ui/services/config.service.ts) and
-  [Group D README](../d/README.md) — config / preset / import / export /
-  nesting service deep-dives.
-- [`main/deepnest.js`](../../../main/deepnest.js) — GA loop reached
-  via `window.DeepNest`.
-- [`main/ui/components/nest-view.ts`](../../../main/ui/components/nest-view.ts)
-  `getPartsPlaced()` — the `54/54` formatter.
-- [`index.d.ts`](../../../index.d.ts) — `DeepNestConfig`, `NestingResult`
-  type aliases used by `mainWindow.evaluate`.
+- ❌ Preset CRUD (`load-presets` / `save-preset` / `delete-preset` IPC).
+- ❌ DXF / DWG / EPS / PS import (no conversion-server round-trip is tested).
+- ❌ DXF / JSON export buttons.
+- ❌ Multi-sheet export (only one sheet is added).
+- ❌ The notification window ([`docs/deep-dive/g/main__notification.html.md`](../g/main__notification.html.md)).
+- ❌ OAuth login flow (`window.loginWindow`).
+- ❌ Rotation-count effects beyond the default `4`.
+- ❌ Error / cancellation paths (cancelling the file picker, GA failure modes, conversion-server unavailability).
+- ❌ `useSvgPreProcessor`, `useQuantityFromFileName`, `exportWithSheetBoundboarders`, `exportWithSheetsSpace*` configuration toggles.
+
+---
+
+## 10. References
+
+- [`tests/index.spec.ts`](../../../tests/index.spec.ts) — this file
+- [`tests/assets/`](../../../tests/assets/) inventory — [`tests__assets.md`](./tests__assets.md)
+- [`playwright.config.ts`](../../../playwright.config.ts) — runner config; deep dive [`docs/deep-dive/h/playwright.config.ts.md`](../h/playwright.config.ts.md)
+- [`index.d.ts`](../../../index.d.ts) — `DeepNestConfig`, `NestingResult` types imported at `:13`; deep dive [`docs/deep-dive/h/index.d.ts.md`](../h/index.d.ts.md)
+- [`main.js`](../../../main.js) — `_electron.launch` target; deep dive [`docs/deep-dive/a/main.js.md`](../a/main.js.md)
+- [`main/ui/index.ts`](../../../main/ui/index.ts) — composition root; deep dive [`docs/deep-dive/c/main__ui__index.ts.md`](../c/main__ui__index.ts.md)
+- [`main/ui/services/config.service.ts`](../../../main/ui/services/config.service.ts) — `window.config` source; deep dive [`docs/deep-dive/d/main__ui__services__config.service.md`](../d/main__ui__services__config.service.md)
+- [`main/ui/services/import.service.ts`](../../../main/ui/services/import.service.ts) — `#import` handler; deep dive [`docs/deep-dive/d/main__ui__services__import.service.md`](../d/main__ui__services__import.service.md)
+- [`main/ui/services/export.service.ts`](../../../main/ui/services/export.service.ts) — `#export` / `#exportsvg` handler; deep dive [`docs/deep-dive/d/main__ui__services__export.service.md`](../d/main__ui__services__export.service.md)
+- [`main/ui/services/nesting.service.ts`](../../../main/ui/services/nesting.service.ts) — `#startnest` / `#stopnest` lifecycle; deep dive [`docs/deep-dive/d/main__ui__services__nesting.service.md`](../d/main__ui__services__nesting.service.md)
+- [`main/deepnest.js`](../../../main/deepnest.js) — GA loop; deep dive [`docs/deep-dive/b/main__deepnest.js.md`](../b/main__deepnest.js.md)
+- [`main/background.js`](../../../main/background.js) — background NFP renderer; deep dive [`docs/deep-dive/b/main__background.js.md`](../b/main__background.js.md)
+- [`main/index.html`](../../../main/index.html) — every element id targeted by the spec; deep dive [`docs/deep-dive/g/main__index.html.md`](../g/main__index.html.md)
