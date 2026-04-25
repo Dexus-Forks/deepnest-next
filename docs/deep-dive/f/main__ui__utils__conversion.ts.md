@@ -1,225 +1,134 @@
-# `main/ui/utils/conversion.ts` — Deep Dive
+# Deep dive — `main/ui/utils/conversion.ts`
 
-**Generated:** 2026-04-25 by Paige (Tech Writer) for [DEE-17](/DEE/issues/DEE-17) (parent: [DEE-11](/DEE/issues/DEE-11)).
-**Group:** F — UI utilities.
-**File:** `main/ui/utils/conversion.ts` (263 LOC, TypeScript, strict).
-**Mode:** Exhaustive deep-dive.
+> Group F · `DEE-38` (replaces DEE-27/DEE-1f) · parent issue [DEE-11](../../../). Authored fresh from source per the board's full-redo directive.
 
-## Overview
+## Purpose
 
-Free-function unit/scale conversion helpers for the renderer: `mm ↔ inch ↔ SVG-units` and dimension-formatting. Stateless. Imports only one TypeScript type (`UnitType`) from `main/ui/types/index.ts`.
+Pure functions for converting between three coordinate spaces used throughout DeepNest:
 
-> **Critical finding — this file is currently dead code.** No `.ts` or `.js` file in the repo imports anything from `conversion.ts`. The same logic is **duplicated** in three places that ship to production:
->
-> - `main/ui/services/config.service.ts` — methods `getConversionFactor()`, `toSvgUnits()`, `fromSvgUnits()`, `getScaleInUnits()`, `setScaleFromUnits()` (lines 322–369).
-> - `main/ui/components/sheet-dialog.ts` — local `INCHES_TO_MM = 25.4` (line 54) and a private `getConversionFactor()` (lines 175–185).
-> - `main/ui/components/parts-view.ts` — inline `25.4 * width / conversion` (lines 230–246).
->
-> The constant `25.4` and the unit-branching logic appear independently in each of the four locations. This is a known refactoring debt — see "Contributor checklist" below.
+| Space | Origin | Where it shows up |
+|---|---|---|
+| **SVG units** | The unit system inside the SVG document the user imports. Scale-free. | Geometry stored in `Part.polygontree`, sheets, placements. |
+| **Inches** | The internal "real" unit. `scale` is stored as **SVG units / inch**. | Persisted config (`UIConfig.scale`); time/length calculations. |
+| **mm** | A display-only alias for inches. Never persisted; converted at the IO boundary via the `INCHES_TO_MM` factor. | Whatever the user picks via `UIConfig.units`. |
 
-The intended role of this module is to be the single source of truth for unit math; treat any future component or service that needs unit conversion as the consumer this module was built for.
+The module's contract: callers hand it (a value, the persisted `scale`, the current `UnitType`) and get back the value in the other space, plus optional formatting helpers for UI strings.
+
+It exists primarily as a **canonical reference** for that math. The runtime codebase has not yet migrated to use it — see "Used-by" — so the file currently functions as a documented spec that other places re-implement inline. Treating it as orphaned would be wrong: it is the source-of-truth for *what the math should be*, even where it is currently duplicated.
 
 ## Public surface
 
-```ts
-export const INCHES_TO_MM = 25.4;
+`main/ui/utils/conversion.ts` exports one constant and 12 functions.
 
-export function getScaleInUnits(scale: number, units: UnitType): number;
-export function setScaleFromUnits(value: number, units: UnitType): number;
-export function getConversionFactor(scale: number, units: UnitType): number;
-export function toSvgUnits(value: number, scale: number, units: UnitType): number;
-export function fromSvgUnits(value: number, scale: number, units: UnitType): number;
-export function formatDimension(
-  value: number, scale: number, units: UnitType, precision?: number
-): string;
-export function formatBounds(
-  width: number, height: number, scale: number, units: UnitType, precision?: number
-): string;
-export function getUnitSuffix(units: UnitType): string;
-export function getExportScale(
-  scale: number, units: UnitType, dxfExportScale?: number
-): number;
-export function toExportDimension(
-  svgValue: number, scale: number, units: UnitType, dxfExportScale?: number
-): number;
-export function toInches(svgLength: number, scale: number): number;
-export function fromInches(inches: number, scale: number): number;
-```
+| Symbol (line) | Signature | Role |
+|---|---|---|
+| `INCHES_TO_MM` (17) | `const = 25.4` | The single hardcoded conversion factor. Three other copies of `25.4` exist in the live tree (see Invariants). |
+| `getScaleInUnits` (32) | `(scale, units) => number` | Convert a stored scale (units/inch) into the user's display unit. Divides by 25.4 for `"mm"`. |
+| `setScaleFromUnits` (51) | `(value, units) => number` | Inverse of `getScaleInUnits`. Multiplies by 25.4 for `"mm"`. |
+| `getConversionFactor` (71) | `(scale, units) => number` | The "SVG units per real unit" factor. Mathematically identical to `getScaleInUnits` — the second name exists for call-site readability. |
+| `toSvgUnits` (92) | `(value, scale, units) => number` | Real-world value → SVG units. `value * getConversionFactor(scale, units)`. |
+| `fromSvgUnits` (114) | `(value, scale, units) => number` | SVG units → real-world value. `value / getConversionFactor(scale, units)`. |
+| `formatDimension` (136) | `(value, scale, units, precision = 1) => string` | Human-readable dimension with `mm` / `in` suffix. |
+| `formatBounds` (161) | `(width, height, scale, units, precision = 1) => string` | `"<W> x <H>"` formatter for bounding boxes. Delegates to `formatDimension`. |
+| `getUnitSuffix` (179) | `(units) => "mm" \| "in"` | Trivial label helper. |
+| `getExportScale` (199) | `(scale, units, dxfExportScale?) => number` | Adjusted scale for DXF/SVG export. The DXF branch divides scale by `dxfExportScale` before unit adjustment. |
+| `toExportDimension` (228) | `(svgValue, scale, units, dxfExportScale?) => number` | SVG value → real-world value at *export* scale. `svgValue / getExportScale(...)`. |
+| `toInches` (250) | `(svgLength, scale) => number` | `svgLength / scale`. Used (or intended) for the cut-time estimator. |
+| `fromInches` (261) | `(inches, scale) => number` | `inches * scale`. |
 
-`UnitType` is `"mm" | "inch"` and is re-exported via `main/ui/types/index.ts` from the project root `index.d.ts`.
+`UnitType` is a re-exported alias from [`main/ui/types/index.ts:12`](../../../main/ui/types/index.ts) (which itself re-exports it from the project root [`index.d.ts`](../../../index.d.ts)). It is `"mm" | "inch"`.
 
-### The conversion model
+## IPC / global side-effects
 
-Three coordinate systems coexist in the renderer:
+**None.** Every function is pure. No `document`, `window`, IPC, persistence, or module-level side-effect on import. Test-friendly by construction.
 
-1. **Stored scale** — `config.scale` is **always units-per-inch** regardless of the user's display unit. Default `72` (the SVG/CSS de-facto pixels-per-inch).
-2. **Display unit** — `config.units` is `"inch"` or `"mm"`; controls labels and how the user types numbers in the form.
-3. **SVG units** — what `<svg width="…">` and path coordinates use.
+## Dependencies
 
-The conversion factor is the single number that translates user-typed values into SVG units:
-
-```
-conversion = config.units === "mm"  ?  scale / 25.4  :  scale
-```
-
-Every helper in this module is a thin algebraic identity over that single rule:
-
-| Helper | Formula |
-|---|---|
-| `getScaleInUnits(scale, units)` | `units === "mm" ? scale/25.4 : scale` |
-| `setScaleFromUnits(value, units)` | `units === "mm" ? value*25.4 : value` |
-| `getConversionFactor(scale, units)` | same as `getScaleInUnits` |
-| `toSvgUnits(value, scale, units)` | `value * conversion` |
-| `fromSvgUnits(value, scale, units)` | `value / conversion` |
-| `formatDimension(value, scale, units, p=1)` | `fromSvgUnits(...).toFixed(p) + (mm|in)` |
-| `formatBounds(w, h, scale, units, p=1)` | `formatDimension(w,...) + " x " + formatDimension(h,...)` |
-| `getUnitSuffix(units)` | `units === "mm" ? "mm" : "in"` |
-| `getExportScale(scale, units, dxfExportScale?)` | see below |
-| `toExportDimension(svgValue, ...)` | `svgValue / getExportScale(...)` |
-| `toInches(svgLength, scale)` | `svgLength / scale` |
-| `fromInches(inches, scale)` | `inches * scale` |
-
-`getScaleInUnits` and `getConversionFactor` are **the same function with two names**. Both exist for naming clarity at call sites (one for the form's scale display, the other for everywhere else). If this module is ever adopted, consider keeping both names as exports but pointing one at the other to make that explicit.
-
-### `getExportScale` — the only multi-branch helper
+One type-only import:
 
 ```ts
-function getExportScale(scale, units, dxfExportScale?): number {
-  let exportScale = scale;
-  if (dxfExportScale !== undefined && dxfExportScale !== 0) {
-    exportScale = scale / dxfExportScale;
-  }
-  if (units === "mm") {
-    exportScale = exportScale / INCHES_TO_MM;
-  }
-  return exportScale;
-}
+import type { UnitType } from "../types/index.js"; // line 12
 ```
 
-Order of operations is fixed: DXF scale is applied before mm conversion. The `dxfExportScale === 0` guard prevents divide-by-zero — `0` is a sentinel that means "no DXF scale specified" (caller-side semantics, not the math's). The legacy DXF UI control offers values `1, 6, 25.4, 2.54, 72` (see `main/index.html` lines 350–358); zero is never produced by the form, only by callers that bypass it.
-
-`toExportDimension` is the inverse of `toSvgUnits` parameterized for export — divides by the export scale.
-
-### `toInches` / `fromInches`
-
-These bypass `units` entirely. They convert SVG length to inches assuming `scale` is already units-per-inch. Used historically for time-based math (laser cut time) where the unit system is irrelevant — see the placement engine's path-length cost.
-
-## The `data-conversion` HTML contract
-
-The form in `main/index.html` marks unit-bearing inputs with the attribute `data-conversion="true"`. The runtime path that reads/writes those values lives in `main/ui/index.ts`, **not** in this file — but the math is the same as `toSvgUnits` / `fromSvgUnits` open-coded.
-
-| Input (in `main/index.html`) | `data-config` key | `data-conversion` | Conversion |
-|---|---|---|---|
-| Space between parts | `spacing` | `"true"` | user value × conversion-factor → stored SVG units |
-| Curve tolerance | `curveTolerance` | `"true"` | user value × conversion-factor → stored SVG units |
-| Endpoint tolerance | `endpointTolerance` | `"true"` | user value × conversion-factor → stored SVG units |
-| Distance between sheets | `exportWithSheetsSpaceValue` | `"true"` | user value × conversion-factor → stored SVG units |
-| SVG scale (`#inputscale`) | `scale` | _absent_ | scale itself; multiply by `25.4` if user is in mm (via `setScaleFromUnits` logic, open-coded in `index.ts:411`) |
-| Units | `units` | _absent_ | radio: `"inch"` / `"mm"` |
-| Rotations / threads / placement / boolean toggles | various | _absent_ | passthrough; no unit math |
-
-Read path (form populated from config), `index.ts:204-206`:
-
-```ts
-if (inputElement.getAttribute("data-conversion") === "true") {
-  const scaleValue = scaleInput ? Number(scaleInput.value) : c.scale;
-  inputElement.value = String((value as number) / scaleValue);
-}
-```
-
-Write path (form change → config), `index.ts:421-426`:
-
-```ts
-if (inputElement.getAttribute("data-conversion") === "true") {
-  let conversion = configService.getSync("scale");
-  if (configService.getSync("units") === "mm") {
-    conversion /= 25.4;
-  }
-  val = Number(val) * conversion;
-}
-```
-
-The read path uses the **scale alone** (not the mm-adjusted conversion) because the same input is also bound to the user's typed unit; the write path adjusts for mm because the value has to be stored in SVG units. This asymmetry is intentional but easy to misread.
-
-> If/when `index.ts` adopts `conversion.ts`, the read path becomes `inputElement.value = String(toInches(value, scaleValue))` and the write path becomes `val = toSvgUnits(Number(val), scaleValue, units)`.
-
-The contract: **inputs marked `data-conversion="true"` are stored in SVG units and displayed in the user's current unit.** Inputs without the marker are stored verbatim. Adding `data-conversion="true"` to a new input means committing to that contract.
+There is no value-level import. The module would compile against any `type UnitType = "mm" | "inch"` — no contract leaks beyond that string union.
 
 ## Used-by
 
-```bash
-$ rg -nU --type ts --type js "from\\s+['\"][^'\"]*conversion[^'\"]*['\"]"
-# (no matches)
-```
+**Zero importers in the live source tree.** Importer searches over `main/**/*.ts`, `main/**/*.js`, and the renderer entry confirm it: no file in `main/ui/**` (or anywhere else under `main/`) imports any symbol from `./utils/conversion.js`.
 
-**Zero importers.** This is the most important Used-by finding in Group F: the module is structurally complete and unit-tested-by-construction (it’s pure math), but it is not wired into the dependency graph.
+This is the most important fact about the module. The conversions documented here are duplicated as inline math or as private methods in three places:
 
-The `INCHES_TO_MM` constant is also exported but currently shadowed by local declarations:
+| Re-implementation site | Lines | What it duplicates |
+|---|---|---|
+| [`main/ui/services/config.service.ts:322-369`](../../../main/ui/services/config.service.ts) | 322 (`getConversionFactor`), 335 (`toSvgUnits`), 344 (`fromSvgUnits`), 352 (`getScaleInUnits`), 363 (`setScaleFromUnits`) | Five of the eight core methods, re-typed as instance methods on `ConfigService` operating against `this.config.scale` / `this.config.units`. The literal `25.4` is hardcoded on lines 325, 354, 366. |
+| [`main/ui/components/sheet-dialog.ts:54, 175, 253`](../../../main/ui/components/sheet-dialog.ts) | 54 (private `const INCHES_TO_MM = 25.4`), 175 (private `getConversionFactor`), 253 (call site) | A second copy of `INCHES_TO_MM` and a private re-implementation of `getConversionFactor`, scoped to the dialog. |
+| [`main/ui/index.ts:198-211, 410-427`](../../../main/ui/index.ts) | 204-206, 411, 421-426 | The bidirectional `data-conversion="true"` math is open-coded — `value * (scale / 25.4)` on read, `value / scale * 25.4` on write. Doesn't use `getConversionFactor` even though `ConfigService` (which is in scope) exposes one. |
 
-- `main/ui/components/sheet-dialog.ts:54` — `const INCHES_TO_MM = 25.4;`
+So the **contract** documented here is live; the **implementation** in this file is dormant. Migrating the three duplications to import from `./utils/conversion.js` is a clean follow-up task — see "Extension points".
 
-`config.service.ts` does not use a named constant at all — it inlines the literal `25.4` six times.
+## Contract with `main/index.html` `data-conversion`
 
-### Where the same logic lives today
+The DEE-38 brief calls out the relationship between this file and the `data-conversion` attribute as a contract that needs documenting. The relationship is:
 
-| Location | Form |
-|---|---|
-| `main/ui/services/config.service.ts:322-369` | Class methods on `ConfigService`. |
-| `main/ui/components/sheet-dialog.ts:175-185, 253-255` | Private method + inline arithmetic. |
-| `main/ui/components/parts-view.ts:230-246` | Inline `(25.4 * width / conversion).toFixed(1) + "mm"` (open-coded `formatBounds`). |
-| `main/ui/index.ts:204-206, 421-426` | Inline read/write paths for `data-conversion` form fields. |
+- The HTML attribute `data-conversion="true"` (only `=== "true"` matches; `"false"` and missing both mean "no conversion") tags an `<input>` whose value the user enters in the **current display unit** but whose persisted form is **SVG units**.
+- The persistence math is exactly `getConversionFactor(scale, units)` from this module:
+  - `scale` (from `UIConfig.scale`) — units/inch.
+  - `units` (from `UIConfig.units`) — `"mm"` or `"inch"`.
+  - For `"mm"`: factor = `scale / INCHES_TO_MM`.
+  - For `"inch"`: factor = `scale`.
+- Read path (DOM → `UIConfig`): the entered numeric value is `× factor` to land in SVG units. See [`main/ui/index.ts:421-426`](../../../main/ui/index.ts).
+- Write path (`UIConfig` → DOM): the stored SVG-units value is `÷ factor` to display. See [`main/ui/index.ts:204-206`](../../../main/ui/index.ts).
 
-## Build & loading
+The five attributes that carry `data-conversion="true"` are inventoried in [Group G's HTML deep-dive §3.2](../g/main__index.html.md): `spacing`, `curveTolerance`, `endpointTolerance`, `exportWithSheetsSpaceValue`, plus a fifth (see the Group G doc for the full table at line 91 of that file).
 
-Compiled by `tsc` to `build/ui/utils/conversion.js`. Currently emitted into the build output but never imported, so it is dead weight in the bundle. The Electron renderer ESM loader does not perform tree-shaking on this code — the file is present on disk after `npm run build`.
+The `key === "scale"` branch is **separate** from the `data-conversion` branch — it's special-cased on `main/ui/index.ts:411` because `scale` itself is what defines the factor. Don't fold them. This invariant is also called out in [Group C's `main__ui__index.ts.md`](../c/main__ui__index.ts.md) §"Invariants".
 
-## Side effects
+## Invariants & gotchas
 
-None. Pure functions, no module-load side effects, no `globalThis` writes, no IPC. Safe to import from any context including unit tests.
+1. **`INCHES_TO_MM = 25.4` is the single canonical factor here**, but the live codebase contains **three additional unsynchronised copies** of `25.4`:
+   - [`main/ui/services/config.service.ts:325, 354, 366`](../../../main/ui/services/config.service.ts) — three numeric literals.
+   - [`main/ui/components/sheet-dialog.ts:54`](../../../main/ui/components/sheet-dialog.ts) — a private `const INCHES_TO_MM`.
+   - [`main/ui/index.ts:411, 424`](../../../main/ui/index.ts) — two numeric literals.
+   If the SI definition of an inch ever changes (it won't), six places need editing. This is the cleanup target.
 
-## Error handling
+2. **`getScaleInUnits` and `getConversionFactor` are mathematically identical** (compare lines 32-37 with 71-76). Both branch on `units === "mm"` and divide `scale` by `INCHES_TO_MM`. The duplication is *intentional* — the names communicate intent at the call site (`getScaleInUnits` reads as "for displaying the scale field"; `getConversionFactor` reads as "for converting another field's value"). Do not collapse one into the other.
 
-None. The functions accept `number` and return `number`; passing `NaN` propagates `NaN`. Passing `0` for `scale` produces `Infinity` from `fromSvgUnits` (divide-by-zero) — the caller is expected to ensure `scale > 0`. The form's `min="1"` on `#inputscale` (see `main/index.html:317`) enforces this in the UI; programmatic callers must enforce it themselves.
+3. **`setScaleFromUnits` and `toSvgUnits` are NOT the same operation.** `setScaleFromUnits(value, "mm")` returns `value × 25.4` (line 53); `toSvgUnits(value, scale, "mm")` returns `value × scale / 25.4` (line 98). The first reverses the unit conversion of the scale field itself; the second converts a length using the scale.
 
-## Testing
+4. **`getExportScale`'s DXF branch treats `dxfExportScale === 0` as "not set"** (line 207: `if (dxfExportScale !== undefined && dxfExportScale !== 0)`). The check is paranoia — a zero DXF scale would divide-by-zero — but it also silently swallows a misconfigured `0`. Callers that want to know about a bad config must validate before calling.
 
-- **Unit tests:** none in repo. Because the module has no consumers, there is no E2E coverage either.
-- **Manual verification of the active math** (in `config.service.ts` and friends): switch units in the Config tab, change a `data-conversion` field, reload the app — the displayed value should be consistent with the stored value × conversion factor.
+5. **The DXF / unit adjustments compose, but order matters.** Lines 204-216 apply DXF first, then unit. Reordering produces a different result for `"mm"` mode with a non-1 DXF scale because the operations don't commute with the divide.
 
-## Comments / TODOs in source
+6. **`formatDimension` rounds via `toFixed(precision)`** (line 144) — `toFixed` is *banker's* rounding in some engines but in V8 it's "round half to even" except at extremes. Don't rely on the rounding mode; if a test pins on it, it's flaky on other JS hosts. The default precision of 1 is enough for the dimension chips in the UI.
 
-The module has full JSDoc on every export. No `TODO` / `FIXME` markers. The header comment (lines 5–10) describes the conversion model accurately.
+7. **`getUnitSuffix("inch")` returns `"in"`, not `"inch"`** (line 180). The function maps the *enum* value to the *display* suffix; this is the only shorthand applied. `formatDimension` uses the same mapping inline (line 143).
 
-## Contributor checklist
+8. **`fromSvgUnits(72, 72, "mm")` returns `25.4`, not `25.4 mm` as a length** — the result is a scalar, not a Quantity. Suffixing happens only in `formatDimension`. Don't pass the result of `fromSvgUnits` to a string concatenation expecting a unit.
 
-**Risks & gotchas:**
+## Known TODOs
 
-- **Dead code today.** A change here will not affect runtime behavior. If you're fixing a unit-conversion bug observed in the app, the bug is in `config.service.ts`, `sheet-dialog.ts`, `parts-view.ts`, or `index.ts` — not here.
-- The `data-conversion` HTML attribute is the runtime contract. Adopting this module from `index.ts` requires preserving that contract exactly: read = `value / scale`; write = `value * conversion` (where `conversion` is mm-adjusted).
-- `getScaleInUnits === getConversionFactor` numerically. They are intentionally separate names; keep both as exports if you refactor.
-- `getExportScale` returns `0` when called with `dxfExportScale === scale` and `units === "inch"` — that is, when caller passes a DXF scale equal to the document's units-per-inch. The branch math is correct but the result of `1` is right and `0` is impossible from the form. Programmatic callers must avoid `dxfExportScale === scale` if they don't want the unit branch to take over.
-- `INCHES_TO_MM` is a `const` with the value `25.4` — exact for this magic number, but if anyone later switches to a more precise definition (`25.4` is exact by definition since 1959, so this is unlikely), all four duplicated copies must be updated.
+`grep -n "TODO\|FIXME"` against this file returns **no matches**. No in-source debt markers.
 
-**Pre-change verification:**
+The implicit follow-up — "make the live codebase actually call these helpers" — is not annotated here; the cleanup needs to happen in the three duplicate sites listed above.
 
-- `npm run build` (TypeScript strict — purely type-driven for this module).
-- If you adopt this module from a consumer, run the Config tab E2E (`tests/specs/config-tab.spec.ts`) and any sheet-dialog E2E to confirm the unit display matches before/after.
+## Extension points
 
-**Suggested tests before PR:**
+- **Migrate `ConfigService` to delegate.** Replace [`main/ui/services/config.service.ts:322-369`](../../../main/ui/services/config.service.ts) bodies with `getConversionFactor(this.config.scale, this.config.units)` etc. Mechanical refactor; no behaviour change. Removes three of the four hardcoded `25.4`s.
+- **Migrate the `data-conversion` form glue.** [`main/ui/index.ts:198-211`](../../../main/ui/index.ts) and [`main/ui/index.ts:410-427`](../../../main/ui/index.ts) both inline the math. Could be replaced with `toSvgUnits(...)` / `fromSvgUnits(...)`.
+- **Drop `sheet-dialog`'s local `INCHES_TO_MM`.** Replace [`main/ui/components/sheet-dialog.ts:54, 175`](../../../main/ui/components/sheet-dialog.ts) with imports from this module.
+- **New format helpers.** Adding `formatArea(svgArea, scale, units)` (returns `"123.4 mm²"`) is the obvious next helper; it has no consumers today, so add only when one materialises.
+- **Unit unit tests.** Pure functions + `tsc` — `tests/unit/conversion.spec.ts` would be ~40 lines. None exist today.
 
-- A consolidation refactor (replace the four duplicated copies with calls into `conversion.ts`) is the natural follow-up. Land it in two PRs:
-  1. Wire `config.service.ts` to delegate to this module. Verify with E2E.
-  2. Wire `sheet-dialog.ts`, `parts-view.ts`, and the `index.ts` form-binding path. Verify with E2E + manual switch between mm and inch.
-- Add unit tests for `conversion.ts` once it has a consumer — pure-function tests are cheap and the module would benefit from explicit coverage of the mm/inch branches.
+## Test coverage status
+
+- **No dedicated unit tests.** The only test file in the tree is `tests/index.spec.ts` (Playwright E2E, single file).
+- E2E coverage of the *contract* this module documents is real but indirect: [Group J's `tests__index.spec.ts.md`](../j/tests__index.spec.ts.md) shows that the `config.spec` flow asserts `10 mm × 72 ÷ 25.4 = 28.34645669291339` for `spacing` — exactly `toSvgUnits(10, 72, "mm")` per this module. Same for `curveTolerance`. So the math is proved end-to-end through the inline duplications, not through this file's exports.
+- Coverage of the actual functions in this file: **0%** (because nothing imports them).
 
 ## Cross-references
 
-- **Group D (services):** `config.service.ts` re-implements every helper in this module as instance methods. See [main__ui__services__config.service.md](../d/main__ui__services__config.service.md) for the consumed-by-the-app variant.
-- **Group E (UI components):** `sheet-dialog.ts` and `parts-view.ts` open-code the same math. See [main__ui__components__sheet-dialog.md](../e/main__ui__components__sheet-dialog.md) and [main__ui__components__parts-view.md](../e/main__ui__components__parts-view.md).
-- **Group G (`main/index.html`):** owns the `data-conversion="true"` attribute on `#spacing`, `#curveTolerance`, `#endpointTolerance`, `#exportWithSheetsSpaceValue` (lines 237, 251, 333, 397). The composition root in `main/ui/index.ts:204` and `:421` is the runtime translator — it open-codes the math today.
-- **Component inventory:** `docs/component-inventory.md` row "Conversion utilities".
-- **Architecture:** `docs/architecture.md` §3 (renderer composition); the unit-conversion contract is summarized there but not exhaustively documented.
-
----
-
-_Generated by Paige for the Group F deep-dive on 2026-04-25. Sources: `main/ui/utils/conversion.ts`, `main/ui/services/config.service.ts`, `main/ui/components/sheet-dialog.ts`, `main/ui/components/parts-view.ts`, `main/ui/index.ts`, `main/index.html`._
+- Inline math duplications: [Group D's `main__ui__services__config.service.md`](../d/main__ui__services__config.service.md), [Group E's `main__ui__components__sheet-dialog.md`](../e/main__ui__components__sheet-dialog.md), [Group C's `main__ui__index.ts.md`](../c/main__ui__index.ts.md).
+- HTML attribute contract (the `data-conversion` table): [Group G's `main__index.html.md`](../g/main__index.html.md) §3.2.
+- E2E proof of the math: [Group J's `tests__index.spec.ts.md`](../j/tests__index.spec.ts.md) §"Config tab".
+- `UnitType` definition: [Group C's `main__ui__types__index.ts.md`](../c/main__ui__types__index.ts.md) (the re-export point).
+- Sibling utilities: [`dom-utils.ts`](./main__ui__utils__dom-utils.ts.md), [`ui-helpers.ts`](./main__ui__utils__ui-helpers.ts.md).
