@@ -76,9 +76,17 @@ Scope: renderer-side components in `main/ui/components/`. See [docs/deep-dive/e/
 - [`main/ui/components/nest-view.ts`](./deep-dive/e/main__ui__components__nest-view.md) — nest-result viewer (`#nestcontent` / `#nestdisplay`). Ractive summary bindings + imperative SVG renderer for sheets, parts, hatch patterns, merged-line laser markers.
 - [`main/ui/components/sheet-dialog.ts`](./deep-dive/e/main__ui__components__sheet-dialog.md) — add-sheet modal. Toggles `#partstools.active`, validates width/height, synthesises `<svg><rect/></svg>` of the right size, routes through `DeepNest.importsvg(...)`.
 
+### Group I — CI / release ([DEE-41](/DEE/issues/DEE-41), complete 2026-04-26)
+
+Scope: GitHub Actions workflows under `.github/workflows/`. See [docs/deep-dive/i/README.md](./deep-dive/i/README.md). One filename correction vs DEE-11: `release.yml` is actually `build_release.yml` (workflow `name:` is `build release` with a space).
+
+- [`.github/workflows/build.yml`](./deep-dive/i/.github__workflows__build.yml.md) — CI build gate. Triggers: `push` to `main`, `pull_request`, `workflow_dispatch`. 4-cell matrix.
+- [`.github/workflows/build_release.yml`](./deep-dive/i/.github__workflows__build_release.yml.md) — release pipeline. Triggers: `release: published`, `workflow_dispatch`. Hands off Windows codesign to `helper_scripts/sign_windows.js` (Group A).
+- [`.github/workflows/playwright.yml`](./deep-dive/i/.github__workflows__playwright.yml.md) — E2E run. Triggers: `push` / `pull_request` to `main` (path-filtered), `workflow_dispatch`.
+
 ### Pending groups
 
-Groups B, D, H, I, J — in progress on rev-3 isolated children ([DEE-34](/DEE/issues/DEE-34), [DEE-36](/DEE/issues/DEE-36), [DEE-40](/DEE/issues/DEE-40), [DEE-41](/DEE/issues/DEE-41), [DEE-42](/DEE/issues/DEE-42)). Each lands here as its child completes and its `chore/dee-11-iso/group-<x>` branch is merged into the integration branch.
+Groups B, D, H, J — in progress on rev-3 isolated children ([DEE-34](/DEE/issues/DEE-34), [DEE-36](/DEE/issues/DEE-36), [DEE-40](/DEE/issues/DEE-40), [DEE-42](/DEE/issues/DEE-42)). Each lands here as its child completes and its `chore/dee-11-iso/group-<x>` branch is merged into the integration branch.
 
 ## Existing Documentation (already in repo)
 
