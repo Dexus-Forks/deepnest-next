@@ -1,202 +1,109 @@
-# Deep dive — Group J: deep-dive tests
+# Deep dive — Group J: test suite
 
-> Per-file deep dives for everything under `tests/`. Currently this is
-> the single Playwright Electron E2E spec and its two SVG fixtures.
-> Sibling of [DEE-11](../../../) parent issue and tracked as
-> [DEE-21](../../../).
-
-This group is the **source of truth** for the "Test coverage" section
-of every other group's deep-dive. When another doc says "covered by
-`tests/index.spec.ts`", it is referencing the test surface enumerated
-in [tests__index.spec.ts.md](./tests__index.spec.ts.md). When it
-says "not covered", it means that path is not exercised by the single
-test described here.
+> **Issue**: [DEE-42](../../../) (replaces superseded DEE-21 / DEE-31) · **Parent**: [DEE-11](../../index.md) · **Author**: Paige · **Completed**: 2026-04-26
+>
+> Per-file deep dives for the Playwright test suite under `tests/`. Group J's write-up is the **source of truth** for "covered by `tests/index.spec.ts`" / "not covered" claims that appear in every other group's `Test coverage status` section.
 
 ## Files in this group
 
-| File | Role | Deep dive |
+| Path | Role | Deep dive |
 |---|---|---|
-| `tests/index.spec.ts` | The single Playwright Electron E2E spec. Drives the Electron app through the import → configure → add-sheet → start-nest → export → stop happy path and asserts on `window.config`, `window.DeepNest`, `#importsnav`, `#progressbar`, `#nestlist`, `#nestinfo`. | [tests__index.spec.ts.md](./tests__index.spec.ts.md) |
-| `tests/assets/*.svg` | Two SVG fixtures (`henny-penny.svg`, `mrs-saint-delafield.svg`) consumed by the `Upload files` step. Together they produce 54 polygon-tree parts after parse. | [tests__assets.md](./tests__assets.md) |
+| `tests/index.spec.ts` | The single Playwright E2E spec. Boots Electron, drives Config → Import → Sheet → Nest → Export, attaches video / SVG / JSON / console artefacts. | [`tests__index.spec.ts.md`](./tests__index.spec.ts.md) |
+| `tests/assets/` (2 SVGs: `henny-penny.svg`, `mrs-saint-delafield.svg`) | Static input fixtures consumed by the spec's `Upload files` step. Glyph-derived multi-subpath SVGs that exercise the SVG parser and produce `54/54` placements. | [`tests__assets.md`](./tests__assets.md) |
 
-## How the spec is loaded
+## File inventory verification
 
-[`playwright.config.ts`](../../../playwright.config.ts) sets:
-
-- `testDir: "./tests"` — Playwright globs `**/*.spec.ts` under this
-  directory.
-- `projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }]`
-  — single project. Playwright still uses the chromium driver to
-  speak to the Electron renderer (via `_electron.launch`).
-- `use: { headless: false, video: process.env.CI ? "retain-on-failure" : "on", screenshot: "on", trace: "on-first-retry" }`
-  — the test cannot run headless because Electron's `main.js` opens
-  visible windows.
-- `metadata: { pipeConsole: !process.env.CI }` — read by
-  `tests/index.spec.ts:18` to decide whether to pipe renderer console
-  messages to disk for the report.
-- `retries: process.env.CI ? 2 : 0`, `workers: process.env.CI ? 1 : undefined`,
-  `forbidOnly: !!process.env.CI` — standard CI-vs-local toggles.
-- `reporter: [["html", { open: process.env.CI ? "never" : "on-failure" }], [process.env.CI ? "github" : "list"]]`
-  — HTML always, plus `github` annotations on CI / pretty `list`
-  output locally.
-- `snapshotPathTemplate: "{testDir}/{testFilePath}-snapshots/{arg}{ext}"`
-  — there are no committed snapshots; this is in place for a future
-  visual baseline (the spec has a commented-out
-  `toHaveScreenshot("loaded.png", ...)`).
-
-There is no `webServer`, no global setup / teardown, no project
-dependencies. The spec self-contains everything it needs.
-
-## Dependencies (inbound to this group)
+The on-disk inventory of `tests/assets/` was verified during this deep dive:
 
 ```
-                 +-- Playwright runner ---> tests/index.spec.ts
-                 |
-playwright.config.ts -- testDir: "./tests"
-                 |
-                 +-- testInfo.outputDir / outputPath / attach
-                              |
-                              v
-                 tests/index.spec.ts -+-> _electron.launch(args:["main.js"])
-                                      |
-                                      +-> dialog.showOpenDialog (stubbed) ->
-                                      |       reads tests/assets/*.svg
-                                      |
-                                      +-> dialog.showSaveDialogSync (stubbed) ->
-                                              writes testInfo.outputDir/output.svg
+tests/
+├── index.spec.ts            230 lines, single test "Nest"
+└── assets/
+    ├── henny-penny.svg          70 200 bytes, 1 <path>, 36 closed sub-paths
+    └── mrs-saint-delafield.svg  26 281 bytes, 1 <path>, 44 closed sub-paths
 ```
 
-`tests/index.spec.ts` consumes the rest of the codebase **only**
-through:
+No other files exist under `tests/`. No subdirectories beyond `assets/`.
 
-- The Electron entry [`main.js`](../../../main.js) (passed as `args`
-  to `electron.launch`).
-- The renderer DOM rendered from
-  [`main/index.html`](../../../main/index.html).
-- The renderer globals `window.config` (from
-  [`main/ui/services/config.service.ts`](../../../main/ui/services/config.service.ts))
-  and `window.DeepNest` (from
-  [`main/deepnest.js`](../../../main/deepnest.js)).
-- Type-only imports from [`index.d.ts`](../../../index.d.ts)
-  (`DeepNestConfig`, `NestingResult`).
+## Scope corrections vs. DEE-42
 
-Nothing in the rest of the codebase imports `tests/`.
-
-## Dependencies (outbound from this group)
-
-| File | Imports |
-|---|---|
-| `tests/index.spec.ts` | `@playwright/test` (`ConsoleMessage`, `_electron as electron`, `expect`, `test`); `electron` (type-only `OpenDialogReturnValue`); `node:fs` (`existsSync`), `node:fs/promises` (`appendFile`, `mkdir`, `readdir`, `readFile`); `node:url` (`fileURLToPath`); `node:path`; type-only `DeepNestConfig`, `NestingResult` from `../index`. |
-| `tests/assets/*.svg` | _none_ — static fixture files. |
-
-The spec deliberately does **not** import any code from `main/`. All
-interaction goes through the Electron app surface (DOM, IPC,
-`window` globals) — keeping the test honest about what a black-box
-external observer can see.
-
-## Selectors used by the spec
-
-This is the cheat-sheet for "if I rename a DOM id, will the E2E test
-fail?". Every selector below is read by
-[`tests/index.spec.ts`](../../../tests/index.spec.ts) and must match
-its definition site.
-
-| Selector | Defined in | Owner |
+| DEE-42 said | Reality | Resolved by |
 |---|---|---|
-| `#config_tab`, `#home_tab` | [`main/index.html:124-125`](../../../main/index.html) | navigation component |
-| `#config a:has-text("set all to default")` (`#setdefault`) | [`main/index.html:504`](../../../main/index.html) | reset-to-defaults handler in `main/ui/index.ts` |
-| `#config input[type=radio]:nth(1)` (mm) | [`main/index.html:225`](../../../main/index.html) | `data-config="units"` form binding |
-| `#config input[type=number]:first` (spacing) | [`main/index.html:231-239`](../../../main/index.html) | `data-config="spacing"` form binding |
-| `#config select[name="placementType"]` | [`main/index.html:272`](../../../main/index.html) | `data-config="placementType"` form binding |
-| `#import` | [`main/index.html:136`](../../../main/index.html) | `ImportService` button handler |
-| `#importsnav li` | [`main/index.html:185-192`](../../../main/index.html) | parts-view Ractive `{{#each imports}}` |
-| `#addsheet`, `#sheetwidth`, `#sheetheight`, `#confirmsheet` | [`main/index.html:167-176`](../../../main/index.html) | `sheet-dialog` component |
-| `#startnest`, `#stopnest` | [`main/index.html:37, 137`](../../../main/index.html) | `NestingService` button handlers |
-| `#progressbar` | [`main/index.html:87`](../../../main/index.html) | `initializeBackgroundProgress()` in `main/ui/index.ts` |
-| `#nestlist span` | [`main/index.html:100-110`](../../../main/index.html) | nest-view Ractive `{{#each nests}}` |
-| `#nestinfo h1` | [`main/index.html:94-99`](../../../main/index.html) | nest-view Ractive (`getPartsPlaced()` etc., see [`main/ui/components/nest-view.ts:387-414`](../../../main/ui/components/nest-view.ts)) |
-| `#export`, `#exportsvg` | [`main/index.html:41`](../../../main/index.html) | `ExportService` |
+| `tests/assets/*` "(inventory)" with verified contents `henny-penny.svg`, `mrs-saint-delafield.svg`. | Confirmed exact match. Both SVGs present, no extras, no missing. | Documented as a single inventory + usage doc at [`tests__assets.md`](./tests__assets.md) — same shape as Group G's `main__img.md` / `main__font.md` write-ups. |
+| The spec is "the single Playwright E2E spec". | Confirmed — one `test("Nest", …)` plus a `test.afterAll`. No other `*.spec.ts` files anywhere in the repo. | Documented as such in [`tests__index.spec.ts.md`](./tests__index.spec.ts.md) §1. |
 
-If you rename any of these, search this file plus
-[tests__index.spec.ts.md](./tests__index.spec.ts.md) for the literal
-selector string.
+No discrepancies, no out-of-scope discoveries, no files re-named or moved.
 
-## Per-file template
+## Test surface authority for sibling groups
 
-Each deep dive uses the `DEE-11` shared template (see
-[group B README](../b/README.md#per-file-template) for the canonical
-list):
+When a deep dive in groups A–I says "covered by `tests/index.spec.ts`", they refer to the step map in [`tests__index.spec.ts.md` §4](./tests__index.spec.ts.md#4-step-by-step-map). The authoritative answer is:
 
-1. **Purpose** — opening paragraph
-2. **Public surface** — for the spec, the public surface is the
-   selectors / globals it reads from the renderer (see "Public
-   surface" table in [tests__index.spec.ts.md](./tests__index.spec.ts.md));
-   for the assets, the SVG envelope.
-3. **IPC / global side-effects** — the spec mutates the Electron
-   main-process globals `dialog.showOpenDialog` and
-   `dialog.showSaveDialogSync` via `electronApp.evaluate(...)`.
-4. **Dependencies (in / out)** — covered in the inbound / outbound
-   tables above.
-5. **Invariants & gotchas** — covered per-file. The big ones: the
-   `54/54` literal is asset-derived; `mkdir(outputDir, { recursive: true })`
-   under an `existsSync` guard is a no-op cleanup candidate; the
-   `Stop nesting` button-text round-trip can flake under slow CI.
-6. **Known TODOs** — `tests/index.spec.ts:15` and `:143-145` carry
-   commented-out hints (`slowMo`, `toHaveScreenshot`); no `// FIXME` /
-   `// HACK` markers.
-7. **Extension points** — adding `*.spec.ts` files under `tests/` is
-   the supported extension surface; new fixtures dropped in
-   `tests/assets/` are auto-discovered (see "Why the assets live
-   under `tests/assets/`" in
-   [tests__assets.md](./tests__assets.md#why-the-assets-live-under-testsassets)).
-8. **Test coverage** — this group **is** the coverage source of
-   truth. See the "What this spec implicitly tests in the rest of
-   the codebase" table in
-   [tests__index.spec.ts.md](./tests__index.spec.ts.md).
+| Surface area | Group | Covered? | Step in `index.spec.ts` |
+|---|---|---|---|
+| Electron app boot, BrowserWindow lifecycle | A — [`main.js`](../a/main.js.md) | ✅ Boot only (close path is implicit Playwright teardown) | `_electron.launch` ([:23](../../../tests/index.spec.ts)) |
+| `notification-service.js` | A — [`main__notification-service.js`](../a/main__notification-service.js.md) | ❌ Not covered | — |
+| Preset CRUD | A — [`presets.js`](../a/presets.js.md) | ❌ Not covered | — |
+| Helper scripts | A — `helper_scripts/*.js` | ❌ Not covered (build / codegen tools) | — |
+| `main/deepnest.js` GA loop | B | ✅ One iteration through `54/54` placements + stop | Steps 4 → 5 → 7 |
+| `main/background.js` NFP renderer | B | ✅ Indirectly, through `background-progress` ticks until iteration 1 | Steps 4 → 5 |
+| `main/svgparser.js` | B | ✅ Indirectly via `DeepNest.importsvg(svg)` for the two assets | Step 2 |
+| `main/util/clipper.js`, `geometryutil.js`, `parallel.js`, `simplify.js` etc. | B | ✅ Transitively via the GA / NFP path | Steps 4 → 5 |
+| `main/util/{interact, ractive, svgpanzoom, pathsegpolyfill}` | B | ⚠ Partially — Ractive runs (UI updates), interact/svgpanzoom not actively driven | — |
+| `main/nfpDb.ts` | B | ✅ Indirectly via background NFP cache lookups | Steps 4 → 5 |
+| `main/ui/index.ts` composition root | C | ✅ Implicitly — `window.config`, `window.DeepNest` are observed | Step 1d |
+| `main/ui/types/index.ts` | C | ⚠ Type-only; runtime constants (`IPC_CHANNELS`, `DEFAULT_CONVERSION_SERVER`) are exercised via the URL rewrite assertion | Step 1d |
+| `main/ui/services/config.service.ts` | D | ✅ Reset, change, persist, mm conversion all exercised | Steps 1, 1a–1d |
+| `main/ui/services/preset.service.ts` | D | ❌ Not covered | — |
+| `main/ui/services/import.service.ts` | D | ✅ SVG path only — DXF/DWG/EPS/PS not exercised | Step 2 |
+| `main/ui/services/export.service.ts` | D | ✅ SVG export only — DXF/JSON not exercised | Step 6 |
+| `main/ui/services/nesting.service.ts` | D | ✅ Start, stop, view switching all exercised | Steps 4 → 7 |
+| `main/ui/components/navigation` | E | ✅ `#config_tab`, `#home_tab` clicked | Step 1 + Step 1d |
+| `main/ui/components/parts-view` | E | ✅ `#importsnav li` count read | Step 2 |
+| `main/ui/components/nest-view` | E | ✅ `#nestlist`, `#nestinfo`, `#progressbar` read | Step 5 |
+| `main/ui/components/sheet-dialog` | E | ✅ Add-sheet flow exercised | Step 3 |
+| `main/ui/utils/{conversion, dom-utils, ui-helpers}.ts` | F | ⚠ Indirectly via service calls | — |
+| `main/index.html` (`data-config`, ids) | G | ✅ All clicked ids exercised; `data-config="units"`/`spacing`/`placementType` round-tripped | Steps 1–6 |
+| `main/notification.html` | G | ❌ Not covered | — |
+| `main/img/*` | G | ❌ Static; not test-bound | — |
+| `main/font/*` | G | ❌ Static; not test-bound | — |
+| `playwright.config.ts` | H | ✅ Trivially — the spec runs under it | Whole test |
+| `index.d.ts` | H | ✅ Type-only; `DeepNestConfig` / `NestingResult` are imported and asserted against | Steps 1d, 6 |
+| `tsconfig.json`, `eslint.config.mjs`, `package.json` | H | ⚠ Build / lint surfaces, not runtime-tested | — |
+| Top-level docs / scripts | I | ❌ Static / build-time | — |
 
-## Coverage source of truth
+⚠ entries are "exercised by happenstance" — the GA loop or UI rendering touches the surface but no assertion locks behaviour.
 
-For convenience, the canonical "covered vs. not covered by
-`tests/index.spec.ts`" mapping that other groups reference:
+## Per-doc structure
 
-| Module / area | Covered by `tests/index.spec.ts`? |
-|---|---|
-| `main/ui/services/config.service.ts` | **yes** (read at boot, defaults reset, mm/inch round-trip via `spacing`) |
-| `main/ui/services/import.service.ts` | **partial** — SVG path only; conversion-server (DXF/DWG/EPS/PS) untested; `loadInitialFiles` untested |
-| `main/ui/services/export.service.ts` | **partial** — `#exportsvg` only; `#exportdxf`, `#exportjson` untested |
-| `main/ui/services/nesting.service.ts` | **yes** for `startNesting()` / `stopNesting()`; `goBack()` untested |
-| `main/ui/services/preset.service.ts` | **no** |
-| `main/ui/components/parts-view.ts` | indirectly (parts are imported, not asserted) |
-| `main/ui/components/nest-view.ts` | **yes** (`getPartsPlaced()` / sheets-used computation asserted via `#nestinfo h1`) |
-| `main/ui/components/sheet-dialog.ts` | **yes** (`#addsheet` flow) |
-| `main/ui/components/navigation.ts` | **yes** (tab switching) |
-| `main/deepnest.js` | **yes** (config / start / nests round-trip) |
-| `main/background.js` | **yes** smoke (first iteration arrives) |
-| `main/svgparser.js` | **yes** (54-part assertion is the only acceptance signal) |
-| `main/util/clipper.js`, `geometryutil.js`, `HullPolygon.ts`, `matrix.ts`, `vector.ts`, `point.ts` | indirectly (via the GA loop) |
-| `main.js` IPC handlers | **yes** (`read-config`, `write-config`, `background-*`, `setPlacements`) |
-| `presets.js` | **no** |
-| `notification-service.js` | **no** |
-| Auth0 / `access_token` / `id_token` | **no** |
+Each doc follows the [`DEE-11` shared template](../b/README.md#per-file-template) — the same eight-section structure as every other group's deep dives:
 
-Anywhere this table says "no" or "partial", the corresponding deep
-dive's `Test surface` section should reflect the same.
+1. Purpose
+2. Public surface
+3. IPC / global side-effects
+4. Dependencies (in / out)
+5. Invariants & gotchas
+6. Known TODOs
+7. Extension points
+8. Test coverage status
+
+For the spec, sections 4 (the step-by-step map) and 5 (magic-number / asset-coupled constants) are the headline deliverables — the table at §4 is what every other group's "covered by `tests/index.spec.ts`" reference resolves to.
+
+## Cross-references
+
+- [`docs/deep-dive/h/playwright.config.ts.md`](../h/playwright.config.ts.md) — runner config; defines `metadata.pipeConsole` consumed by [`tests__index.spec.ts.md` §3](./tests__index.spec.ts.md#3-ipc--global-side-effects).
+- [`docs/deep-dive/h/index.d.ts.md`](../h/index.d.ts.md) — `DeepNestConfig` and `NestingResult` types asserted against at [`tests/index.spec.ts:13`](../../../tests/index.spec.ts), `:105-116`, `:191`.
+- [`docs/deep-dive/a/main.js.md`](../a/main.js.md) — `_electron.launch({ args: ["main.js"] })` target; the `read-config` URL rewrite asserted in step 1d lives there.
+- [`docs/deep-dive/c/main__ui__index.ts.md`](../c/main__ui__index.ts.md) — composition root that publishes `window.config` / `window.DeepNest`, both read by the spec via `mainWindow.evaluate`.
+- [`docs/deep-dive/d/`](../d/README.md) — all five renderer services exercised by the test, with the IPC channel summary the test implicitly covers.
+- [`docs/deep-dive/e/`](../e/) — UI components that own every element id the spec clicks.
+- [`docs/deep-dive/g/main__index.html.md`](../g/main__index.html.md) — element-id contract.
+- [`docs/deep-dive/b/main__svgparser.js.md`](../b/main__svgparser.js.md) — subpath decomposition that converts the 36 + 44 closed paths in the assets into the asserted `54` placements.
 
 ## Acceptance criteria coverage
 
-For both files in scope (`tests/index.spec.ts` and `tests/assets/*`),
-the corresponding doc covers:
-
-- ✅ Purpose, role, and how the file is loaded
-- ✅ Public / observable surface (DOM selectors and renderer globals
-  for the spec; SVG envelope for the assets)
-- ✅ IPC / global side-effects (`dialog.*` stubs)
-- ✅ In/out dependencies
-- ✅ Invariants and gotchas
-- ✅ Known TODOs (or explicit "none")
-- ✅ Extension points
-- ✅ Test coverage status (this group **is** the coverage source of
-  truth)
-- ✅ Cross-references to sibling deep-dive docs (Group D for
-  services, Group B for `main/deepnest.js` / `main/svgparser.js` /
-  utilities, Group C for `main/ui/index.ts` / types)
+- ✅ Every file in scope has a complete write-up under `docs/deep-dive/j/<file>.md` per the template.
+- ✅ `docs/deep-dive/j/README.md` (this file) exists and lists scope, file inventory, scope corrections, completion timestamp.
+- ✅ The spec deep dive cites exact line numbers for every IPC handler, magic number, invariant, and dead-code marker.
+- ✅ The asset deep dive lists every file by name with verified bytes, sub-path counts, and per-asset usage notes.
+- ✅ All work is committed to `chore/dee-11-iso/group-j` with the `docs(deep-dive-j):` commit-message prefix.
+- ✅ No edits outside `docs/deep-dive/j/`.
