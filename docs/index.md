@@ -110,6 +110,16 @@ Scope: the five renderer-side services in `main/ui/services/`. See [docs/deep-di
 - [`main/ui/services/export.service.ts`](./deep-dive/d/main__ui__services__export.service.md) — SVG / DXF / JSON export of nesting results. Builds the SVG document in DOM, optionally line-merges via `SvgParser`, optionally POSTs to the conversion server for DXF.
 - [`main/ui/services/nesting.service.ts`](./deep-dive/d/main__ui__services__nesting.service.md) — UI ↔ GA / NFP background bridge. Owns view-switch, NFP cache wipe, `background-stop` IPC, and the result-focus heuristic.
 
+### Group H — Build / config / quality ([DEE-40](/DEE/issues/DEE-40), complete 2026-04-26)
+
+Scope: build / config / quality files at the project root. See [docs/deep-dive/h/README.md](./deep-dive/h/README.md). Two scope corrections vs DEE-11: no `electron-builder.json` exists (config lives entirely in `package.json`'s `build` block); no `tsconfig.app.json` / `tsconfig.node.json` / `tsconfig.test.json` variants exist (single-tsconfig topology covers main process, renderer, and tests).
+
+- [`package.json`](./deep-dive/h/package.json.md) — scripts table with pre/post hooks, husky/lint-staged pipeline, full electron-builder `build` block walked field-by-field, runtime + dev dependency rationale. Notes `.husky/pre-commit` runs the full Playwright Electron E2E suite on every commit.
+- [`tsconfig.json`](./deep-dive/h/tsconfig.json.md) — single-tsconfig topology, every compiler flag, strict-mode bundle, latent `importHelpers` / `tslib` gotcha (dormant under `target: es2023`), lib-vs-target mismatch, no compile-time renderer/main split.
+- [`playwright.config.ts`](./deep-dive/h/playwright.config.ts.md) — CI-vs-local matrix, single chromium project, custom `metadata.pipeConsole` channel, reporter chain, env-var reads, why `webServer` and `dotenv` blocks stay commented out.
+- [`eslint.config.mjs`](./deep-dive/h/eslint.config.mjs.md) — flat-config composition (`@eslint/js` + `typescript-eslint`), load-bearing `**/*.js` global ignore that grandfathers the legacy renderer, four in-tree `eslint-disable` sites, why type-aware rules are off.
+- [`index.d.ts`](./deep-dive/h/index.d.ts.md) — engine type contract (`DeepNestConfig`, `NestingResult`, `Part`, `Polygon`, `*Instance` interfaces) plus `Window` augmentation. Used-by table maps every `window.*` access in the codebase. Flags `SvgParserInstance` missing `transformParse` / `polygonifyPath` (called from `main/deepnest.js` but not type-checked).
+
 ### Group J — Tests ([DEE-42](/DEE/issues/DEE-42), complete 2026-04-26)
 
 Scope: the Playwright E2E suite under `tests/`. See [docs/deep-dive/j/README.md](./deep-dive/j/README.md). Inventory matches DEE-11 — one spec file, two SVG fixture assets, no subdirectories. Group J's step map is the **source of truth** for "covered by `tests/index.spec.ts` / not covered" claims that appear in every other group's `Test coverage status` section.
@@ -117,9 +127,9 @@ Scope: the Playwright E2E suite under `tests/`. See [docs/deep-dive/j/README.md]
 - [`tests/index.spec.ts`](./deep-dive/j/tests__index.spec.ts.md) — single `test("Nest", …)` Playwright spec. Boots Electron, drives Config → Import → Sheet → Nest → Export, attaches video / SVG / JSON / console artefacts. Step-by-step map with preconditions / actions / assertions / known flake risks.
 - [`tests/assets/`](./deep-dive/j/tests__assets.md) — `henny-penny.svg` (70 200 bytes, 36 closed sub-paths) and `mrs-saint-delafield.svg` (26 281 bytes, 44 closed sub-paths). Static fixtures that exercise the SVG parser and produce `54/54` placements.
 
-### Pending groups
+### Deep-dive coverage status
 
-Group H — in progress on rev-3 isolated child ([DEE-40](/DEE/issues/DEE-40)). Lands here as the child completes and its `chore/dee-11-iso/group-h` branch is merged into the integration branch.
+All 10 groups (A, B, C, D, E, F, G, H, I, J) are complete and merged into `chore/dee-11-integration`. Per-file write-ups, group READMEs, and scope corrections are authoritative as of 2026-04-26.
 
 ## Existing Documentation (already in repo)
 
