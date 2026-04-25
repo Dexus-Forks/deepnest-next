@@ -31,41 +31,21 @@
 
 ## Deep dives
 
-> Per-file deep dives live under `docs/deep-dive/<group>/`. Each group is owned by one DEE-11 child issue.
+> Per-file deep dives live under `docs/deep-dive/<group>/`. Each group is owned by one DEE-11 child issue, run in a Paperclip-managed isolated worktree (`mode: isolated_workspace`, `workspaceStrategy.type: git_worktree`). Groups land here as their child issues complete and DEE-11 merges their branches into the integration branch.
 
-### Group B — Legacy renderer (window globals) ([DEE-13](/DEE/issues/DEE-13), complete 2026-04-25)
+### Group A — Main process / privileged Node ([DEE-33](/DEE/issues/DEE-33), complete 2026-04-25)
 
-Scope: every legacy `.js` and `.ts` file the visible / hidden Electron renderer loads outside `main/ui/`. `main/util/_unused/` is deliberately excluded — see the group [README](./deep-dive/b/README.md) for the rationale and the file list.
+Scope: every privileged-Node file that runs outside Electron's renderer sandbox — the app entry point, the preset CRUD, the notification poller, and the build-side helper scripts. See [docs/deep-dive/a/README.md](./deep-dive/a/README.md).
 
-- [`main/deepnest.js`](./deep-dive/b/main__deepnest.js.md) — GA orchestrator (`window.DeepNest`); start/stop, GA loop, `background-start` payload assembly, `background-response` listener, `nests` retention modes (incl. `DEEPNEST_LONGLIST`).
-- [`main/background.js`](./deep-dive/b/main__background.js.md) — greedy NFP placement engine in the hidden renderer; IPC contract, NFP cache, hole-fitting, fitness components.
-- [`main/svgparser.js`](./deep-dive/b/main__svgparser.js.md) — SVG → polygon-tree pipeline (`window.SvgParser`); `cleanInput` stages, `polygonify`, transform baking.
-- [`main/nfpDb.ts`](./deep-dive/b/main__nfpDb.ts.md) — `NfpCache` key derivation, defensive cloning, no-eviction memory profile.
-- `main/util/*` — every util documented individually (vendored: clipper, interact, pathsegpolyfill, ractive, simplify, svgpanzoom; first-party: domparser, eval, geometryutil, HullPolygon, matrix, parallel, point, vector). Index: [`docs/deep-dive/b/README.md`](./deep-dive/b/README.md).
+- [`main.js`](./deep-dive/a/main.js.md) — Electron app entry. Single-instance lock, `BrowserWindow` factory for visible main + hidden background + on-demand notification modal, host of every `ipcMain.on` / `ipcMain.handle` channel.
+- [`presets.js`](./deep-dive/a/presets.js.md) — sync CRUD over `userData/presets.json`. Three exported functions wired to `load-presets` / `save-preset` / `delete-preset` IPC channels.
+- [`notification-service.js`](./deep-dive/a/main__notification-service.js.md) — pull-based notification fetcher; polls `https://www.deepnest.net/app_notifications.json` + GitHub releases, dedupes by UUID against `userData/seen-notifications.json`, builds the payload consumed by the notification window. **Scope correction**: the file is at the repo root (`./notification-service.js`), not under `main/`.
+- [`helper_scripts/sign_windows.js`](./deep-dive/a/helper_scripts__sign_windows.js.md) — per-file Authenticode signer registered as `electron-builder`'s `signtoolOptions.sign` callback. Wraps `signtool.exe` against the Certum hardware token (SHA-1 thumbprint hard-coded).
+- [`helper_scripts/playwright_codegen.js`](./deep-dive/a/helper_scripts__playwright_codegen.js.md) — local-only Playwright Inspector launcher. Excluded from every shipped artefact.
 
-### Group C — UI renderer composition (DEE-14, complete)
+### Pending groups
 
-- [`main/ui/index.ts`](./deep-dive/c/main__ui__index.ts.md) — composition root: full boot sequence, IPC subscriptions, DOM contract, callback wiring diagram.
-- [`main/ui/types/index.ts`](./deep-dive/c/main__ui__types__index.ts.md) — UI type spec: `IPC_CHANNELS` table (10 channels with direction + payload + sender + handler), `UIConfig` extension fields, view-data shapes.
-
-### Group E — UI components ([DEE-16](/DEE/issues/DEE-16), complete 2026-04-25)
-
-Scope verified against `component-inventory.md` — exactly four files in `main/ui/components/`, no discovered additions. Each doc covers Ractive template ownership, DOM contract with [`main/index.html`](../main/index.html) (Group G), direct DOM manipulation that bypasses Ractive, and which services consume it (Group D).
-
-- [`main/ui/components/navigation.ts`](./deep-dive/e/main__ui__components__navigation.md) — top-bar tab switcher + dark-mode toggle, Ractive-free, owns `#sidenav`.
-- [`main/ui/components/parts-view.ts`](./deep-dive/e/main__ui__components__parts-view.md) — Ractive-bound parts table at `#homecontent` (template `#template-part-list`), hosts the `dimensionLabel` sub-component, drives svg-pan-zoom for imports.
-- [`main/ui/components/nest-view.ts`](./deep-dive/e/main__ui__components__nest-view.md) — Ractive list at `#nestcontent` (template `#nest-template`) plus the imperative `#nestsvg` renderer driven by `displayNest()`.
-- [`main/ui/components/sheet-dialog.ts`](./deep-dive/e/main__ui__components__sheet-dialog.md) — add-sheet modal that borrows `#partstools` from the parts-view template; pushes new sheets into `DeepNest.importsvg`.
-
-### Group H — Build / config / quality ([DEE-19](/DEE/issues/DEE-19), complete 2026-04-26)
-
-Per-file deep dives for the project-root build / config / quality files. The group [README](./deep-dive/h/README.md) carries two scope discrepancies vs the original DEE-11 description: there is no `electron-builder.json` (config lives in `package.json#build`) and there is only one `tsconfig.json` (no `tsconfig.app/node/test.json` variants). Both are flagged inline in the relevant write-ups.
-
-- [`package.json`](./deep-dive/h/package.json.md) — npm scripts (every script with what it does + when to run + pre/post hooks), dependency rationale (one line of "why" per direct dep), the electron-builder `build` block (verbatim + block-by-block annotation), husky / lint-staged interplay, and the dead husky-v8 block.
-- [`tsconfig.json`](./deep-dive/h/tsconfig.json.md) — single-tsconfig topology (no variants), full strict-mode bundle, `lib`/`target` mismatch hazard, `outDir → ./build` invariant load-bearing for the renderer entry.
-- [`playwright.config.ts`](./deep-dive/h/playwright.config.ts.md) — single `chromium` project, `tests/` directory, CI-vs-local switching matrix (retries, workers, reporter, video, console piping), custom `metadata.pipeConsole` field consumed by the spec.
-- [`eslint.config.mjs`](./deep-dive/h/eslint.config.mjs.md) — flat config, two recommended layers (`@eslint/js` + `typescript-eslint`), `**/*.js` global ignore (load-bearing — excludes every legacy CommonJS file from lint), no type-aware rules.
-- [`index.d.ts`](./deep-dive/h/index.d.ts.md) — engine type contract + `Window` augmentation. Canonical for `window.config / DeepNest / nest / SvgParser / loginWindow`. Includes a Used-by table mapping every `window.*` access site (8 in `main/deepnest.js`, 2 in `tests/index.spec.ts`, 3 assignments in `main/ui/index.ts`) and surfaces interface gaps (`SvgParserInstance` is missing `transformParse` / `polygonifyPath`; `window.nest` and `window.loginWindow` have no current readers).
+Groups B, C, D, E, F, G, H, I, J — in progress on rev-3 isolated children ([DEE-34](/DEE/issues/DEE-34) through [DEE-42](/DEE/issues/DEE-42)). Each will land here as its child completes and its `chore/dee-11-iso/group-<x>` branch is merged into the integration branch.
 
 ## Existing Documentation (already in repo)
 
