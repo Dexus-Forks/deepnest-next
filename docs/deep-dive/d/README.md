@@ -1,179 +1,106 @@
 # Deep dive — Group D: UI services
 
-> Per-file deep dives for the renderer-side service layer in
-> `main/ui/services/`. These are the TypeScript classes the composition
-> root in [`main/ui/index.ts`](../../../main/ui/index.ts) wires together
-> for the visible Electron renderer. Sibling of [DEE-11](../../../) parent
-> issue and [DEE-15](../../../) tracking issue.
+> Per-file deep dives for the five services under `main/ui/services/`. Sibling of [DEE-11](../../../) parent issue and [DEE-36](../../../) tracking issue (full redo of DEE-15/DEE-25 in a Paperclip-isolated worktree).
 
 ## Files in this group
 
-| File | Role | Deep dive |
+| Service | Role | Deep dive |
 |---|---|---|
-| `main/ui/services/config.service.ts` | Persisted UI config (read/write via `read-config` / `write-config` IPC, `data-config` form round-trip). | [main__ui__services__config.service.md](./main__ui__services__config.service.md) |
-| `main/ui/services/preset.service.ts` | Preset CRUD over `load-presets` / `save-preset` / `delete-preset` IPC. Backed by [`presets.js`](../../../presets.js) on the main side. | [main__ui__services__preset.service.md](./main__ui__services__preset.service.md) |
-| `main/ui/services/import.service.ts` | SVG / DXF / DWG / EPS / PS import path. SVG goes direct, others round-trip through the conversion server. | [main__ui__services__import.service.md](./main__ui__services__import.service.md) |
-| `main/ui/services/export.service.ts` | Nesting result export to SVG / DXF / JSON. Builds the SVG document from `SelectableNestingResult.placements`. | [main__ui__services__export.service.md](./main__ui__services__export.service.md) |
-| `main/ui/services/nesting.service.ts` | UI ↔ GA / NFP background bridge. Owns the start / stop / back lifecycle and view-switching. | [main__ui__services__nesting.service.md](./main__ui__services__nesting.service.md) |
+| `main/ui/services/config.service.ts` | Owns the persisted `UIConfig` for the renderer. Round-trips through `read-config` / `write-config` IPC and is the source-of-truth bound to `data-config` form elements in `main/index.html`. | [main__ui__services__config.service.md](./main__ui__services__config.service.md) |
+| `main/ui/services/preset.service.ts` | Wraps the `load-presets` / `save-preset` / `delete-preset` IPC trio. Caches the preset map, migrates legacy `convert.deepnest.io` URLs at read time. | [main__ui__services__preset.service.md](./main__ui__services__preset.service.md) |
+| `main/ui/services/import.service.ts` | SVG / EPS / PS / DXF / DWG ingestion, conversion-server round-trip, hand-off to `DeepNest.importsvg(...)`. | [main__ui__services__import.service.md](./main__ui__services__import.service.md) |
+| `main/ui/services/export.service.ts` | SVG / DXF / JSON export of nesting results. Builds the SVG document in DOM, optionally line-merges via `SvgParser`, optionally POSTs to the conversion server for DXF. | [main__ui__services__export.service.md](./main__ui__services__export.service.md) |
+| `main/ui/services/nesting.service.ts` | Bridge between UI and the GA / NFP background pipeline. Owns view-switch, NFP cache wipe, `background-stop` IPC, and the result-focus heuristic. | [main__ui__services__nesting.service.md](./main__ui__services__nesting.service.md) |
 
-## How these services are loaded
+## Group scope (5 files)
 
-All five are TypeScript classes compiled out of `main/ui/services/*.ts`
-into the renderer module bundle. The composition root
-[`main/ui/index.ts`](../../../main/ui/index.ts) orchestrates them on
-`DOMContentLoaded`:
+The DEE-36 issue scope is exactly what landed: 5 service files, no scope corrections. The directory `main/ui/services/` contains nothing else (only a `.gitkeep` and the five `.ts` files). Verified via `ls main/ui/services/` at write time.
 
-1. `initializeServices()` (line 591) creates the **async-initialized**
-   `ConfigService` (factory awaits `read-config`) and assigns it to
-   `window.config`. Then it instantiates `PresetService` and pushes the
-   live config into `DeepNest.config(...)` and `updateForm(...)`.
-2. `initializeComponents()` (line 608) instantiates the four UI components
-   (`navigation`, `parts-view`, `nest-view`, `sheet-dialog`) and the
-   remaining three services (`import`, `export`, `nesting`), threading
-   the same `configService` instance and the global `DeepNest` /
-   `SvgParser` references through their constructor options.
-3. UI handlers (preset modal, config form change handlers, drag/drop,
-   message close, parts-resize, version info, import button, export
-   buttons) are wired afterwards.
-4. `loadInitialFiles()` runs `importService.loadNestDirectoryFiles()` so
-   any `*.svg` files dropped into `NEST_DIRECTORY` at boot become parts
-   automatically.
+## IPC channel map
 
-`window.config` and `window.nest` are set as backwards-compat globals for
-legacy templates / inline handlers. `window.DeepNest` and
-`window.SvgParser` are populated **outside** of TypeScript by the legacy
-`<script>` loader in [`main/index.html`](../../../main/index.html); the
-services here read those globals through DI parameters typed in
-[`main/ui/types/index.ts`](../../../main/ui/types/index.ts).
+The Group D services interact with five IPC channels (declared in `main/ui/types/index.ts:267-278`). The table below summarises *which service uses which channel* — a deeper per-channel description lives in each service's deep dive.
 
-## Dependencies (inbound to this group)
-
-```
-                +--- window.config -- (legacy templates / inline handlers)
-                |
-ConfigService --+--- DeepNest.config(values) --- main/deepnest.js (GA loop)
-                |
-                +--- updateForm()        -- main/ui/index.ts
-                |
-                +--- partsViewService    -- main/ui/components/parts-view.ts
-                +--- nestViewService     -- main/ui/components/nest-view.ts
-                +--- sheetDialogService  -- main/ui/components/sheet-dialog.ts
-                +--- importService.setConfig
-                +--- exportService.setConfig
-
-PresetService --- main/ui/index.ts (initializePresetModal save/load/delete handlers)
-
-ImportService --- main/ui/index.ts (#import button + loadInitialFiles)
-                  + parts-view Ractive (passed via setRactive)
-
-ExportService --- main/ui/index.ts (#exportjson / #exportsvg / #exportdxf)
-                  + NestingService.saveJsonFn (auto-snapshot on stop)
-
-NestingService -- main/ui/index.ts (initializeBackgroundProgress -> #progressbar)
-                  + #startnest / #stopnest / #back via bindEventHandlers()
-```
-
-`main/ui/components/*` consumes `ConfigService` (via the `ConfigObject`
-interface). `parts-view`, `nest-view`, and `sheet-dialog` do **not**
-import the import / export / nesting services directly — those live
-behind buttons and the composition root only.
-
-## Dependencies (outbound from this group)
-
-Every service file imports only from `../types/index.js` and
-`../utils/ui-helpers.js`:
-
-| File | Imports |
-|---|---|
-| `config.service.ts` | `DEFAULT_CONVERSION_SERVER`, `IPC_CHANNELS` from `../types/index.js`; `UIConfig`, `ConfigObject`, `PlacementType`, `UnitType` types. |
-| `preset.service.ts` | `IPC_CHANNELS`, `DEFAULT_CONVERSION_SERVER`, `UIConfig`, `PresetConfig` from `../types/index.js`. |
-| `import.service.ts` | `DEFAULT_CONVERSION_SERVER` from `../types/index.js`; `message` from `../utils/ui-helpers.js`; type-only imports for `UIConfig`, `Part`, `DeepNestInstance`, `RactiveInstance`, `PartsViewData`. |
-| `export.service.ts` | `DEFAULT_CONVERSION_SERVER` from `../types/index.js`; `message` from `../utils/ui-helpers.js`; type-only imports for `UIConfig`, `DeepNestInstance`, `SelectableNestingResult`, `Part`, `SvgParserInstance`. |
-| `nesting.service.ts` | `IPC_CHANNELS` from `../types/index.js`; `message` from `../utils/ui-helpers.js`; type-only imports for `DeepNestInstance`, `SelectableNestingResult`, `RactiveInstance`, `NestViewData`. |
-
-Every Electron / Node dependency (`fs`, `path`, `@electron/remote`,
-`form-data`, `axios`, `@deepnest/svg-preprocessor`, `electron.ipcRenderer`)
-is injected through constructor options or `set*` setters. This is
-deliberate: the services are unit-testable without an Electron host.
-
-## IPC channel summary
-
-All channel names come from
-[`main/ui/types/index.ts` `IPC_CHANNELS`](../../../main/ui/types/index.ts).
-This table answers "who owns what channel" for the Group D services:
-
-| Channel | Direction | Owned by | Counterpart |
+| Channel | Direction | Used by | Purpose |
 |---|---|---|---|
-| `read-config` | renderer → main (`invoke`) | `ConfigService.initialize()` | `ipcMain.handle("read-config")` in `main.js` |
-| `write-config` | renderer → main (`invoke`) | `ConfigService.persist()` | `ipcMain.handle("write-config")` in `main.js` |
-| `load-presets` | renderer → main (`invoke`) | `PresetService.loadPresets()` | `ipcMain.handle("load-presets")` → `presets.js` |
-| `save-preset` | renderer → main (`invoke`) | `PresetService.savePreset()` | `ipcMain.handle("save-preset")` → `presets.js` |
-| `delete-preset` | renderer → main (`invoke`) | `PresetService.deletePreset()` | `ipcMain.handle("delete-preset")` → `presets.js` |
-| `background-stop` | renderer → main (`send`) | `NestingService.stopNesting()`, `NestingService.goBack()` | `ipcMain.on("background-stop")` destroys background windows |
-| `background-start` | renderer → main → background renderer (`send`) | **`main/deepnest.js DeepNest.start()`** (not the service directly) | `main.js` routes to a non-busy `backgroundWindows[i]` |
-| `background-progress` | background → main → renderer | Subscribed by `main/ui/index.ts initializeBackgroundProgress()` | Sent by `main/background.js` during NFP / placement phases |
-| `background-response` | background → main → renderer | **Subscribed by `main/deepnest.js`** (not the service) | Sent by `main/background.js` after each placement |
-| `setPlacements` | renderer → main (`send`) | `main/deepnest.js` re-emit | `main.js ipcMain.on("setPlacements")` stores `global.exportedPlacements` |
+| `read-config` | renderer → main (invoke) | `ConfigService` | Bootstrap from `<userData>/settings.json`. |
+| `write-config` | renderer → main (invoke) | `ConfigService` | Persist on every `setSync`. |
+| `load-presets` | renderer → main (invoke) | `PresetService` | Fetch the `<userData>/presets.json` map. |
+| `save-preset` | renderer → main (invoke) | `PresetService` | Add or overwrite a named preset. |
+| `delete-preset` | renderer → main (invoke) | `PresetService` | Remove a named preset. |
+| `background-stop` | renderer → main (send) | `NestingService` | Tear down all NFP-worker `BrowserWindow`s and recreate the pool. |
 
-The dotted line is important: `NestingService` does **not** send
-`background-start` or receive `background-response` directly. It calls
-`DeepNest.start(progressCb, displayCb)` and lets the legacy
-`main/deepnest.js` GA loop drive the channel; the service's role is the
-UI-side lifecycle (cache wipe, button states, view switching, JSON
-snapshot on stop). See
-[`nesting.service.md`](./main__ui__services__nesting.service.md) for the
-payload shape sent by `main/deepnest.js:1292-1305`.
+The remaining `IPC_CHANNELS` constants — `BACKGROUND_START`, `BACKGROUND_PROGRESS`, `BACKGROUND_RESPONSE`, `SET_PLACEMENTS` — are **not** used by any Group D service. They flow between `main/deepnest.js` (renderer) and `main.js` (main process) directly, with the renderer-side handler in `main/ui/index.ts:514-522` reading `BACKGROUND_PROGRESS` to update `#progressbar`. See [`main__ui__services__nesting.service.md`](./main__ui__services__nesting.service.md) §3 for the full ladder.
 
-## Security smell summary (`nodeIntegration: true`)
+## Used-by graph (composition root view)
 
-The Electron windows in [`main.js:100-103`, `:167-170`, `:221-224`](../../../main.js)
-all set `nodeIntegration: true`, `contextIsolation: false`, and
-`enableRemoteModule: true`. Inside Group D this enables the following
-work to happen in the renderer that should arguably live in main:
+The composition root is [`main/ui/index.ts`](../../../main/ui/index.ts). It is the **only** place where these services are instantiated and the only direct consumer of most of them.
 
-| Service | Renderer-side work that warrants moving to main |
-|---|---|
-| `config.service.ts` | None — IPC boundary is correct. |
-| `preset.service.ts` | None — IPC boundary is correct. The legacy URL migration is duplicated in renderer + main; consider keeping only the main-side rewrite. |
-| `import.service.ts` | **Direct `fs.readFile` / `readFileSync` / `readdirSync`** in the renderer. **Outbound HTTP** to the conversion server. **`@electron/remote getGlobal("NEST_DIRECTORY")`**. Error messages interpolate user-controlled `error_id` into HTML before passing to `message(..., true)`. |
-| `export.service.ts` | **Direct `fs.writeFileSync`** for SVG / DXF / JSON outputs. **Outbound HTTP** for DXF round-trip. Same HTML-interpolation risk on conversion-server error responses. |
-| `nesting.service.ts` | **Direct `fs.existsSync` / `readdirSync` / `unlinkSync` / `rmdirSync`** to wipe `./nfpcache`. Cwd-relative path is fragile across packaged builds. |
+```
+main/ui/index.ts
+├── createConfigService(ipcRenderer)         ← bootstraps + assigns to window.config
+│   └── consumed by: ImportService, ExportService, parts-view, nest-view, sheet-dialog
+├── createPresetService(ipcRenderer)
+│   └── consumed by: index.ts only (preset modal handlers)
+├── createImportService({deps...})
+│   └── triggered by: #import button onclick (initializeImportButton)
+│   └── triggered by: loadInitialFiles() at startup
+├── createExportService({deps...})
+│   └── triggered by: #exportjson, #exportsvg, #exportdxf onclicks
+│   └── triggered by: nestingService.stopNesting() via saveJsonFn callback
+└── createNestingService({fs, ipcRenderer, deepNest, ...})
+    └── triggered by: #startnest, #stopnest, #back onclicks (bindEventHandlers)
+    └── displayCallback registered with: deepNest.start(progressCb, displayCb)
+```
 
-Per-doc `Security and architecture smells` sections expand each item.
+Three of the five services have a constructor with a *bag of optional deps* (`ImportService`, `ExportService`, `NestingService`) — this is the deliberate DI shape that makes them mockable without an Electron harness. None of them have a unit-test fixture yet; that is the most-valuable testing gap surfaced by this deep-dive pass.
 
-## Per-file template
+## Cross-service dependencies
 
-Each deep dive uses the `DEE-11` shared template (see
-[group B README](../b/README.md#per-file-template) for the canonical list):
+Within Group D itself:
 
-1. **Purpose** — opening paragraph
-2. **Public surface** — `Public API surface` table
-3. **IPC / global side-effects** — `IPC channels` section
-4. **Dependencies (in / out)** — `Used by` (in) and the inbound/outbound
-   tables in this README (out)
-5. **Invariants & gotchas** — `Security and architecture smells`
-6. **Known TODOs** — none in source (`// todo:` / `// FIXME` not present
-   in any of the 5 files at the time of this scan)
-7. **Extension points** — DI'd dependencies are the primary extension
-   surface; each `set*` setter and the constructor `options` parameter
-   are explicit injection points. See per-file `Public API surface`
-   tables.
-8. **Test coverage** — `Test surface` section. None of these services
-   currently have a dedicated Playwright spec; they are exercised
-   indirectly via `tests/e2e/config-tab.spec.ts` and import / export /
-   nesting flows. Unit tests are not yet wired up but each service is
-   already DI'd for that purpose.
+- `ImportService` and `ExportService` both read from `ConfigService` (`getSync` for `conversionServer`, `scale`, `units`, plus their format-specific keys).
+- `PresetService` produces `Partial<UIConfig>` instances that `index.ts` feeds back into `ConfigService.setSync`.
+- `NestingService` is wired with `() => exportService.exportToJson()` as its `saveJsonFn` — that's the only inter-service direct call.
 
-## Acceptance criteria coverage
+Outside Group D, the services interact with:
 
-For each of the 5 files in scope, the corresponding doc covers:
+- `DeepNest` (in `main/deepnest.js`, Group B) — `ImportService` calls `importsvg`; `ExportService` reads `parts` and `nests`; `NestingService` calls `start`, `stop`, `reset`.
+- `SvgParser` (in `main/svgparser.js`, Group B) — `ExportService` only, for the line-merging pass.
+- `@deepnest/svg-preprocessor` — `ImportService` only, optional, gated by `useSvgPreProcessor`.
+- The `axios` HTTP client — `ImportService` and `ExportService` for conversion-server round-trips.
+- The DOM (`main/index.html`, Group G) — every service except `PresetService` directly queries DOM elements.
 
-- ✅ Purpose, public API, and lifecycle
-- ✅ IPC channels (sent and received) with payload shape, linked to
-  `main/ui/types/index.ts` types
-- ✅ Used-by mapping anchored on `main/ui/index.ts` and
-  `main/ui/components/`
-- ✅ Security / architecture smells around `nodeIntegration: true` work
-  done in the renderer
-- ✅ Test surface (DI shape; no TODO markers in source)
-- ✅ Cross-references to sibling deep-dive docs in this group
+## Security / "should this live in main?" assessment
+
+The task spec asked us to surface **services doing work in the renderer that arguably belong in main** (since `nodeIntegration: true` makes the renderer a fully-trusted Node process). Two callouts:
+
+1. **Conversion-server HTTP** is performed by the renderer in both `ImportService` (POST to convert DXF → SVG) and `ExportService` (POST to convert SVG → DXF). The renderer holds Node fs + axios. A compromised renderer (via a malicious SVG/DXF) could exfiltrate `<userData>` content. Routing the POST through main would shrink the renderer's attack surface. Trade-off: an extra IPC round-trip per import/export.
+2. **`fs.writeFileSync` from the renderer** is used by `ExportService` (SVG, DXF, JSON output) and by `NestingService.stopNesting` (the JSON sidecar via `saveJsonFn`). Same security observation. Less load-bearing than the HTTP case because the path comes from a save dialog (user-mediated).
+
+Neither is filed as a TODO in source — they are ambient consequences of the `nodeIntegration: true` choice. Both surface in the per-file deep dives' "Known TODOs / smells" sections for follow-up tickets.
+
+## Test coverage state
+
+Across all five services:
+
+| Service | Unit tests | E2E coverage |
+|---|---|---|
+| `ConfigService` | 0 | Indirectly via `tests/index.spec.ts` Config Tab (selector fix in `ece5ed7`). |
+| `PresetService` | 0 | Not exercised. |
+| `ImportService` | 0 | `#import` click + parts-list assertion. Conversion path uncovered. |
+| `ExportService` | 0 | `#exportsvg` click + dialog assertion. DXF and JSON paths uncovered. |
+| `NestingService` | 0 | `#startnest` and `#stopnest` clicks. `goBack` and `displayCallback` uncovered. |
+
+Every service is constructor-DI-shaped specifically for unit testing. The fixture work is small and high-value — see each per-file "Test coverage status" §.
+
+## Acceptance criteria status (DEE-36)
+
+- [x] Every file in scope has a complete write-up at `docs/deep-dive/d/<file>.md` per the [DEE-11 shared template](../../../) (Purpose · Public surface · IPC / global side-effects · Dependencies · Invariants & gotchas · Known TODOs · Extension points · Test coverage · Cross-references).
+- [x] `docs/deep-dive/d/README.md` exists (this file).
+- [x] All work committed to `chore/dee-11-iso/group-d`. **Not pushed, not merged** — DEE-11 picks up the branch.
+- [x] No edits outside `docs/deep-dive/d/`.
+- [x] Group cover sheet documents scope, file inventory, and notes that no scope corrections were needed.
+
+## Completion timestamp
+
+Authored by Paige (Tech Writer) for DEE-36 on **2026-04-26** in Paperclip-isolated worktree on branch `chore/dee-11-iso/group-d` (branched from `chore/bmad-method-setup`). All prior write-ups (DEE-15 on this branch, DEE-25 on `chore/dee-11/group-d`) were wiped before authoring per board directive.
