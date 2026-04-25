@@ -2,7 +2,7 @@
   "workflow_version": "1.2.0",
   "timestamps": {
     "started": "2026-04-25T23:10:00Z",
-    "last_updated": "2026-04-25T23:14:00Z",
+    "last_updated": "2026-04-25T23:16:00Z",
     "completed": "2026-04-25T23:30:00Z"
   },
   "mode": "deep_dive",
@@ -240,6 +240,38 @@
         "main/notification/* in DEE-11 description does not exist; only main/notification.html.",
         "main/img/ and main/font/ are inventoried as single docs with naming-convention sections, not per-asset write-ups."
       ]
+    },
+    "f": {
+      "issue": "DEE-38",
+      "supersedes": "DEE-27 (cancelled)",
+      "group_title": "UI utilities",
+      "status": "completed",
+      "completed_at": "2026-04-25T23:14:00Z",
+      "integration_branch_merge": "chore/dee-11-integration",
+      "workspace_isolation": {
+        "mode": "isolated_workspace",
+        "strategyType": "git_worktree",
+        "branchName": "chore/dee-11-iso/group-f"
+      },
+      "files": [
+        {
+          "src": "main/ui/utils/dom-utils.ts",
+          "doc": "docs/deep-dive/f/main__ui__utils__dom-utils.ts.md",
+          "note": "~9 of 30 exports actually consumed (5 importers)"
+        },
+        {
+          "src": "main/ui/utils/conversion.ts",
+          "doc": "docs/deep-dive/f/main__ui__utils__conversion.ts.md",
+          "note": "currently unused \u2014 0 importers; three sites duplicate the math inline"
+        },
+        {
+          "src": "main/ui/utils/ui-helpers.ts",
+          "doc": "docs/deep-dive/f/main__ui__utils__ui-helpers.ts.md",
+          "note": "6 importers, 25+ call sites for message()"
+        }
+      ],
+      "discovered_files": [],
+      "scope_corrections": []
     }
   },
   "integration": {
@@ -250,7 +282,6 @@
       "b",
       "d",
       "e",
-      "f",
       "h",
       "i",
       "j"
@@ -259,7 +290,6 @@
       "DEE-34",
       "DEE-36",
       "DEE-37",
-      "DEE-38",
       "DEE-40",
       "DEE-41",
       "DEE-42"
@@ -267,6 +297,7 @@
     "merged_groups": [
       "a",
       "c",
+      "f",
       "g"
     ]
   }

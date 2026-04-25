@@ -59,9 +59,17 @@ Scope: HTML entry points, icons, web-fonts in `main/`. See [docs/deep-dive/g/REA
 - [`main/img/`](./deep-dive/g/main__img.md) — icon set (35 files), naming convention, per-icon usage, cleanup candidates.
 - [`main/font/`](./deep-dive/g/main__font.md) — Lato webfont package; live binding via `latolatinfonts.css`, demo files unused.
 
+### Group F — UI utilities ([DEE-38](/DEE/issues/DEE-38), complete 2026-04-25)
+
+Scope: leaf utility modules under `main/ui/utils/`. See [docs/deep-dive/f/README.md](./deep-dive/f/README.md). All three are bottom-of-the-dependency-graph; two (`dom-utils`, `conversion`) import nothing; `ui-helpers` imports a single type. No IPC, no persistence, no Node side.
+
+- [`main/ui/utils/dom-utils.ts`](./deep-dive/f/main__ui__utils__dom-utils.ts.md) — type-safe wrappers around the browser DOM API. ~30 generic helpers, ~9 actually consumed (5 importers; documented convention layer for future migration).
+- [`main/ui/utils/conversion.ts`](./deep-dive/f/main__ui__utils__conversion.ts.md) — pure SVG-units ↔ inches ↔ mm conversion + formatting. **Currently unused (0 importers)** — three sites duplicate the math inline. Spec is canonical, implementation dormant.
+- [`main/ui/utils/ui-helpers.ts`](./deep-dive/f/main__ui__utils__ui-helpers.ts.md) — `message()` banner, `throttle()` (Underscore port), `millisecondsToStr()`. Highest fan-in (6 importers, 25+ call sites for `message`).
+
 ### Pending groups
 
-Groups B, D, E, F, H, I, J — in progress on rev-3 isolated children ([DEE-34](/DEE/issues/DEE-34), [DEE-36](/DEE/issues/DEE-36), [DEE-37](/DEE/issues/DEE-37), [DEE-38](/DEE/issues/DEE-38), [DEE-40](/DEE/issues/DEE-40), [DEE-41](/DEE/issues/DEE-41), [DEE-42](/DEE/issues/DEE-42)). Each lands here as its child completes and its `chore/dee-11-iso/group-<x>` branch is merged into the integration branch.
+Groups B, D, E, H, I, J — in progress on rev-3 isolated children ([DEE-34](/DEE/issues/DEE-34), [DEE-36](/DEE/issues/DEE-36), [DEE-37](/DEE/issues/DEE-37), [DEE-40](/DEE/issues/DEE-40), [DEE-41](/DEE/issues/DEE-41), [DEE-42](/DEE/issues/DEE-42)). Each lands here as its child completes and its `chore/dee-11-iso/group-<x>` branch is merged into the integration branch.
 
 ## Existing Documentation (already in repo)
 
