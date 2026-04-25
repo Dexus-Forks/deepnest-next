@@ -1,9 +1,9 @@
 # Deep dive — Group I: CI / release
 
-> Per-file deep dives for the GitHub Actions workflows under
-> `.github/workflows/`. These are the three pipelines that gate every
-> commit to `main`, every PR, and every published release. Sibling of
-> the [DEE-11](../../../) parent issue and tracked under [DEE-20](../../../).
+> **Generated:** 2026-04-26 by Paige (Tech Writer) for [DEE-41](/DEE/issues/DEE-41) (parent: [DEE-11](/DEE/issues/DEE-11)).
+> **Group:** I — CI / release pipelines under `.github/workflows/`.
+> **Scope:** Three pipelines that gate every commit to `main`, every PR, and every published release.
+> **Branch:** `chore/dee-11-iso/group-i` (Paperclip-isolated worktree, branched from `chore/bmad-method-setup`).
 
 ## Files in this group
 
@@ -88,7 +88,7 @@ configured.
 
 **Unverified — needs to be checked against repo settings** at
 `github.com/deepnest-next/deepnest → Settings → Branches → Branch
-protection rules`. The DEE-20 task brief asked to flag this if not
+protection rules`. The DEE-11 task brief asked to flag this if not
 encoded in the YAML. From the workflow side the candidate check names are:
 
 | Workflow | Likely required-check name |
@@ -136,9 +136,9 @@ canonical narrative slots):
    it cannot be derived from the YAML
 8. **References** — cross-links to sibling docs and source files
 
-## Acceptance criteria coverage (DEE-20)
+## Acceptance criteria coverage (DEE-11 / DEE-41)
 
-| DEE-20 requirement | Where it is covered |
+| DEE-11 / DEE-41 requirement | Where it is covered |
 |---|---|
 | Filename discrepancy `release.yml` → `build_release.yml` flagged | Above (this README), [`build_release.yml` § 1](./.github__workflows__build_release.yml.md) |
 | `job \| runner \| steps \| secrets read \| artifacts produced` table per workflow | Above (master table) and § 3 / § 4 of each per-file doc |
