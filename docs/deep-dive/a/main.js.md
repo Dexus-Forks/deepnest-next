@@ -193,7 +193,14 @@ The two `// todo:` markers and the worker-count comment at `main.js:217` are inh
 - The `renderer-process-gone` log on the main window object (`main.js:11`) and on each background window (`main.js:248-249`) **do not** rebuild the failed window. A bg-window crash leaves `backgroundWindows[i]` pointing at a destroyed object until the next `background-stop` rebuilds them.
 - `runNotificationCheck()` (`main.js:205-210`) is invoked in three places: 3 s after main window shows, every 30 min thereafter (`main.js:267-269`), and after the user dismisses a notification (`main.js:413-418`). Wake-from-sleep + clock skew is not handled — the 30-min interval keeps drifting on macOS App Nap.
 
-## 10. Cross-references
+## 10. Test coverage
+
+- **Implicitly exercised by the only Playwright spec.** `tests/index.spec.ts` (see `docs/deep-dive/j/tests__index.spec.ts.md`) launches the app via Playwright's Electron driver with `main.js` as `package.json#main`, so the entire startup path — single-instance lock, `createMainWindow`, `createBackgroundWindows`, the `background-start`/`background-response`/`background-progress` round-trip — runs as part of the nesting smoke test.
+- **No direct assertion** on any IPC channel listed in §5. The spec asserts on renderer state (`window.DeepNest.nests`); the channels are covered by virtue of "if the round-trip were broken, the assertion would never satisfy."
+- **Not covered**: notification window flow (the spec finishes before the 3 s initial poll fires reliably; even if it did, the test does not drive `close-notification`), preset CRUD (`load-presets`/`save-preset`/`delete-preset`), `read-config`/`write-config`, `login-success`/`purchase-success`, `setPlacements`/`test`, `before-quit` cache wipe, `setWindowOpenHandler`, single-instance lock loss, and `render-process-gone` paths.
+- **No unit tests** exist for any handler in this file; everything is integration-only via the Electron launch.
+
+## 11. Cross-references
 
 - `docs/architecture.md` §2 — process & window topology diagram; §5 — IPC contract (this doc supersedes that table for `main.js`-owned channels and supplements it with sender line refs).
 - `docs/deep-dive/a/presets.js.md` — implementation behind `load-presets` / `save-preset` / `delete-preset`.
