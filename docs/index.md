@@ -67,9 +67,18 @@ Scope: leaf utility modules under `main/ui/utils/`. See [docs/deep-dive/f/README
 - [`main/ui/utils/conversion.ts`](./deep-dive/f/main__ui__utils__conversion.ts.md) — pure SVG-units ↔ inches ↔ mm conversion + formatting. **Currently unused (0 importers)** — three sites duplicate the math inline. Spec is canonical, implementation dormant.
 - [`main/ui/utils/ui-helpers.ts`](./deep-dive/f/main__ui__utils__ui-helpers.ts.md) — `message()` banner, `throttle()` (Underscore port), `millisecondsToStr()`. Highest fan-in (6 importers, 25+ call sites for `message`).
 
+### Group E — UI components ([DEE-37](/DEE/issues/DEE-37), complete 2026-04-25)
+
+Scope: renderer-side components in `main/ui/components/`. See [docs/deep-dive/e/README.md](./deep-dive/e/README.md). Inventory matches DEE-11 — exactly four files, no discovered additions.
+
+- [`main/ui/components/navigation.ts`](./deep-dive/e/main__ui__components__navigation.md) — side-nav controller. Tab switching across `#home` / `#config` / `#info` + dark-mode toggle persisted in `localStorage`. Ractive-free; direct DOM-class manipulation only.
+- [`main/ui/components/parts-view.ts`](./deep-dive/e/main__ui__components__parts-view.md) — imported-parts list (`#homecontent`). Ractive table over `DeepNest.parts`, drag-select, sort, `svg-pan-zoom`, inline `dimensionLabel` sub-component.
+- [`main/ui/components/nest-view.ts`](./deep-dive/e/main__ui__components__nest-view.md) — nest-result viewer (`#nestcontent` / `#nestdisplay`). Ractive summary bindings + imperative SVG renderer for sheets, parts, hatch patterns, merged-line laser markers.
+- [`main/ui/components/sheet-dialog.ts`](./deep-dive/e/main__ui__components__sheet-dialog.md) — add-sheet modal. Toggles `#partstools.active`, validates width/height, synthesises `<svg><rect/></svg>` of the right size, routes through `DeepNest.importsvg(...)`.
+
 ### Pending groups
 
-Groups B, D, E, H, I, J — in progress on rev-3 isolated children ([DEE-34](/DEE/issues/DEE-34), [DEE-36](/DEE/issues/DEE-36), [DEE-37](/DEE/issues/DEE-37), [DEE-40](/DEE/issues/DEE-40), [DEE-41](/DEE/issues/DEE-41), [DEE-42](/DEE/issues/DEE-42)). Each lands here as its child completes and its `chore/dee-11-iso/group-<x>` branch is merged into the integration branch.
+Groups B, D, H, I, J — in progress on rev-3 isolated children ([DEE-34](/DEE/issues/DEE-34), [DEE-36](/DEE/issues/DEE-36), [DEE-40](/DEE/issues/DEE-40), [DEE-41](/DEE/issues/DEE-41), [DEE-42](/DEE/issues/DEE-42)). Each lands here as its child completes and its `chore/dee-11-iso/group-<x>` branch is merged into the integration branch.
 
 ## Existing Documentation (already in repo)
 

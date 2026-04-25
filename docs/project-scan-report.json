@@ -2,7 +2,7 @@
   "workflow_version": "1.2.0",
   "timestamps": {
     "started": "2026-04-25T23:10:00Z",
-    "last_updated": "2026-04-25T23:16:00Z",
+    "last_updated": "2026-04-25T23:17:30Z",
     "completed": "2026-04-25T23:30:00Z"
   },
   "mode": "deep_dive",
@@ -272,6 +272,39 @@
       ],
       "discovered_files": [],
       "scope_corrections": []
+    },
+    "e": {
+      "issue": "DEE-37",
+      "supersedes": "DEE-26 (cancelled)",
+      "group_title": "UI components",
+      "status": "completed",
+      "completed_at": "2026-04-25T23:17:00Z",
+      "integration_branch_merge": "chore/dee-11-integration",
+      "workspace_isolation": {
+        "mode": "isolated_workspace",
+        "strategyType": "git_worktree",
+        "branchName": "chore/dee-11-iso/group-e"
+      },
+      "files": [
+        {
+          "src": "main/ui/components/navigation.ts",
+          "doc": "docs/deep-dive/e/main__ui__components__navigation.md"
+        },
+        {
+          "src": "main/ui/components/parts-view.ts",
+          "doc": "docs/deep-dive/e/main__ui__components__parts-view.md"
+        },
+        {
+          "src": "main/ui/components/nest-view.ts",
+          "doc": "docs/deep-dive/e/main__ui__components__nest-view.md"
+        },
+        {
+          "src": "main/ui/components/sheet-dialog.ts",
+          "doc": "docs/deep-dive/e/main__ui__components__sheet-dialog.md"
+        }
+      ],
+      "discovered_files": [],
+      "scope_corrections": []
     }
   },
   "integration": {
@@ -281,7 +314,6 @@
     "pending_groups": [
       "b",
       "d",
-      "e",
       "h",
       "i",
       "j"
@@ -289,7 +321,6 @@
     "pending_children": [
       "DEE-34",
       "DEE-36",
-      "DEE-37",
       "DEE-40",
       "DEE-41",
       "DEE-42"
@@ -297,6 +328,7 @@
     "merged_groups": [
       "a",
       "c",
+      "e",
       "f",
       "g"
     ]
