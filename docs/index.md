@@ -43,9 +43,25 @@ Scope: every privileged-Node file that runs outside Electron's renderer sandbox 
 - [`helper_scripts/sign_windows.js`](./deep-dive/a/helper_scripts__sign_windows.js.md) — per-file Authenticode signer registered as `electron-builder`'s `signtoolOptions.sign` callback. Wraps `signtool.exe` against the Certum hardware token (SHA-1 thumbprint hard-coded).
 - [`helper_scripts/playwright_codegen.js`](./deep-dive/a/helper_scripts__playwright_codegen.js.md) — local-only Playwright Inspector launcher. Excluded from every shipped artefact.
 
+### Group C — UI renderer composition ([DEE-35](/DEE/issues/DEE-35), complete 2026-04-25)
+
+Scope: the UI composition root and the UI type spec. See [docs/deep-dive/c/README.md](./deep-dive/c/README.md).
+
+- [`main/ui/index.ts`](./deep-dive/c/main__ui__index.ts.md) — single `initialize()` function: loads Electron/Node modules, awaits `createConfigService`, builds nine service singletons in dependency order, wires every cross-service callback, registers nine UI handler binders. Canonical entry-point map.
+- [`main/ui/types/index.ts`](./deep-dive/c/main__ui__types__index.ts.md) — extends `DeepNestConfig` with `UIConfig`; declares the typed shims for the four legacy globals (`window.DeepNest`, `window.SvgParser`, `window.config`, `window.nest`); declares every Ractive view-data shape; owns `IPC_CHANNELS` (the only typed contract between renderer and main process).
+
+### Group G — Static surfaces ([DEE-39](/DEE/issues/DEE-39), complete 2026-04-26)
+
+Scope: HTML entry points, icons, web-fonts in `main/`. See [docs/deep-dive/g/README.md](./deep-dive/g/README.md). Two scope corrections vs DEE-11: `main/notification/*` is actually a single file (`main/notification.html`); the `main/img/` and `main/font/` "directories" are inventoried + naming-convention docs, not per-asset write-ups.
+
+- [`main/index.html`](./deep-dive/g/main__index.html.md) — visible Electron renderer entry. Contract surface (`data-config`, `data-conversion`, `data-page`, `data-sort-field`, element ids) consumed by `main/ui/`.
+- [`main/notification.html`](./deep-dive/g/main__notification.html.md) — self-contained renderer for the on-demand modal notification window. Three-channel IPC contract with `main.js`.
+- [`main/img/`](./deep-dive/g/main__img.md) — icon set (35 files), naming convention, per-icon usage, cleanup candidates.
+- [`main/font/`](./deep-dive/g/main__font.md) — Lato webfont package; live binding via `latolatinfonts.css`, demo files unused.
+
 ### Pending groups
 
-Groups B, C, D, E, F, G, H, I, J — in progress on rev-3 isolated children ([DEE-34](/DEE/issues/DEE-34) through [DEE-42](/DEE/issues/DEE-42)). Each will land here as its child completes and its `chore/dee-11-iso/group-<x>` branch is merged into the integration branch.
+Groups B, D, E, F, H, I, J — in progress on rev-3 isolated children ([DEE-34](/DEE/issues/DEE-34), [DEE-36](/DEE/issues/DEE-36), [DEE-37](/DEE/issues/DEE-37), [DEE-38](/DEE/issues/DEE-38), [DEE-40](/DEE/issues/DEE-40), [DEE-41](/DEE/issues/DEE-41), [DEE-42](/DEE/issues/DEE-42)). Each lands here as its child completes and its `chore/dee-11-iso/group-<x>` branch is merged into the integration branch.
 
 ## Existing Documentation (already in repo)
 

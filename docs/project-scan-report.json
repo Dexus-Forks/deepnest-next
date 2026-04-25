@@ -2,7 +2,7 @@
   "workflow_version": "1.2.0",
   "timestamps": {
     "started": "2026-04-25T23:10:00Z",
-    "last_updated": "2026-04-25T23:10:00Z",
+    "last_updated": "2026-04-25T23:14:00Z",
     "completed": "2026-04-25T23:30:00Z"
   },
   "mode": "deep_dive",
@@ -176,6 +176,70 @@
       "scope_corrections": [
         "notification-service.js lives at repo root, not main/notification-service.js as DEE-11 description claimed."
       ]
+    },
+    "c": {
+      "issue": "DEE-35",
+      "supersedes": "DEE-24 (cancelled, salvage workflow)",
+      "group_title": "UI renderer composition",
+      "status": "completed",
+      "completed_at": "2026-04-25T23:11:00Z",
+      "integration_branch_merge": "chore/dee-11-integration",
+      "workspace_isolation": {
+        "mode": "isolated_workspace",
+        "strategyType": "git_worktree",
+        "branchName": "chore/dee-11-iso/group-c"
+      },
+      "files": [
+        {
+          "src": "main/ui/index.ts",
+          "doc": "docs/deep-dive/c/main__ui__index.ts.md"
+        },
+        {
+          "src": "main/ui/types/index.ts",
+          "doc": "docs/deep-dive/c/main__ui__types__index.ts.md"
+        }
+      ],
+      "discovered_files": [],
+      "scope_corrections": []
+    },
+    "g": {
+      "issue": "DEE-39",
+      "supersedes": "DEE-28 (cancelled), DEE-18 (rev-1)",
+      "group_title": "Static surfaces",
+      "status": "completed",
+      "completed_at": "2026-04-25T23:13:00Z",
+      "integration_branch_merge": "chore/dee-11-integration",
+      "workspace_isolation": {
+        "mode": "isolated_workspace",
+        "strategyType": "git_worktree",
+        "branchName": "chore/dee-11-iso/group-g"
+      },
+      "files": [
+        {
+          "src": "main/index.html",
+          "doc": "docs/deep-dive/g/main__index.html.md"
+        },
+        {
+          "src": "main/notification.html",
+          "doc": "docs/deep-dive/g/main__notification.html.md",
+          "note": "scope correction: not main/notification/* (no such dir), single HTML file"
+        },
+        {
+          "src": "main/img/",
+          "doc": "docs/deep-dive/g/main__img.md",
+          "note": "inventory + naming convention, not per-asset"
+        },
+        {
+          "src": "main/font/",
+          "doc": "docs/deep-dive/g/main__font.md",
+          "note": "inventory + binding, not per-weight"
+        }
+      ],
+      "discovered_files": [],
+      "scope_corrections": [
+        "main/notification/* in DEE-11 description does not exist; only main/notification.html.",
+        "main/img/ and main/font/ are inventoried as single docs with naming-convention sections, not per-asset write-ups."
+      ]
     }
   },
   "integration": {
@@ -184,25 +248,26 @@
     "pre_redo_snapshot_tag": "dee-11-pre-redo-snapshot",
     "pending_groups": [
       "b",
-      "c",
       "d",
       "e",
       "f",
-      "g",
       "h",
       "i",
       "j"
     ],
     "pending_children": [
       "DEE-34",
-      "DEE-35",
       "DEE-36",
       "DEE-37",
       "DEE-38",
-      "DEE-39",
       "DEE-40",
       "DEE-41",
       "DEE-42"
+    ],
+    "merged_groups": [
+      "a",
+      "c",
+      "g"
     ]
   }
 }
