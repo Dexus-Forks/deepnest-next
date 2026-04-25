@@ -1,9 +1,9 @@
 # `main/font/` — Deep Dive
 
-**Generated:** 2026-04-26 by Paige (Tech Writer) for [DEE-18](/DEE/issues/DEE-18) (parent: [DEE-11](/DEE/issues/DEE-11)).
+**Generated:** 2026-04-26 by Paige (Tech Writer); **re-verified** 2026-04-26 against `HEAD` for [DEE-39](/DEE/issues/DEE-39) (Paperclip-isolated full redo of the Group G deep-dive; parent: [DEE-11](/DEE/issues/DEE-11)).
 **Group:** G — deep-dive static surfaces.
 **Surface:** `main/font/` (web-font assets + binding stylesheets).
-**Mode:** Single write-up — weights packaged, CSS binding, who loads what.
+**Mode:** Single write-up — weights packaged, CSS binding, who loads what. `latolatinfonts.css` line ranges (Bold+Regular `:1-27`; Light `:29-41`) and `style.css` cited rules (`:29` body, `:72` heading family) re-checked against `HEAD` on 2026-04-26.
 
 ## 1. What ships in this directory
 

@@ -1,6 +1,8 @@
 # Deep dive — Group G: static surfaces
 
-> Per-file deep dives for the static surfaces in `main/`: HTML entry points, icons, web-fonts. Sibling of [DEE-11](../../../) parent issue and [DEE-18](../../../) tracking issue.
+> Per-file deep dives for the static surfaces in `main/`: HTML entry points, icons, web-fonts.
+>
+> **Tracking**: parent issue [DEE-11](../../../); current Paperclip-isolated redo issue [DEE-39](/DEE/issues/DEE-39) (supersedes the earlier DEE-18 attempt and the DEE-28 redo, both of which failed workspace isolation). All four deep-dives plus this README have been re-verified against `HEAD` on 2026-04-26.
 
 ## Files in this group
 
@@ -46,3 +48,15 @@ Total clean-up potential **~1.6 MB** of static resources. None are load-bearing 
 - [`docs/deep-dive/e/main__ui__components__sheet-dialog.md`](../e/main__ui__components__sheet-dialog.md) — sheet-dialog id consumer (`#sheetwidth`, `#sheetheight`, etc.).
 - [`docs/deep-dive/a/main.js.md`](../a/main.js.md) §3.3 — opens the notification BrowserWindow that loads G2's `notification.html`.
 - [`docs/deep-dive/a/main__notification-service.js.md`](../a/main__notification-service.js.md) — payload builder for G2.
+
+## Acceptance criteria status (DEE-11 / DEE-39)
+
+| Criterion | Status | Where |
+|---|---|---|
+| Every file in scope has a complete write-up under `docs/deep-dive/g/<file>.md` | ✅ | The four files listed in §"Files in this group" above. |
+| Group cover sheet (`README.md`) exists | ✅ | This file. |
+| All work is committed to `chore/dee-11-iso/group-g`; not pushed, not merged | ✅ | `git log chore/dee-11-iso/group-g -- docs/deep-dive/g/`. |
+| No edits outside `docs/deep-dive/g/` | ✅ | `git diff --name-only $(git merge-base HEAD chore/bmad-method-setup) HEAD -- ':!docs/deep-dive/g/'` returns empty. |
+| Per-file template followed (purpose · public surface · IPC / side-effects · dependencies · invariants · TODOs · extension points · test coverage · cross-refs) | ✅ | Each of the four deep-dives has all sections; cross-refs verified to resolve. |
+| Line citations are valid against `HEAD` | ✅ | Spot-checked on 2026-04-26 for `main/index.html`, `main/notification.html`, `main.js`, `main/style.css`, `main/font/latolatinfonts.css`. |
+| Workspace isolation verified | ✅ | `pwd` = Paperclip-realised worktree; `git branch --show-current` = `chore/dee-11-iso/group-g`. Issue carries `executionWorkspaceSettings.mode: "isolated_workspace"` + `workspaceStrategy.type: "git_worktree"`. |
