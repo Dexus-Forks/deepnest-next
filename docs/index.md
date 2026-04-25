@@ -84,9 +84,35 @@ Scope: GitHub Actions workflows under `.github/workflows/`. See [docs/deep-dive/
 - [`.github/workflows/build_release.yml`](./deep-dive/i/.github__workflows__build_release.yml.md) — release pipeline. Triggers: `release: published`, `workflow_dispatch`. Hands off Windows codesign to `helper_scripts/sign_windows.js` (Group A).
 - [`.github/workflows/playwright.yml`](./deep-dive/i/.github__workflows__playwright.yml.md) — E2E run. Triggers: `push` / `pull_request` to `main` (path-filtered), `workflow_dispatch`.
 
+### Group B — Legacy renderer / window globals ([DEE-34](/DEE/issues/DEE-34), complete 2026-04-26)
+
+Scope: legacy renderer code outside `main/ui/` — the GA orchestrator, the hidden background placement renderer, the SVG parser, the NFP cache, and every file under `main/util/*`. Loaded into the visible / hidden Electron renderers without TypeScript compilation. See [docs/deep-dive/b/README.md](./deep-dive/b/README.md). 18 files in scope (4 core + 14 utilities); `main/util/_unused/` deliberately excluded.
+
+Core renderer modules:
+
+- [`main/deepnest.js`](./deep-dive/b/main__deepnest.js.md) — GA orchestrator. Sets `window.DeepNest` singleton; owns `start` / `stop` / `reset`; round-trips with `main/background.js` via `background-start` / `background-response` / `background-progress` / `background-stop` IPC.
+- [`main/background.js`](./deep-dive/b/main__background.js.md) — hidden-renderer worker. Receives `background-start`, runs greedy NFP placement using `Parallel` / `clipper`, returns placements through `setPlacements` then `background-response`.
+- [`main/svgparser.js`](./deep-dive/b/main__svgparser.js.md) — polygon extraction from `<svg>` documents. Sets `window.SvgParser`. Used by `ImportService` (Group D), the export line-merger, and `DeepNest.importsvg`.
+- [`main/nfpDb.ts`](./deep-dive/b/main__nfpDb.ts.md) — NFP cache layer. Compiled TS that exposes `NfpCache` to `main/background.js`.
+
+`main/util/*` (vendored + first-party):
+
+- Vendored: [`clipper.js`](./deep-dive/b/main__util__clipper.js.md), [`interact.js`](./deep-dive/b/main__util__interact.js.md), [`pathsegpolyfill.js`](./deep-dive/b/main__util__pathsegpolyfill.js.md), [`ractive.js`](./deep-dive/b/main__util__ractive.js.md), [`simplify.js`](./deep-dive/b/main__util__simplify.js.md), [`svgpanzoom.js`](./deep-dive/b/main__util__svgpanzoom.js.md) — upstream URLs and pinned versions documented per file.
+- First-party: [`parallel.js`](./deep-dive/b/main__util__parallel.js.md), [`geometryutil.js`](./deep-dive/b/main__util__geometryutil.js.md), [`domparser.ts`](./deep-dive/b/main__util__domparser.ts.md), [`eval.ts`](./deep-dive/b/main__util__eval.ts.md), [`HullPolygon.ts`](./deep-dive/b/main__util__HullPolygon.ts.md), [`matrix.ts`](./deep-dive/b/main__util__matrix.ts.md), [`point.ts`](./deep-dive/b/main__util__point.ts.md), [`vector.ts`](./deep-dive/b/main__util__vector.ts.md).
+
+### Group D — UI services ([DEE-36](/DEE/issues/DEE-36), complete 2026-04-26)
+
+Scope: the five renderer-side services in `main/ui/services/`. See [docs/deep-dive/d/README.md](./deep-dive/d/README.md). Inventory matches DEE-11 exactly — no scope corrections; all five constructor-DI-shaped, all unit-testless today.
+
+- [`main/ui/services/config.service.ts`](./deep-dive/d/main__ui__services__config.service.md) — owns persisted `UIConfig`. Round-trips via `read-config` / `write-config` IPC; source-of-truth bound to `data-config` form elements in `main/index.html`.
+- [`main/ui/services/preset.service.ts`](./deep-dive/d/main__ui__services__preset.service.md) — wraps the `load-presets` / `save-preset` / `delete-preset` IPC trio. Caches the preset map; migrates legacy `convert.deepnest.io` URLs at read time.
+- [`main/ui/services/import.service.ts`](./deep-dive/d/main__ui__services__import.service.md) — SVG / EPS / PS / DXF / DWG ingestion. SVG goes direct; non-SVG round-trips through the conversion server before hand-off to `DeepNest.importsvg(...)`.
+- [`main/ui/services/export.service.ts`](./deep-dive/d/main__ui__services__export.service.md) — SVG / DXF / JSON export of nesting results. Builds the SVG document in DOM, optionally line-merges via `SvgParser`, optionally POSTs to the conversion server for DXF.
+- [`main/ui/services/nesting.service.ts`](./deep-dive/d/main__ui__services__nesting.service.md) — UI ↔ GA / NFP background bridge. Owns view-switch, NFP cache wipe, `background-stop` IPC, and the result-focus heuristic.
+
 ### Pending groups
 
-Groups B, D, H, J — in progress on rev-3 isolated children ([DEE-34](/DEE/issues/DEE-34), [DEE-36](/DEE/issues/DEE-36), [DEE-40](/DEE/issues/DEE-40), [DEE-42](/DEE/issues/DEE-42)). Each lands here as its child completes and its `chore/dee-11-iso/group-<x>` branch is merged into the integration branch.
+Groups H, J — in progress on rev-3 isolated children ([DEE-40](/DEE/issues/DEE-40), [DEE-42](/DEE/issues/DEE-42)). Each lands here as its child completes and its `chore/dee-11-iso/group-<x>` branch is merged into the integration branch.
 
 ## Existing Documentation (already in repo)
 
