@@ -9,7 +9,7 @@
 // §3.3 test-latency rule). See _bmad-output/planning-artifacts/architecture.md
 // §4 "FR-03" and _bmad-output/project-context.md §12 (testing rules).
 
-import { readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { readFileSync, readdirSync, readlinkSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -22,10 +22,13 @@ const MANIFEST_NAME = ".fixture-manifest.json";
 const MANIFEST_PATH = path.join(ASSETS_DIR, MANIFEST_NAME);
 const SPEC_PATH = path.join(REPO_ROOT, "tests", "index.spec.ts");
 
+// Exit codes: 0 OK · 1 drift · 2 spec-format/missing · 3 usage · 4 corrupt manifest · 5 symlink
 const EXIT_OK = 0;
 const EXIT_DRIFT = 1;
 const EXIT_SPEC_FORMAT = 2;
 const EXIT_USAGE = 3;
+const EXIT_CORRUPT_MANIFEST = 4;
+const EXIT_SYMLINK = 5;
 
 const DOCS_POINTER =
   'docs/development-guide.md §"Re-deriving the test-fixture literals after a `tests/assets/` change"';
@@ -37,6 +40,7 @@ function listFixtures() {
     for (const entry of entries) {
       const abs = path.join(dir, entry.name);
       const relPath = rel ? `${rel}/${entry.name}` : entry.name;
+      if (entry.isSymbolicLink()) failSymlink(`tests/assets/${relPath}`, abs);
       if (entry.isDirectory()) {
         walk(abs, relPath);
       } else if (entry.isFile() && entry.name !== MANIFEST_NAME) {
@@ -55,7 +59,13 @@ function listFixtures() {
 }
 
 function readSpecLiterals() {
-  const src = readFileSync(SPEC_PATH, "utf8");
+  let src;
+  try {
+    src = readFileSync(SPEC_PATH, "utf8");
+  } catch (err) {
+    if (err.code === "ENOENT") failSpecMissing();
+    throw err;
+  }
 
   // #importsnav li count — anchored on the stable selector identifier.
   // Lazy `.*?` walks past the locator's nested ")" up to ".toHaveCount(N)".
@@ -71,7 +81,12 @@ function readSpecLiterals() {
   const placeMatch = src.match(placeRe);
 
   if (!navMatch || !placeMatch) {
-    return { ok: false, navMatch: !!navMatch, placeMatch: !!placeMatch };
+    return {
+      ok: false,
+      navMatch: !!navMatch,
+      placeMatch: !!placeMatch,
+      lineCount: src.split("\n").length,
+    };
   }
   return {
     ok: true,
@@ -82,12 +97,17 @@ function readSpecLiterals() {
 }
 
 function readManifest() {
+  let raw;
   try {
-    const raw = readFileSync(MANIFEST_PATH, "utf8");
-    return JSON.parse(raw);
+    raw = readFileSync(MANIFEST_PATH, "utf8");
   } catch (err) {
     if (err.code === "ENOENT") return null;
     throw err;
+  }
+  try {
+    return JSON.parse(raw);
+  } catch (err) {
+    failCorruptManifest(err, raw);
   }
 }
 
@@ -165,12 +185,44 @@ function failSpecFormat(literals) {
     `[test:fixtures:check] FAIL — could not extract spec literals from ${rel}.\n` +
       `  importsnav regex matched: ${literals.navMatch}\n` +
       `  placements regex matched: ${literals.placeMatch}\n` +
-      `  Searched the entire file. Expected patterns:\n` +
+      `  Searched lines 1..${literals.lineCount}. Expected patterns:\n` +
       `    expect(...#importsnav li...).toHaveCount(N)\n` +
       `    .toHaveText|toContainText("N/M")\n` +
       `  See ${DOCS_POINTER} for the re-derivation procedure.\n`,
   );
   process.exit(EXIT_SPEC_FORMAT);
+}
+
+function failSpecMissing() {
+  const rel = path.relative(REPO_ROOT, SPEC_PATH);
+  process.stderr.write(
+    `[test:fixtures:check] FAIL — spec file not found at ${rel}.\n` +
+      `  Restore tests/index.spec.ts before \`npm run test:fixtures:check\`. See ${DOCS_POINTER}.\n`,
+  );
+  process.exit(EXIT_SPEC_FORMAT);
+}
+
+function failCorruptManifest(parseErr, raw) {
+  const rel = path.relative(REPO_ROOT, MANIFEST_PATH);
+  const m = /position\s+(\d+)/i.exec(parseErr.message);
+  const line = m ? String(raw.slice(0, Number(m[1])).split("\n").length) : "?";
+  process.stderr.write(
+    `[test:fixtures:check] FAIL — corrupt manifest at ${rel}.\n` +
+      `  JSON parse error near line ${line}: ${parseErr.message}\n` +
+      `  Re-seed via \`npm run test:fixtures:update\` after restoring the file. See ${DOCS_POINTER}.\n`,
+  );
+  process.exit(EXIT_CORRUPT_MANIFEST);
+}
+
+function failSymlink(relPath, abs) {
+  let target = "<unresolved>";
+  try { target = readlinkSync(abs); } catch { /* keep placeholder */ }
+  process.stderr.write(
+    `[test:fixtures:check] FAIL — symbolic link rejected at ${relPath} -> ${target}.\n` +
+      `  Symlinks could impersonate fixtures from outside tests/assets/; replace with a regular file.\n` +
+      `  See ${DOCS_POINTER}.\n`,
+  );
+  process.exit(EXIT_SYMLINK);
 }
 
 function modeCheck() {
