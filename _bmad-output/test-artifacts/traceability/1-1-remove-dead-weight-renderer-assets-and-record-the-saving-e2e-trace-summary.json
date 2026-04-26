@@ -1,0 +1,107 @@
+{
+  "schema_version": "0.1.0",
+  "snapshot_at": "2026-04-26T00:00:00Z",
+  "repo": "deepnest-next",
+  "collection_mode": "contract_static",
+  "collection_status": "COLLECTED",
+  "inventory_basis": "acceptance_criteria",
+  "gate_basis": "priority_thresholds",
+  "source_sha": "8c3afa8f02c8cb74c1056691172f5b858ec8df0e",
+  "target": {
+    "type": "story",
+    "id": "1.1",
+    "label": "Story 1.1 — Remove dead-weight renderer assets and record the saving",
+    "slug": "1-1-remove-dead-weight-renderer-assets-and-record-the-saving",
+    "pr_url": "https://github.com/Dexus-Forks/deepnest-next/pull/8"
+  },
+  "decision_mode": "deterministic",
+  "evaluator": "Murat (TEA)",
+  "confidence": "high",
+  "oracle": {
+    "resolution_mode": "formal_requirements",
+    "confidence": "high",
+    "sources": [
+      "_bmad-output/implementation-artifacts/1-1-remove-dead-weight-renderer-assets-and-record-the-saving.md (AC-01.1..AC-01.9)",
+      "_bmad-output/planning-artifacts/prd.md §FR-01 (AC-01.1..AC-01.5) + §NFR-01 + §NFR-03",
+      "_bmad-output/planning-artifacts/architecture.md §3.1 + §4 (FR-01 a/b/c/d)",
+      "_bmad-output/planning-artifacts/nfr01-baseline.json (rolling_mean_ms 16746.6, ±20% [13397, 20096] ms)"
+    ],
+    "external_pointer_status": "not_used",
+    "synthetic": false
+  },
+  "coverage": {
+    "inventory": { "covered": 9, "total": 9, "pct": 100 },
+    "priority_breakdown": {
+      "P0": { "total": 4, "covered": 4, "pct": 100 },
+      "P1": { "total": 4, "covered": 4, "pct": 100 },
+      "P2": { "total": 0, "covered": 0, "pct": null },
+      "P3": { "total": 1, "covered": 1, "pct": 100 }
+    },
+    "by_level": {
+      "e2e": { "tests": 1, "criteria_covered": 1 },
+      "api": { "tests": 0, "criteria_covered": 0 },
+      "component": { "tests": 0, "criteria_covered": 0 },
+      "unit": { "tests": 0, "criteria_covered": 0 },
+      "other": {
+        "tests": 14,
+        "criteria_covered": 8,
+        "note": "doc-verification (git diff / grep / file-content / Board audit) — deterministic from merge SHA + Round-1 Board verdict"
+      }
+    }
+  },
+  "tests": {
+    "files": 4,
+    "cases": 15,
+    "skipped_cases": 0,
+    "fixme_cases": 0,
+    "pending_cases": 0
+  },
+  "risk_summary": {
+    "critical_open": 0,
+    "high_open": 0,
+    "medium_open": 0,
+    "low_open": 0,
+    "carry_forward": 1
+  },
+  "heuristics": {
+    "endpoint_gaps": 0,
+    "auth_negative_path_status": "not_applicable",
+    "error_path_status": "not_applicable",
+    "ui_journey_status": "not_applicable",
+    "ui_state_status": "not_applicable"
+  },
+  "blockers": [],
+  "recommendations": [
+    {
+      "priority": "LOW",
+      "action": "Carry-forward TEA-backlog item #1: Playwright runtime assertion that LatoLatinWeb / LatoLatinWebLight @font-face URLs resolve (Hermes P3 / Sage routing)",
+      "requirements": ["AC-01.3", "AC-01.8"]
+    },
+    {
+      "priority": "LOW",
+      "action": "Board follow-up #1 (governance): project-context.md §9 webfonts-format invariant + optional ADR-010 — PM/architect-owned, outside TEA scope",
+      "requirements": []
+    }
+  ],
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability/1-1-remove-dead-weight-renderer-assets-and-record-the-saving-trace.md",
+    "trace_matrix_path": "_bmad-output/test-artifacts/traceability/1-1-remove-dead-weight-renderer-assets-and-record-the-saving-trace.matrix.json",
+    "gate_decision_path": "_bmad-output/test-artifacts/traceability/1-1-remove-dead-weight-renderer-assets-and-record-the-saving-gate-decision.json",
+    "trace_report_url": "",
+    "artifact_url": "",
+    "journey_evidence_url": "https://github.com/Dexus-Forks/deepnest-next/actions/runs/24956110881"
+  },
+  "gate_status": "PASS",
+  "gate_criteria": {
+    "p0_coverage_required": "100%",
+    "p0_coverage_actual": "100%",
+    "p0_status": "MET",
+    "p1_coverage_target": "90%",
+    "p1_coverage_minimum": "80%",
+    "p1_coverage_actual": "100%",
+    "p1_status": "MET",
+    "overall_coverage_minimum": "80%",
+    "overall_coverage_actual": "100%",
+    "overall_status": "MET"
+  }
+}
