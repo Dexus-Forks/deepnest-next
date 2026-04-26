@@ -266,7 +266,7 @@ Electron Main Process  (main.js)
 **Observed Copilot bot behaviour on this repo (DEE-115 dogfood, 9-PR audit + multi-cycle review on the SOP PR itself + DEE-114 confirmation):**
 
 - `copilot-pull-request-reviewer[bot]` (numeric user id `175728472`) **never emits `state == "APPROVED"` organically** — it only ever submits `COMMENTED` reviews, even when all threads are resolved and there is nothing further to flag. PRs #21–#30 + #32 + #33 all confirm. DEE-114's `Copilot review` status check accepts **any** review state for this reason.
-- Copilot only re-reviews on **explicit trigger** (`@copilot review` PR comment) or on its own **"Potential fix for pull request finding" auto-push commits** — it does NOT auto-re-review on every push. Plan re-trigger explicitly after pushing fixes.
+- Copilot only re-reviews on **explicit trigger** or on its own **"Potential fix for pull request finding" auto-push commits** — it does NOT auto-re-review on every push. The reliable re-trigger is `gh pr edit <n> --repo <owner>/<repo> --add-reviewer @copilot` (a PR comment containing `@copilot review` is unreliable; the bot may or may not respond). Plan re-trigger explicitly after pushing fixes.
 - Copilot may auto-push 1+ "Potential fix for pull request finding" commits to the PR branch in response to its own findings. These are co-authored "Copilot Autofix powered by AI" commits and may add new threads. Treat them like any other Copilot threads: validate → fix-or-accept → reply → resolve.
 
 These behaviours shape the merge gate below (step 5). They are not aspirational — they are what the bot actually does, confirmed by both this SOP's dogfood audit and DEE-114's parallel investigation.
@@ -276,7 +276,7 @@ These behaviours shape the merge gate below (step 5). They are not aspirational 
 3. **Stall handling.** If Copilot has not posted **its first review** within ~30 min, post a stall comment on the PR **and** the parent issue, and escalate to the issue owner. Do not merge while waiting. (The 30-min threshold applies only to the *first* review — subsequent re-reviews require an explicit `@copilot review` trigger and are not on the same SLA.)
 4. **Walk every Copilot comment thread.** Per the existing PR review-thread workflow (`validate → fix → reply → resolve`):
    - Validate the finding (VALID / INVALID / DEFER).
-   - For VALID: push the fix on the same branch. After pushing fixes, post a `@copilot review` PR comment to explicitly request a re-review (Copilot does NOT re-review on push alone).
+   - For VALID: push the fix on the same branch. After pushing fixes, **re-trigger Copilot explicitly** with `gh pr edit <n> --repo <owner>/<repo> --add-reviewer @copilot` (Copilot does NOT re-review on push alone, and a PR comment with `@copilot review` is unreliable — `--add-reviewer` is the canonical, repeatable trigger).
    - Reply on the specific thread (not just a top-level comment) citing the fix commit.
    - Resolve the thread when no further discussion is needed (`resolveReviewThread` GraphQL mutation or the "Resolve conversation" button).
    - For INVALID / DEFER: reply with the reasoning (cite source / out-of-scope rationale). Resolve the thread only on **one** of (a) reviewer acknowledgement (e.g. Copilot replies confirming, or a follow-up Copilot review no longer raises the point), (b) a 24 h SLA from the reply with no counter-response, or (c) a documented DEFER follow-up issue id linked in the resolving comment. Do not resolve INVALID/DEFER threads silently — the resolving comment must name the basis (a/b/c). This rule prevents the merge gate (step 5) from deadlocking on standing INVALID threads.
@@ -295,8 +295,12 @@ These behaviours shape the merge gate below (step 5). They are not aspirational 
      gh pr view <n> --json reviews \
        --jq '[.reviews[] | select(.author.login == "copilot-pull-request-reviewer[bot]") | .submittedAt] | max'
 
-     # (b) Most recent Copilot review-comment timestamp (inline diff review comments)
-     gh api repos/<owner>/<repo>/pulls/<n>/comments \
+     # (b) Most recent Copilot review-comment timestamp (inline diff review
+     # comments). MUST use --paginate (and -F per_page=100); without it
+     # `gh api` returns only the first page (default 30) and on busy PRs
+     # this can miss newer Copilot comments → false-positive on the quiet
+     # window → premature merge.
+     gh api --paginate -F per_page=100 repos/<owner>/<repo>/pulls/<n>/comments \
        --jq '[.[] | select(.user.login == "copilot-pull-request-reviewer[bot]") | .updated_at] | max'
 
      # (c) Most recent Copilot-authored "Potential fix" auto-push commit
@@ -311,6 +315,17 @@ These behaviours shape the merge gate below (step 5). They are not aspirational 
 
    **Review state is NOT checked.** `copilot-pull-request-reviewer[bot]` returns `COMMENTED` even when satisfied (see "Observed Copilot bot behaviour" above). DEE-114 explicitly accepts any review state for the same reason. Requiring `state == "APPROVED"` would be an unattainable gate (this was the round-2 bug surfaced by DEE-115's own dogfood and corrected here).
 6. **No carve-outs.** Auto-merge for BMad / planning-artifact PRs spares **human** approval only — it does NOT skip the Copilot wait + revise loop. TEA closer PRs follow the same gate (see §19).
+7. **Termination — when to stop the revise loop and merge.** `copilot-pull-request-reviewer[bot]` never says "ok" (it only ever returns `COMMENTED`) and tends to raise new — usually lower-stakes — findings on each round, including on its own "Potential fix" auto-push commits. Without an explicit termination criterion the loop runs indefinitely. Stop and merge when **any** of the following holds (each row's basis must be cited in the merge commit message or PR comment):
+
+   | # | Termination basis | When it applies | Action |
+   |---|-------------------|-----------------|--------|
+   | 1 | **Convergence** | Copilot's latest review on the PR head adds **zero new threads** AND all prior threads are resolved AND the 10-min quiet window has elapsed. | Merge. |
+   | 2 | **Substantive-fix exhaustion (round cap)** | After **5 review rounds** (count = number of distinct Copilot reviews on the PR), if the only remaining Copilot findings are stylistic / wording / cross-reference polish (no logic, no broken commands, no factual errors). | DEFER all remaining Copilot threads to a single follow-up issue (`<source-prefix>-<n> Copilot SOP polish backlog from PR #<n>`), name the follow-up issue id in each resolving comment, then merge. The follow-up issue is a real issue — assigned to the PR author, prioritised below sprint work — not a discard. |
+   | 3 | **Meta-recursion** | Copilot's findings are exclusively on the §15 SOP's own wording about the Copilot loop (i.e., bikeshedding the rules of bikeshedding). | Apply the DEFER pattern from (2). |
+
+   Past data point: PR #34 (the SOP-introducing PR) saw substantive findings on rounds 1, 3, 5 and had hit pure-polish on round 6+. The 5-round cap is calibrated to that data; revisit if a future PR demonstrates substantive findings beyond round 5.
+
+   **Hard floor:** termination criterion (2) and (3) require the DEFER follow-up issue to be *opened* before merge — not "I'll file it later". The follow-up issue id must appear in the merge gate's resolving comment for each DEFERred thread (per step 4). This prevents the round cap from becoming a quiet escape hatch.
 
 **Anti-pattern.** Direct-merging while the DEE-114 `Copilot review` status check on the PR head SHA is anything other than `success` (i.e., Copilot has not yet reviewed the current head SHA), or while any Copilot review thread is still unresolved, is a policy violation — even when the §16 anti-pattern checklist is fully ticked. The checklist is necessary, not sufficient.
 
@@ -432,4 +447,4 @@ The Phase-5 SOP set is indexed at `_bmad-output/bmad-phase-5-index.md` (see Refe
 - Update when the technology stack, IPC contract, or composition pattern changes — those three sections are highest-value.
 - Re-derive when DEE-44's downstream chain (CP / VP / CA / CE) lands material new constraints.
 
-_Last updated: 2026-04-26 (Wes, DEE-115 follow-up — Path A revision: §15 step 5 NO LONGER requires `state == APPROVED` from Copilot since `copilot-pull-request-reviewer[bot]` only ever emits `COMMENTED` on this repo (DEE-115 dogfood + DEE-114 confirmation across PRs #18–#33). New gate: DEE-114 `Copilot review` server-enforced status check + all threads resolved + 10-min quiet window. Adds explicit `@copilot review` re-trigger requirement (Copilot does not re-review on push alone) and "Potential fix" auto-push handling. Now references DEE-114 (landed) instead of as planned. Prior: Wes, DEE-115 — added §15 SOP + §19 closer-PR clause; Murat, DEE-106 — Phase-5 SOP for TEA closer PR pre-flight + §16 #17 force-push veto.)._
+_Last updated: 2026-04-26 (Wes, DEE-115 follow-up round-7 — added §15 step 7 "Termination" clause (3 conditions: convergence / 5-round substantive-fix exhaustion with DEFER follow-up issue / meta-recursion); corrected step 4 + "Observed Copilot bot behaviour" to use `gh pr edit <n> --add-reviewer @copilot` as the canonical re-trigger (per local-board PR #34 thread); added `--paginate -F per_page=100` to step 5(c) quiet-window comments check (per Copilot round-7 thread, prevents false-positive on PRs with many comments). Prior rounds: Path A — drop unattainable `state == APPROVED` (rounds 1–6); Wes round-1 — added §15 SOP + §19 closer-PR clause; Murat, DEE-106 — Phase-5 SOP for TEA closer PR pre-flight + §16 #17 force-push veto.)._
