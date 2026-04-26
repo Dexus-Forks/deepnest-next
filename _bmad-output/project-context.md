@@ -282,9 +282,32 @@ These behaviours shape the merge gate below (step 5). They are not aspirational 
    - For INVALID / DEFER: reply with the reasoning (cite source / out-of-scope rationale). Resolve the thread only on **one** of (a) reviewer acknowledgement (e.g. Copilot replies confirming, or a follow-up Copilot review no longer raises the point), (b) a 24 h SLA from the reply with no counter-response, or (c) a documented DEFER follow-up issue id linked in the resolving comment. Do not resolve INVALID/DEFER threads silently — the resolving comment must name the basis (a/b/c). This rule prevents the merge gate (step 5) from deadlocking on standing INVALID threads.
    - For **Copilot "Potential fix" auto-push commits** that landed on the branch: review the diff like any other commit; if acceptable, leave it; if it conflicts with intent, revert it in a follow-up commit and reply on the originating thread explaining why. Either way, the resulting threads must reach resolved per the rules above.
 5. **Merge gate.** Merge is permitted **only** when **all three** conditions hold:
-   - **DEE-114 `Copilot review` status check is `success`.** This is the canonical, server-enforced gate (`.github/workflows/copilot-review-gate.yml` re-pends on push and flips to success once Copilot posts a review on the current head SHA, **any state**). Verify via `gh pr view <n> --json statusCheckRollup --jq '.statusCheckRollup[] | select(.name == "Copilot review") | {name, status, conclusion}'` and confirm the result shows `conclusion: "SUCCESS"` (or equivalent green state in the CLI output). The branch-protection rule blocks the merge button until this is green; do not bypass via merge-queue or admin override.
+   - **DEE-114 `Copilot review` status check is `success`.** This is the canonical, server-enforced gate (`.github/workflows/copilot-review-gate.yml` re-pends on push and flips to success once Copilot posts a review on the current head SHA, **any state**). Verify via the dual-shape filter (commit-status checks surface as `state` not `conclusion` in some `statusCheckRollup` shapes, so accept either):
+     ```
+     gh pr view <n> --json statusCheckRollup \
+       --jq '.statusCheckRollup[] | select(.name == "Copilot review" and (.conclusion == "SUCCESS" or .state == "SUCCESS"))'
+     ```
+     Non-empty output = green. The branch-protection rule blocks the merge button until this is green; do not bypass via merge-queue or admin override.
    - **Every Copilot review thread is resolved** (per step 4 — including the explicit basis for any INVALID/DEFER resolutions, and including any threads added by Copilot "Potential fix" auto-pushes). DEE-114's status check does NOT enforce conversation-resolution (GitHub branch protection has no required-resolution mode for bot reviewers); this remains agent-side discipline.
-   - **Quiet window: no new Copilot comment, review, or auto-push commit in the last 10 min.** Guards against merging mid-stream while Copilot is still posting follow-up findings or "Potential fix" commits. Verify with the timestamp of the most recent Copilot review, comment, or Copilot-authored commit on the PR branch (e.g. `gh pr view <n> --json commits --jq '.commits[] | select(.authors[].login == "copilot-pull-request-reviewer[bot]") | .committedDate'`).
+   - **Quiet window: no new Copilot comment, review, or auto-push commit in the last 10 min.** Guards against merging mid-stream while Copilot is still posting follow-up findings or "Potential fix" commits. Verify all three sources — the latest of the three timestamps must be at least 10 min old:
+     ```bash
+     # (a) Most recent Copilot review timestamp
+     gh pr view <n> --json reviews \
+       --jq '[.reviews[] | select(.author.login == "copilot-pull-request-reviewer[bot]") | .submittedAt] | max'
+
+     # (b) Most recent Copilot review-comment timestamp (per-thread + top-level)
+     gh api repos/<owner>/<repo>/pulls/<n>/comments \
+       --jq '[.[] | select(.user.login == "copilot-pull-request-reviewer[bot]") | .updated_at] | max'
+
+     # (c) Most recent Copilot-authored "Potential fix" auto-push commit
+     # (these are co-authored "Copilot Autofix powered by AI" — the PR author
+     # field on those commits is the human/agent that pushed the branch, NOT
+     # `copilot-pull-request-reviewer[bot]`. Match by commit-message prefix
+     # since the commits are stable in shape: "Potential fix for pull request finding".)
+     gh pr view <n> --json commits \
+       --jq '[.commits[] | select(.messageHeadline | startswith("Potential fix for pull request finding")) | .committedDate] | max'
+     ```
+     Take the max of the three; gate is satisfied only when `now - max ≥ 10 min`.
 
    **Review state is NOT checked.** `copilot-pull-request-reviewer[bot]` returns `COMMENTED` even when satisfied (see "Observed Copilot bot behaviour" above). DEE-114 explicitly accepts any review state for the same reason. Requiring `state == "APPROVED"` would be an unattainable gate (this was the round-2 bug surfaced by DEE-115's own dogfood and corrected here).
 6. **No carve-outs.** Auto-merge for BMad / planning-artifact PRs spares **human** approval only — it does NOT skip the Copilot wait + revise loop. TEA closer PRs follow the same gate (see §19).
@@ -294,7 +317,7 @@ These behaviours shape the merge gate below (step 5). They are not aspirational 
 **Cross-references.**
 - Repo-side enforcement: `.github/branch-protection.json` (`Copilot review` required status check) + `.github/workflows/copilot-review-gate.yml` (status publisher) — landed as **DEE-114** (CTO / Cloud Dragonborn). The status check is the canonical gate; everything in step 5 above is the agent-side pre-flight discipline that mirrors it.
 - Per-thread workflow detail: see the auto-memory entry "PR review-thread workflow (validate → fix → reply → resolve)".
-- Copilot bot behaviour audit: see the auto-memory entry "Copilot PR Reviewer never APPROVES on this repo" (added by DEE-115 dogfood).
+- Copilot bot behaviour audit: see the **"Observed Copilot bot behaviour"** subsection at the top of this §15 SOP (the in-repo, doc-resolvable evidence; agent-side auto-memory entries are not committed to this repo and should not be cited from here).
 - §19 (Phase-5 SOP) — closer PRs follow this same gate.
 
 ## 16. Critical anti-patterns — DO NOT do these
