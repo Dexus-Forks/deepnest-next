@@ -257,6 +257,38 @@ Electron Main Process  (main.js)
 
 - Read `docs/component-inventory.md`. Use the factory-function pattern (`createX(deps)` in `main/ui/services/` or `main/ui/components/`) and wire in `main/ui/index.ts`. Don't expand Ractive usage beyond the existing two views (ADR-006).
 
+### PR merge gate (Copilot wait + revise)
+
+**Scope:** every PR opened against `Dexus-Forks/deepnest-next` — feature PRs, BMad / planning-artifact auto-merge PRs, and TEA Phase-5 closer PRs alike. CEO policy DEE-113: no carve-outs.
+
+**Why:** PRs #21–#28 merged with empty `reviewDecision` — Copilot review was either skipped or never landed. That destroys the review/revise feedback loop and lets broken changes ship. The §16 anti-pattern checklist alone is too narrow to substitute for substantive logic review.
+
+1. **Open the PR.** `gh pr create …` (or, for artifact PRs, after the auto-merge flip is queued).
+2. **Poll for the Copilot review.** `gh pr view <n> --json reviews,reviewDecision` — repeat until a Copilot review record from `copilot-pull-request-reviewer` appears.
+3. **Stall handling.** If Copilot has not posted within ~30 min, post a stall comment on the PR **and** the parent issue, and escalate to the issue owner. Do not merge while waiting.
+4. **Walk every Copilot comment thread.** Per the existing PR review-thread workflow (`validate → fix → reply → resolve`):
+   - Validate the finding (VALID / INVALID / DEFER).
+   - For VALID: push the fix on the same branch.
+   - Reply on the specific thread (not just a top-level comment) citing the fix commit.
+   - Resolve the thread when no further discussion is needed (`resolveReviewThread` GraphQL mutation or the "Resolve conversation" button).
+   - For INVALID / DEFER: reply with the reasoning (cite source / out-of-scope rationale). Resolve the thread only on **one** of (a) reviewer acknowledgement (e.g. Copilot replies confirming, or a follow-up Copilot review no longer raises the point), (b) a 24 h SLA from the reply with no counter-response, or (c) a documented DEFER follow-up issue id linked in the resolving comment. Do not resolve INVALID/DEFER threads silently — the resolving comment must name the basis (a/b/c). This rule prevents the merge gate (step 5) from deadlocking on standing INVALID threads.
+5. **Merge gate.** Merge is permitted **only** when **both** conditions hold:
+   - **Copilot-authored APPROVED review.** Use an explicit author filter — the PR-level `reviewDecision` rollup is NOT Copilot-attributable on its own (it can be APPROVED via a human review and is `""` when no required reviewer set is configured). Until DEE-114 branch protection lands a Copilot-required rule, the canonical check is:
+     ```
+     gh pr view <n> --json reviews \
+       --jq '[.reviews[] | select(.author.login == "copilot-pull-request-reviewer")] | last | .state? == "APPROVED"'
+     ```
+     This returns `true` only when the **latest** review by `copilot-pull-request-reviewer` has `state == "APPROVED"`. Once DEE-114 lands and `reviewDecision` becomes Copilot-required, `reviewDecision == "APPROVED"` becomes a sufficient proxy and this filter can be relaxed.
+   - **Every Copilot review thread is resolved** (per step 4 — including the explicit basis for any INVALID/DEFER resolutions).
+6. **No carve-outs.** Auto-merge for BMad / planning-artifact PRs spares **human** approval only — it does NOT skip the Copilot wait + revise loop. TEA closer PRs follow the same gate (see §19).
+
+**Anti-pattern.** Direct-merging without a Copilot APPROVED review (or with empty `reviewDecision` and no Copilot APPROVED review on file) is a policy violation, even when the §16 anti-pattern checklist is fully ticked. The checklist is necessary, not sufficient.
+
+**Cross-references.**
+- Repo-side enforcement (planned, sibling): adding a Copilot-required clause to `.github/branch-protection.json` is tracked as **DEE-114** (owner CTO / Cloud Dragonborn) — **not yet enforced** (the current ruleset has `required_approving_review_count = 0` and does not require conversation resolution). Until DEE-114 lands, the merge gate above is agent-side discipline only; the explicit `reviews[]` author filter in step 5 is what makes the check reliable.
+- Per-thread workflow detail: see the auto-memory entry "PR review-thread workflow (validate → fix → reply → resolve)".
+- §19 (Phase-5 SOP) — closer PRs follow this same gate.
+
 ## 16. Critical anti-patterns — DO NOT do these
 
 1. **Do NOT** add a new global on `window` (only the four declared in `index.d.ts` are sanctioned — ADR-005).
@@ -275,6 +307,7 @@ Electron Main Process  (main.js)
 14. **Do NOT** assume the Windows `clean` / `clean-all` scripts work on Linux/macOS — they use `rmdir /s /q`. Use `rm -rf` manually.
 15. **Do NOT** remove `**/*.js` from the ESLint global ignore without a per-file migration plan.
 16. **Do NOT** add a new spinner glyph; reuse `spin.svg`.
+17. **Do NOT** force-push a closer PR with a no-op diff after `main` has advanced past its base — close the local branch as superseded instead (see §19).
 
 ## 17. Brownfield caveats (what AI agents repeatedly trip on)
 
@@ -297,6 +330,44 @@ These are **not blockers** for the GPC → CP → VP → CA → CE chain, but do
 6. **Permissive renderer security** (ADR-004): `nodeIntegration: true` + `contextIsolation: false` + `enableRemoteModule: true` is intentional but every renderer entry point would need to change to harden — flag for any new feature that loads untrusted content.
 7. **Re-skin pipeline for `icon.{icns,ico}`**: no committed source SVG; re-skinning is out-of-tree.
 
+## 19. bmad Phase-5 SOP — TEA closer PR pre-flight (rebase before opening)
+
+**Scope:** TEA agents (Murat, deputies) opening a Phase-5 closer PR (`tea/*` branch with traceability artefacts, gate decision, NFR evidence, sprint-status flips, or post-merge review-board reports).
+
+> **Copilot wait + revise applies (no Phase-5 carve-out).** TEA closer PRs are NOT exempt from §15 "PR merge gate (Copilot wait + revise)". After the pre-flight rebase + `gh pr create`, the closer PR follows the same Copilot wait → walk threads → resolve → merge-only-on-APPROVED gate as feature PRs and BMad/artifact auto-merge PRs (CEO policy DEE-113). The "auto-merge convenience" for closer PRs spares human approval, not the Copilot review.
+
+**Why this exists.** Phase-5 wakes can run >1 merge cycle. PRs opened against a stale `main` HEAD go DIRTY when sibling work lands first (Story 2.2 collision: `tea/DEE-101-story-2-2-trace` vs merged PR #26 — see `_bmad-output/bmad-phase-5-index.md` and DEE-102 / DEE-106). The pre-flight makes the rebase a deterministic step instead of a manual recovery.
+
+### Pre-flight (mandatory before `gh pr create`)
+
+1. `git fetch origin main` — refresh the merge base.
+2. `git rebase origin/main` — replay the closer commits on the latest main.
+3. Resolve conflicts:
+   - **Substantive conflict** (real merge of work): resolve in-place, re-run the verification commands implied by the dispatching story's TASK / acceptance criteria (e.g. `npm test`, `bmad-testarch-trace` re-derive), then continue the rebase.
+   - **Add/add on the same artefact path** (e.g. another wake already merged the same trace bundle): if the rebase reveals that the canonical artefact already landed in `main`, **close the local branch as superseded — do NOT force-push a no-op PR**. Document the supersession in the dispatching issue's comment thread with the merged PR number.
+
+### Superseded-close branch (when the rebase reveals redundant work)
+
+1. `git rebase --skip` past the redundant commit(s) until `git status` is clean.
+2. Confirm the canonical artefacts already live on `main`: `git log origin/main -- <artefact-paths>`.
+3. If the local branch carries no surviving commits, delete it: `git branch -D <branch>` + `git push origin --delete <branch>` (only when the branch was already pushed).
+4. If a stale PR exists, close it via `gh pr close <n> --comment "superseded by #<canonical>"` — **do not** force-push a no-op revision.
+5. Post a comment on the dispatching issue linking the canonical PR + noting the supersession; the issue moves to `done` on the canonical merge, not on the local branch.
+
+**Anti-pattern.** Force-pushing a closer PR after `main` has advanced past its base, when the local diff is already in `main`, produces a no-op PR that drowns reviewer signal and re-triggers CI for nothing. Close as superseded instead.
+
+### Cross-references
+
+- Story 2.2 collision precedent: PR #25 (closed superseded) vs PR #26 (canonical, merged at `7f75bf9`).
+- Routing-layer dedupe key (Fix #1, DEE-103) — runtime guard against twin wakes.
+- Branch protection require-up-to-date (Fix #2, DEE-105) — repo-side enforcement once configured.
+- Phase-5 dispatch filing-time guard (Fix #3, DEE-104) — prevents twin issues at filing time.
+- This SOP (Fix #4, DEE-106) — agent-side pre-flight; complements but does not replace Fixes #1–#3.
+
+### Index
+
+The Phase-5 SOP set is indexed at `_bmad-output/bmad-phase-5-index.md` (see Reference map). Add new Phase-5 SOPs there alongside this section.
+
 ---
 
 ## Reference map (when this file is not enough)
@@ -312,6 +383,7 @@ These are **not blockers** for the GPC → CP → VP → CA → CE chain, but do
 | Asset surface (icons / fonts / fixtures) | `docs/asset-inventory.md` |
 | Per-file deep-dive | `docs/deep-dive/<a..j>/` (10 groups, all complete and merged) |
 | File-level scan output (machine-readable) | `docs/project-scan-report.json` |
+| bmad Phase-5 SOP set (TEA closer PR rules) | `_bmad-output/bmad-phase-5-index.md` |
 
 ---
 
@@ -329,4 +401,4 @@ These are **not blockers** for the GPC → CP → VP → CA → CE chain, but do
 - Update when the technology stack, IPC contract, or composition pattern changes — those three sections are highest-value.
 - Re-derive when DEE-44's downstream chain (CP / VP / CA / CE) lands material new constraints.
 
-_Last updated: 2026-04-26 (Paige, DEE-46 GPC step)._
+_Last updated: 2026-04-26 (Wes, DEE-115 — added §15 "PR merge gate (Copilot wait + revise)" SOP + §19 closer-PR carve-out clarification per CEO policy DEE-113. Round-2 Copilot revision: §15 step 2/5 now requires explicit `copilot-pull-request-reviewer` author filter on `reviews[]` since `reviewDecision` rollup is not Copilot-attributable; §15 step 4 adds INVALID/DEFER resolution rule (reviewer ack / 24 h SLA / linked DEFER issue) to prevent merge-gate deadlock; cross-ref clarifies DEE-114 branch protection is planned, not enforced. Prior: Murat, DEE-106 — added §19 Phase-5 SOP for TEA closer PR pre-flight + §16 #17 force-push veto.)._
