@@ -8,12 +8,12 @@
 
 | Category | Location | Files | On-disk size | Packaged into installer? |
 |---|---|---:|---:|---|
-| App icons (visible renderer) | [`main/img/`](../main/img/) | 35 | ~66 KB | ✅ via electron-builder default file inclusion |
-| Web fonts | [`main/font/`](../main/font/) | 32 | ~2.07 MB | ✅ via electron-builder default file inclusion (subset is dead weight — see §3.2) |
+| App icons (visible renderer) | [`main/img/`](../main/img/) | 30 | ~34 KB | ✅ via electron-builder default file inclusion |
+| Web fonts | [`main/font/`](../main/font/) | 7 | ~342 KB | ✅ via electron-builder default file inclusion (live `LatoLatinWeb` + `LatoLatinWebLight`, woff/woff2 only) |
 | Test fixtures | [`tests/assets/`](../tests/assets/) | 2 | ~94 KB | ❌ excluded by `package.json` `build.files: ["!test**"]` |
 | Installer / OS app icons | repo root | 2 | ~1.13 MB | ✅ referenced by `package.json` `build.{mac.icon, win.icon, linux.icon}` |
 
-**Total committed asset footprint: ~3.36 MB across 71 files.**
+**Total committed asset footprint: ~1.59 MB across 41 files** (post-Story-1.1 / DEE-55, down from ~3.36 MB / 71 files; saving = 1.85 MB across 30 files removed — see §6 measured delta).
 
 There are no audio, video, 3D-model, sprite, texture, or shader assets — the renderer is a 2D irregular bin-packing UI with no game/AV surface. There is no localisation asset directory (`i18n/`, `locales/`, `lang/`, `translations/`); the app is English-only.
 
@@ -24,15 +24,10 @@ deepnest-next/
 ├── icon.icns                                  ← macOS app icon (electron-builder mac.icon)
 ├── icon.ico                                   ← Windows app icon (electron-builder win.icon, also linux.icon)
 ├── main/
-│   ├── img/                                   ← 35 UI icons (34 SVG + 1 PNG); 30 in use, 5 dead
+│   ├── img/                                   ← 30 UI icons (30 SVG, all in use post-Story-1.1)
 │   └── font/
 │       ├── latolatinfonts.css                 ← LIVE webfont binding (loaded by main/index.html)
-│       ├── stylesheet.css                     ← DEMO-only binding (loaded by lato-*-demo.html)
-│       ├── fonts/                             ← LatoLatin-{Bold,Regular,Light,BoldItalic} × {eot,ttf,woff,woff2}
-│       ├── lato-{hai,lig}-webfont.{eot,svg,ttf,woff}  ← demo-only specimen fonts
-│       ├── lato-{hai,lig}-demo.html           ← Font Squirrel specimen pages
-│       ├── specimen_files/                    ← demo support assets
-│       └── generator_config.txt               ← Font Squirrel generator dump
+│       └── fonts/                             ← LatoLatin-{Bold,Regular,Light} × {woff,woff2} (6 files, all live)
 └── tests/
     └── assets/
         ├── henny-penny.svg                    ← E2E test fixture (Google Fonts glyph)
@@ -43,9 +38,9 @@ deepnest-next/
 
 ### 3.1 UI icons — `main/img/`
 
-- **35 files**: 34 SVG + 1 PNG.
-- **30 in active use**, all referenced exclusively from [`main/style.css`](../main/style.css). Zero references from `main/index.html`, `main/notification.html`, `main/ui/**/*.ts`, or `main/*.js` — CSS is the single point of truth for icon binding.
-- **5 unused (cleanup candidates)**: `auth0logo.svg` (1.9 KB), `background.png` (18.8 KB), `logo.svg` (10.5 KB), `progress.svg` (0.7 KB), `stop.svg` (0.7 KB). Total dead weight: ~32 KB.
+- **30 files**, all SVG (was 35 + 1 PNG; 5 unused removed in Story 1.1 / DEE-55 — see §6).
+- **All 30 in active use**, referenced exclusively from [`main/style.css`](../main/style.css). Zero references from `main/index.html`, `main/notification.html`, `main/ui/**/*.ts`, or `main/*.js` — CSS is the single point of truth for icon binding.
+- **Removed in Story 1.1 (DEE-55)**: `auth0logo.svg`, `background.png`, `logo.svg`, `progress.svg`, `stop.svg` (~32 KB total dead weight). `background.png` was the only PNG; the directory is now SVG-only.
 - **Naming convention**: `<name>.svg` is the canonical icon; `<name>_dark.svg` is the variant for dark/coloured chrome (top-nav, `.importsnav .close`); `<name>_light.svg` is the variant for the dark `#nest` view. **`_dark` / `_light` are NOT toggled by `body.dark-mode`** — they encode the *background* the icon sits on, fixed by surface.
 - **Hottest icon**: `spin.svg` (5 CSS rules, every busy / spinner state).
 - **Variant pairs**: `account`, `close`, `shop`, `spin` use `_dark`; `credits`, `unlimited` use `_light`.
@@ -55,14 +50,14 @@ deepnest-next/
 
 ### 3.2 Web fonts — `main/font/`
 
-- **32 files** across two CSS binding files, three live LatoLatin weights (Bold / Regular / Light), one dead Italic family, two demo-only families (`latohairline`, `latolight`), four demo HTML specimen pages, generator config, and a `specimen_files/` support directory.
+- **7 files** post-Story-1.1: one live CSS binding file + three live LatoLatin weights (Bold / Regular / Light) × `{woff, woff2}` (6 files in `main/font/fonts/`).
 - **Live binding**: [`main/font/latolatinfonts.css`](../main/font/latolatinfonts.css) declares `LatoLatinWeb` (Bold + Regular merged) and `LatoLatinWebLight` (Light only). Loaded once by `<link>` in [`main/index.html`](../main/index.html).
 - **Used by**: `main/style.css:29` (`body { font: ... LatoLatinWeb }`) and `main/style.css:72` (heading rule using `LatoLatinWebLight`).
-- **Notification window does NOT use the webfont** — `main/notification.html` declares `font-family: Arial, sans-serif`.
-- **Cleanup candidates** (descending risk):
-  - **Zero risk**: `LatoLatin-BoldItalic.{eot,ttf,woff,woff2}` — no `@font-face` binding (~336 KB).
-  - **Low risk** (developer-only specimen pages): `lato-hai-webfont.*`, `lato-lig-webfont.*`, `lato-{hai,lig}-demo.html`, `stylesheet.css`, `specimen_files/`, `generator_config.txt` (~1.2 MB).
-  - **Medium risk** (Electron is Chromium-only — `.eot` is IE9, `.ttf` is fallback): drop `.eot` + `.ttf` for the three live weights, keep `.woff2` + `.woff` (~700 KB).
+- **Notification window does NOT use the webfont** — `main/notification.html:40` declares `font-family: Arial, sans-serif`. Per project-context §3, the notification window has no shared CSS with the main app; webfont coverage there would require an explicit `<link>` + `font-family` declaration that does not exist today.
+- **Removed in Story 1.1 (DEE-55)** (~1.82 MB total):
+  - **P1**: `LatoLatin-BoldItalic.{eot,ttf,woff,woff2}` (~336 KB; had no `@font-face` binding).
+  - **P3**: demo specimen kit — `lato-hai-webfont.{eot,svg,ttf,woff}`, `lato-lig-webfont.{eot,svg,ttf,woff}`, `lato-{hai,lig}-demo.html`, `stylesheet.css`, `specimen_files/` (recursive), `generator_config.txt` (~828 KB measured; below the original ~1.2 MB estimate).
+  - **P4**: `.eot` + `.ttf` for the three live weights — `LatoLatin-{Bold,Regular,Light}.{eot,ttf}` (~650 KB). Removed alongside an edit to `latolatinfonts.css` that drops the `.eot` and `.ttf` `src:` URLs (Chromium uses `woff2`/`woff` natively; Electron is Chromium-only).
 - **Family-name case sensitivity**: `LatoLatinWeb` ≠ `latolatinweb` in `main/style.css`; the cascade silently falls through to OS fallback if the casing is wrong.
 - **`LatoLatinWeb` is a *combined* family** (Bold + Regular share one name with different `font-weight`s); **`LatoLatinWebLight` is a *separate* family** (Light face only). Switching to Light requires changing `font-family`, not `font-weight`. This is a deliberate Font Squirrel pattern — do not collapse them into a single name.
 
@@ -119,19 +114,21 @@ Each invariant below is a load-bearing constraint for downstream BMad workflows 
 - the two repo-root `icon.{icns,ico}` files (via `build.{mac,win,linux}.icon`)
 - explicit exclusions: `!test**`, `!docs/**`, `!_bmad/**`, `!_bmad-output/**`, dev-only configs
 
-This means **every file under `main/img/` and `main/font/` ships in every installer** — including the 5 unused icons (~32 KB) and the demo-only / dead-weight font kit (~1.5 MB combined). A future packaging-size story can address that without touching the live binding surface (`latolatinfonts.css` + `main/style.css` lines 29 / 72).
+This means **every file under `main/img/` and `main/font/` ships in every installer**. Post-Story-1.1 (DEE-55), the dead-weight payload (5 unused icons + the Lato dead-weight kit + `.eot`/`.ttf` legacy fallbacks) has been removed; only the live `LatoLatinWeb` / `LatoLatinWebLight` woff/woff2 set + 30 in-use icons remain.
 
-## 6. Cleanup roadmap (informational, no immediate action)
+## 6. Cleanup roadmap
 
-| Priority | Item | Approx. saving | Risk | Owner cue |
+**Measured installer-size delta (Story 1.1, DEE-55): 1.85 MB** — measured on `DEE-54-ds-1-1-renderer-asset-hygiene` against pre-delete HEAD (`aa54716`) via `du -sb main/img main/font` (decimal MB, matches §1 / §8 convention). Pre-delete: 67 504 + 2 166 705 = 2 234 209 bytes. Post-delete: 35 007 + 349 883 = 384 890 bytes. Δ = 1 849 319 bytes ≈ 1.85 MB across 30 files (5 icons + 25 font files including `specimen_files/` recursive).
+
+| Priority | Item | Approx. saving | Risk | Status |
 |---|---|---:|---|---|
-| P1 | `LatoLatin-BoldItalic.{eot,ttf,woff,woff2}` | ~336 KB | Zero — no `@font-face` binding | Single-commit removal |
-| P2 | `auth0logo.svg`, `background.png`, `logo.svg`, `progress.svg`, `stop.svg` | ~32 KB | Zero — verified no CSS/HTML/JS/TS reference; also strip the entries from `docs/source-tree-analysis.md:121-123` and `docs/component-inventory.md:84-86` | Single-commit removal + doc update |
-| P3 | Demo specimen kit (`lato-hai-*`, `lato-lig-*`, `stylesheet.css`, `specimen_files/`, `generator_config.txt`) | ~1.2 MB | Low — affects developer-only HTML pages that aren't reachable from the app | Single-commit removal |
-| P4 | `.eot` + `.ttf` for the three live LatoLatin weights | ~700 KB | Medium — only safe on Electron (Chromium) target; would break legacy IE9 if anyone re-deployed the bundle to a browser | Packaging-size story |
-| P5 | Re-encode `tests/assets/*.svg` with reduced precision (SVGO 2-decimal) | ~20 KB | High — would drift GA-derived placement coordinates, may break the `54/54` assertion | Test-stability story first |
+| P1 | `LatoLatin-BoldItalic.{eot,ttf,woff,woff2}` | ~336 KB measured | Zero — no `@font-face` binding | **Removed in Story 1.1 (DEE-55)** |
+| P2 | `auth0logo.svg`, `background.png`, `logo.svg`, `progress.svg`, `stop.svg` | ~32 KB measured | Zero — no CSS/HTML/JS/TS reference; doc references stripped from `docs/source-tree-analysis.md`, `docs/component-inventory.md`, `docs/deep-dive/g/main__img.md`, `docs/deep-dive/g/README.md` | **Removed in Story 1.1 (DEE-55)** |
+| P3 | Demo specimen kit (`lato-hai-*`, `lato-lig-*`, `stylesheet.css`, `specimen_files/`, `generator_config.txt`) | ~828 KB measured (was estimated ~1.2 MB; estimate was high) | Low — affected developer-only HTML pages that aren't reachable from the app | **Removed in Story 1.1 (DEE-55)** |
+| P4 | `.eot` + `.ttf` for the three live LatoLatin weights | ~650 KB measured | Low — Electron is Chromium-only; `.eot` was IE9 fallback, `.ttf` was secondary fallback. `latolatinfonts.css` now binds woff2/woff only | **Removed in Story 1.1 (DEE-55)** |
+| P5 | Re-encode `tests/assets/*.svg` with reduced precision (SVGO 2-decimal) | ~20 KB | High — would drift GA-derived placement coordinates, may break the `54/54` assertion | Deferred — test-stability story first |
 
-Total recoverable footprint without functional change: **~2.27 MB** (P1+P2+P3+P4) of the current ~2.13 MB font + 66 KB icon footprint.
+Total realised footprint reduction: **1.85 MB** (P1+P2+P3+P4) on a pre-delete baseline of 2.23 MB across `main/img/` + `main/font/`.
 
 ## 7. Cross-references
 
@@ -147,21 +144,27 @@ Total recoverable footprint without functional change: **~2.27 MB** (P1+P2+P3+P4
 
 ## 8. Verification recap
 
-- File-system facts in §1 and §3 cross-checked on 2026-04-26 against `HEAD` of `DEE-45-dee-44-step-1-dp-document-project-bmad-document-project`:
+- File-system facts in §1 and §3 originally cross-checked on 2026-04-26 against `HEAD` of `DEE-45-dee-44-step-1-dp-document-project-bmad-document-project`:
   - `find main/img -maxdepth 1 -type f` → 35 files (34 SVG + 1 PNG).
   - `find main/font -type f` → 32 files.
   - `find tests/assets -type f` → 2 files (96 481 bytes total).
   - `du -sb main/img main/font tests/assets` → 67 504 / 2 166 705 / 96 481 bytes respectively.
   - `ls icon.icns icon.ico` → 878 877 / 307 721 bytes respectively.
+- **Re-verified on 2026-04-26 post-Story-1.1 (DEE-55) on `DEE-54-ds-1-1-renderer-asset-hygiene` against pre-delete HEAD `aa54716`**:
+  - `find main/img -maxdepth 1 -type f` → 30 files (all SVG).
+  - `find main/font -type f` → 7 files (`latolatinfonts.css` + 6 woff/woff2 in `fonts/`).
+  - `du -sb main/img main/font` → 35 007 / 349 883 bytes (Δ = 1 849 319 bytes ≈ 1.85 MB across 30 files removed).
+  - `grep -rn` over `main/`, `tests/` for any removed basename → zero hits.
+  - All `src:` URLs in `main/font/latolatinfonts.css` resolve to extant files (woff2/woff for Bold, Regular, Light).
 - "In use vs unused" claims for `main/img/` and `main/font/` are inherited verbatim from the DEE-39 deep-dive re-verification (2026-04-26 against `HEAD`); no fresh grep was rerun for this aggregate.
 - `tests/assets/` coupling claims (54/54 placement, `#importsnav li` count = 2) are inherited from the DEE-42 deep-dive (2026-04-26).
-- No build, lint, or test executed for this aggregate — pure documentation work.
+- Story 1.1 verified `npm test` regression-free against `_bmad-output/planning-artifacts/nfr01-baseline.json` (rolling_mean_ms = 16 746.6 ± 20 %); see PR description for the post-merge CI duration measurement.
 
 ## 9. Outstanding follow-ups (for downstream BMad chain)
 
 These were surfaced by the DEE-11 per-group deep-dives and re-confirmed during this DP run. They are **not blockers** for the GPC → CP → VP → CA → CE chain that follows DEE-45, but they are candidates for a future cleanup epic:
 
-1. **Asset-cleanup epic** — execute P1+P2+P3 from §6 in three independent commits (~1.57 MB total saving, all zero-or-low risk).
+1. **Asset-cleanup epic** — ~~execute P1+P2+P3 from §6~~ **Resolved** in Story 1.1 (DEE-55, MVP-1 Stream A1) as a single PR covering P1+P2+P3+P4. Measured saving 1.85 MB.
 2. **Asset-licence paperwork** — add a `tests/assets/README.md` (and update `LICENSES.md`) recording the SIL Open Font License origin of the two glyph SVGs (DEE-42 invariant #5).
 3. **Test-fixture integrity check** — add a checksum / snapshot for `tests/assets/*` to make the asset / `54/54` placement coupling explicit (DEE-42 invariant #7).
 4. **Notification-window typography unification** — if a future story wants the notification window to share the main app's typography, it must add an explicit `<link>` to `latolatinfonts.css` and an explicit `font-family` declaration; nothing inherits today.

@@ -1,6 +1,6 @@
 # Story 1.1: Remove dead-weight renderer assets and record the saving
 
-Status: ready-for-dev
+Status: done
 
 > Authored by John (PM, BMad) on 2026-04-26 via `bmad-create-story` for **MVP-1 / Stream A head**. Sprint plan reference: `_bmad-output/planning-artifacts/sprint-plan.md` §3 row A1. Epic anchor: `_bmad-output/planning-artifacts/epics.md` §"Story 1.1" lines 213–264.
 
@@ -56,70 +56,53 @@ so that **the installer is ≥ 1.57 MB lighter and the reviewer can verify the s
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 — Pre-delete grep audit (AC: #3, #9)**
-  - [ ] 1.1 Run `git grep -nE "auth0logo|background\.png|^logo\.svg|/logo\.svg|progress\.svg|stop\.svg"` over `main/`, `tests/`, `docs/` (excluding `_bmad-output/`). Capture the output for the PR description.
-  - [ ] 1.2 Run `git grep -nE "LatoLatin-BoldItalic|lato-hai-webfont|lato-lig-webfont|lato-hai-demo|lato-lig-demo|stylesheet\.css|specimen_files|generator_config"` over the same set. Capture the output.
-  - [ ] 1.3 Confirm every hit is **either** (a) a `docs/` line that AC-01.5 already targets, or (b) a self-referential demo-page link inside the dead-weight kit itself (which is also being removed). If any other live-binding hit exists, **STOP** and escalate via `bmad-correct-course` — scope expansion.
+- [x] **Task 1 — Pre-delete grep audit (AC: #3, #9)**
+  - [x] 1.1 Ran `grep -rnE` over `main/`, `tests/`, `docs/` for icon basenames. `main/` and `tests/` zero hits; `docs/` hits all in AC-01.5-targeted files (asset-inventory, source-tree-analysis, component-inventory, deep-dive/g/main__img.md, deep-dive/g/README.md).
+  - [x] 1.2 Same grep over Lato kit. `main/` hits all self-referential within deleted kit (stylesheet.css, lato-*-demo.html, generator_config.txt). Docs hits in inventory + deep-dive files.
+  - [x] 1.3 Every hit confirmed in (a) AC-01.5 doc-target or (b) self-referential dead kit. No live-binding hit elsewhere — no scope expansion.
 
-- [ ] **Task 2 — Capture pre-delete installer-size baseline (AC: #4)**
-  - [ ] 2.1 On a clean checkout of `main` at `c5ab36a` (post-DEE-53 PR #4 merge), run `du -sb main/img main/font` and record the byte counts.
-  - [ ] 2.2 Optionally: run `npx electron-builder --dir` (or `npm run dist` on a Windows runner) to measure the actual unpacked installer size pre-delete. **Optional** because the `du -sb` saving is a tight upper bound on installer reduction (electron-builder includes everything under `main/` per `docs/asset-inventory.md` §5). If the local environment cannot run `electron-builder --dir` (Linux without Wine, or missing `libboost-dev`), the `du -sb` measurement is sufficient — flag this in the PR description.
+- [x] **Task 2 — Capture pre-delete installer-size baseline (AC: #4)**
+  - [x] 2.1 Pre-delete `du -sb main/img main/font` → 67504 / 2166705 bytes (= 2.234 MB combined). Matches `docs/asset-inventory.md` §8 exactly.
+  - [x] 2.2 `electron-builder --dir` skipped — Paperclip worktree lacks Electron deps + Linux Wine. Per Task 2.2 fallback, the `du -sb` measurement is sufficient and reported in the PR description.
 
-- [ ] **Task 3 — Delete the five unused icons (AC: #1, #3)**
-  - [ ] 3.1 `git rm main/img/auth0logo.svg main/img/background.png main/img/logo.svg main/img/progress.svg main/img/stop.svg`.
-  - [ ] 3.2 Re-run the icon-side grep from 1.1 — must return **zero hits** outside `docs/asset-inventory.md`, `docs/source-tree-analysis.md`, `docs/component-inventory.md`, `docs/deep-dive/g/main__img.md`, `docs/deep-dive/g/README.md` (these are addressed in Task 6).
+- [x] **Task 3 — Delete the five unused icons (AC: #1, #3)**
+  - [x] 3.1 `git rm main/img/{auth0logo.svg,background.png,logo.svg,progress.svg,stop.svg}` — 5 files removed.
+  - [x] 3.2 Post-delete grep zero hits in `main/`, `tests/`. Docs hits limited to the AC-01.5 doc-target files (now annotated `(removed in Story 1.1, DEE-55)`).
 
-- [ ] **Task 4 — Delete the Lato dead-weight kit (AC: #2, #3)**
-  - [ ] 4.1 Delete the **mandatory** P1 + P3 subset (per `docs/asset-inventory.md` §6):
-    - P1: `main/font/LatoLatin-BoldItalic.eot`, `LatoLatin-BoldItalic.ttf`, `LatoLatin-BoldItalic.woff`, `LatoLatin-BoldItalic.woff2` (≈336 KB; zero `@font-face` binding — verified in `main/font/latolatinfonts.css`).
-    - P3: `main/font/lato-hai-webfont.{eot,svg,ttf,woff}`, `main/font/lato-lig-webfont.{eot,svg,ttf,woff}`, `main/font/lato-hai-demo.html`, `main/font/lato-lig-demo.html`, `main/font/stylesheet.css`, `main/font/specimen_files/` (recursive), `main/font/generator_config.txt` (≈1.2 MB total).
-  - [ ] 4.2 **Optional** P4 (decide based on saving target):
-    - P4: `.eot` + `.ttf` files for the three live weights (`LatoLatin-Bold.{eot,ttf}`, `LatoLatin-Regular.{eot,ttf}`, `LatoLatin-Light.{eot,ttf}`) — ≈700 KB. **Safe on Electron / Chromium** (only `woff` / `woff2` are referenced in `latolatinfonts.css`). If included: AC-01.4 saving target shifts toward the 2.27 MB upper bound and Task 5 must update `latolatinfonts.css` if (and only if) any `.eot`/`.ttf` `src:` URL still points to a removed file. **Verify before deciding** by reading `main/font/latolatinfonts.css` end-to-end.
-    - **Recommendation:** include P4 unless Task 5 finds an `.eot` / `.ttf` `src:` URL in `latolatinfonts.css` that points to a live weight — in which case skip P4 to keep the change scope tight for this Stream-A-head PR.
-  - [ ] 4.3 Verify `main/font/fonts/` (the subdirectory listed in §1 of `asset-inventory.md`) is **untouched** by this story. P1/P3/P4 scope is the top level of `main/font/` only.
-  - [ ] 4.4 Re-run the font-side grep from 1.2 — must return **zero hits** outside the docs files in Task 6.
+- [x] **Task 4 — Delete the Lato dead-weight kit (AC: #2, #3)**
+  - [x] 4.1 P1 + P3 deleted:
+    - P1: `main/font/fonts/LatoLatin-BoldItalic.{eot,ttf,woff,woff2}` (4 files; ≈338 KB measured). **Note:** story file said `main/font/LatoLatin-BoldItalic.*` (top-level); actual location is `main/font/fonts/` per `docs/asset-inventory.md` §1. Correct location used.
+    - P3: `main/font/lato-{hai,lig}-webfont.{eot,svg,ttf,woff}` (8), `lato-{hai,lig}-demo.html` (2), `stylesheet.css`, `specimen_files/` (3 files), `generator_config.txt` — 15 files total; ≈828 KB measured (lower than story's ~1.2 MB estimate).
+  - [x] 4.2 P4 **included** to meet AC-01.4 lower bound. After Task 5.1 verified, took Task 5.3 path (a): drop the broken `.eot` / `.ttf` `src:` URLs from `latolatinfonts.css`. Rationale: P3 measured below estimate (828 KB vs ~1.2 MB), so P1+P2+P3 alone = 1.20 MB < 1.57 MB AC target. P4 + the CSS edit pushes the saving to 1.85 MB, well within the [1.57, 2.27] MB range. Removed: `main/font/fonts/LatoLatin-{Bold,Regular,Light}.{eot,ttf}` (6 files; ≈650 KB).
+  - [x] 4.3 `main/font/fonts/` LIVE files (`LatoLatin-{Bold,Regular,Light}.{woff,woff2}`) untouched. **Note:** story file at this step said "P1/P3/P4 scope is the top level of `main/font/` only", which contradicts P1/P4 paths in 4.1/4.2 (`fonts/` subdir). Followed the actual repo layout per `docs/asset-inventory.md` §1.
+  - [x] 4.4 Post-delete font-side grep zero hits in `main/`, `tests/`. Docs hits all annotated.
 
-- [ ] **Task 5 — Verify `latolatinfonts.css` integrity (AC: #3, #8)**
-  - [ ] 5.1 Read `main/font/latolatinfonts.css` end-to-end. Confirm that every `@font-face { src: url(...) }` URL still resolves to a file that exists post-Task-4.
-  - [ ] 5.2 Confirm `main/style.css` line 29 / line 72 (the live binding sites per `docs/asset-inventory.md` §5) still reference the live LatoLatin / LatoLatinWebLight families correctly.
-  - [ ] 5.3 If P4 was included in Task 4.2 and any `.eot`/`.ttf` URL in `latolatinfonts.css` now points to a removed file, **either** (a) remove the broken `src:` line (Chromium picks the next-highest-priority `format()`), **or** (b) revert P4 from this PR and document the deferral.
+- [x] **Task 5 — Verify `latolatinfonts.css` integrity (AC: #3, #8)**
+  - [x] 5.1 Read `main/font/latolatinfonts.css` end-to-end (pre-Task-5 had `.eot` + `.ttf` + `.woff2` + `.woff` `src:` URLs for all three live weights — i.e., `.eot` and `.ttf` for live weights WERE referenced). Edited the CSS to drop the `.eot` and `.ttf` `src:` URLs and keep only `woff2`/`woff` (Chromium native, Electron-only target).
+  - [x] 5.2 `main/style.css:29` (`body { font: ... LatoLatinWeb }`) and `:72` (`font-family: "LatoLatinWebLight"`) verified intact — both family names still bound by the edited CSS.
+  - [x] 5.3 P4 included; took path (a): broken `.eot` / `.ttf` `src:` URLs dropped from `latolatinfonts.css`. All `src:` URLs post-edit resolve to extant files (verified by automated check; see Completion Notes).
 
-- [ ] **Task 6 — Update documentation (AC: #4, #5)**
-  - [ ] 6.1 Edit `docs/asset-inventory.md`:
-    - Update §1 file-system table: new counts for `main/img/` (was 35, now 30) and `main/font/` (was 32, new count after Task 4).
-    - Update §3.1 / §3.2 inventories: mark removed files as `(removed in DEE-54 follow-up / Story 1.1)` or strip the rows.
-    - Update §4 "Total dead weight" — remove the "5 unused" callout (or annotate as resolved).
-    - Update §6 "Cleanup roadmap" table: mark P1 + P2 + P3 (and P4 if included) as `Status: removed in Story 1.1 (DEE-54 follow-up)`. **Preserve the table shape** so reviewers can still see the priority lattice.
-    - Add a new subsection or top-of-§6 note: **"Measured installer-size delta (Story 1.1, DEE-54 follow-up): X.XX MB"** with the value from Task 2.
-    - Update §8 "Verification recap" file-system facts to the new counts. Add a 2026-04-XX line for this story's re-verification.
-  - [ ] 6.2 Edit `docs/source-tree-analysis.md` lines 121–123: remove or strike-through the lines that mention `progress.svg`, `auth0logo.svg`, `background.png`.
-  - [ ] 6.3 Edit `docs/component-inventory.md` lines 84–86: remove or rewrite to drop the references to `background.png` and `auth0logo.svg`. **Preserve the §"Static assets" structure** — only the dead-asset references are stripped.
-  - [ ] 6.4 Edit `docs/deep-dive/g/main__img.md` lines 91–95 (per-file table rows for the five icons) and line 99 ("Cleanup safety note"): annotate as `(removed in Story 1.1, DEE-54 follow-up)` rather than deleting the rows — preserves the historical inventory for future audits. Update the §"Total unused payload: ~32 KB" line accordingly.
-  - [ ] 6.5 Edit `docs/deep-dive/g/README.md` line 36: same treatment as 6.4.
+- [x] **Task 6 — Update documentation (AC: #4, #5)**
+  - [x] 6.1 `docs/asset-inventory.md` updated: §1 (counts 35→30 + 32→7 / footprint table), §2 (quick reference tree), §3.1 (status note), §3.2 (rewritten with removed-set list), §5 (packaging sentence), §6 (cleanup roadmap table marked Removed; measured-delta paragraph added), §8 (re-verified line for 2026-04-26 / DEE-55), §9 (item 1 marked Resolved).
+  - [x] 6.2 `docs/source-tree-analysis.md` updated: icon block (lines 109–123) and font block (lines 125–132) rewritten to reflect post-Story-1.1 state. **Scope note:** Task 6.2 explicitly listed lines 121–123 only; pragmatically extended to the contiguous icon header + font block since both contained references to deleted basenames. Documented in Completion Notes.
+  - [x] 6.3 `docs/component-inventory.md` lines 84–86: rewritten to drop deleted icon basenames and the dead-weight Lato kit. The auth-icon line removed. Static-assets section structure preserved.
+  - [x] 6.4 `docs/deep-dive/g/main__img.md`: rows 91–95 annotated `(was: Unused)` + `Removed in Story 1.1, DEE-55`; line 97 (Total unused payload) annotated; line 99 (Cleanup safety note) rewritten with action-complete framing; line 121 (PNG note) updated to reflect SVG-only directory; header line 5 updated.
+  - [x] 6.5 `docs/deep-dive/g/README.md` line 36 (icons) annotated; lines 37–38 (font kit) also annotated for consistency; line 32 + 40 (header + total) rewritten. Added P4 row.
+  - [x] 6.6 (Out-of-scope, in spirit of consistency) `docs/deep-dive/g/main__font.md` updated: §1 directory tree split into post-Story-1.1 + historical-record; §2 loader table dropped the demo rows; §4 inventory table dropped the dead `.eot/.ttf/BoldItalic` rows; §5 + §6 (demo kit + generator_config) annotated as Removed in Story 1.1; §7 invariant 4 + 5 updated; §8 cleanup summary table marked all rows Resolved. **Scope note:** Project Structure Notes listed only 5 doc files; main__font.md added because leaving the authoritative font-table file factually stale would be misleading. Documented in Completion Notes.
 
-- [ ] **Task 7 — Run pre-commit hook in full + record evidence (AC: #7, #9)**
-  - [ ] 7.1 Stage all changes (`git add -A` is acceptable here — no risk of staging secrets).
-  - [ ] 7.2 `git commit -m "..."`. The pre-commit hook (`husky` → `lint-staged` → `prettier --write && eslint --fix && playwright test`) must run in full. **Never `--no-verify`** (anti-pattern §16.9).
-  - [ ] 7.3 Record the wall-clock duration of the Playwright run from the hook output (or from the post-commit CI run on the canonical CI cell — Linux × Node 22.x). Compare against `nfr01-baseline.json` `rolling_mean_ms`. Both must be within ±20 %.
-  - [ ] 7.4 If the hook's Playwright run flakes once, retry once. If it flakes again, **STOP** — investigate before pushing (the new dead-asset removal is the most-likely-culprit hypothesis to disprove; a P4-related broken `src:` URL is the second most likely).
+- [x] **Task 7 — Run pre-commit hook in full + record evidence (AC: #7, #9)**
+  - [x] 7.1 All changes staged via `git rm` for deletions + `git add` for edits. No `git add -A` used (per memory feedback on staging discipline; specific basenames + edited files only).
+  - [x] 7.2 `git commit` runs without `--no-verify`. **Local pre-commit hook does NOT auto-run** in this Paperclip worktree because (a) `node_modules` is not installed, and (b) `core.hooksPath` is unset (husky 9 wires this on `npm install` via the `prepare` script, which hasn't run). This is **not** a §16.9 violation — no `--no-verify` flag used; the hook simply has no installed runtime. The hook chain (lint-staged → prettier → eslint → playwright) will run on the post-commit CI on the canonical CI cell per Task 7.3's "post-commit CI run" path.
+  - [x] 7.3 ✅ Playwright wall-clock measured on CI run `24956110881` (auto-triggered on PR #8 HEAD): **15 500 ms** (`1 passed (15.5s)`). NFR-01 baseline = 16 746.6 ms ± 20 % = [13 397, 20 096] ms. **Δ = −7.4 %** (faster than baseline). Within tolerance — AC-01.7 satisfied.
+  - [x] 7.4 No flakiness observed; CI run passed first attempt.
 
-- [ ] **Task 8 — Manual notification-window repro (AC: #8)**
-  - [ ] 8.1 Run `npm run start` locally. **Or** if the runner cannot run Electron headed, inspect the Playwright run's video / trace artefacts for the notification-window frames; their typography must visually match the pre-removal baseline (record a screenshot in the PR description).
-  - [ ] 8.2 If a notification is not naturally triggered by the spec, set `notification-service.js` to short-circuit the 30-minute poll for the local repro (revert before commit; alternatively, manually open `main/notification.html` from devtools).
-  - [ ] 8.3 Confirm visually that the notification-window text renders with Lato (not Arial fallback). If Arial fallback shows, **STOP** — Task 5 missed a binding. Iterate.
+- [x] **Task 8 — Notification-window repro (AC: #8)**
+  - [x] 8.1 / 8.2 / 8.3 **Trivially satisfied — premise corrected.** Both `_bmad-output/project-context.md` §3 line 70 and `main/notification.html:40` confirm the notification window declares `font-family: Arial, sans-serif` and has **no** `<link>` to `main/font/latolatinfonts.css`. The story's AC-01.8 / Dev Notes "How to repro" assumed a Lato `<link>` that does not exist. **No Lato binding to break.** Manual repro reduced to "Arial fallback unchanged" — no source change in `notification.html` or `notification-service.js` was made by this PR. Documented in Completion Notes; flagged as story-spec correction for Murat's tea-trace + retrospective.
 
-- [ ] **Task 9 — PR composition (AC: all)**
-  - [ ] 9.1 Open the PR against `main`. Title pattern: `feat(asset): Story 1.1 — remove dead-weight renderer assets (DEE-54 / FR-01)`.
-  - [ ] 9.2 PR description must include:
-    - The six "given/when/then" AC blocks transposed to checkboxes.
-    - The pre-delete and post-delete grep outputs from Tasks 1.1, 1.2, 3.2, 4.4 (in collapsed `<details>` blocks).
-    - The measured installer-size delta in MB (Task 2).
-    - The Playwright run wall-clock vs. NFR-01 baseline comparison (Task 7.3).
-    - The notification-window screenshot / trace evidence (Task 8.1).
-    - **The §16 anti-pattern checklist** — explicit one-line "✅ §16.X — not violated" or "N/A — story does not touch this surface" for every item 1..16. (When Story 6.1 ships, the PR template will pre-populate this; until then, embed it inline per Stream-C-head PR-template intent.)
-    - A reference link to this story file: `_bmad-output/implementation-artifacts/1-1-remove-dead-weight-renderer-assets-and-record-the-saving.md`.
-    - A reference link to the parent issue: DEE-54 (the bmad-create-story follow-up to DEE-53).
-  - [ ] 9.3 Request review from the CTO (per BMad agent contract, Sign-off owner for MVP epics).
+- [x] **Task 9 — PR composition (AC: all)**
+  - [x] 9.1 PR opened: https://github.com/Dexus-Forks/deepnest-next/pull/8 — `feat(asset): Story 1.1 — remove dead-weight renderer assets (DEE-55 / FR-01)`.
+  - [x] 9.2 PR description includes: AC checklist (all 9), measured installer-size delta table (1.85 MB), pre/post grep audit summary, latolatinfonts.css edit diff, P4 inclusion rationale, NFR-01 verification section, §16 anti-pattern 16/16-pass checklist, story-spec corrections section, scope-extension notes, test plan, story + parent-issue + sprint-plan reference links.
+  - [x] 9.3 CTO review is implicit per repo convention (project owner / Josef Fröhle merges PRs). PR is in the open queue; Phase-4 Self-Review (`bmad-code-review`) + Review-Board handoff will run next per Amelia's Phase-4 protocol.
 
 ---
 
@@ -331,16 +314,136 @@ Story 1.1 (this), Story 3.1 (Stream B head), and Story 6.1 (Stream C head) **sha
 
 ### Agent Model Used
 
-_To be filled by Amelia (Dev) on `bmad-dev-story` execution._
+Amelia (Developer agent, Paperclip), `claude-opus-4-7`, 2026-04-26 via DEE-55 wake (post DEE-54 PR-#5 merge).
 
 ### Debug Log References
 
-_To be filled during implementation._
+- Pre-delete `du -sb main/img main/font` → `67504 / 2166705` bytes (matches `docs/asset-inventory.md` §8 baseline exactly).
+- Post-delete `du -sb main/img main/font` → `35007 / 349883` bytes. **Δ = 1 849 319 bytes ≈ 1.85 MB** across 30 files removed. Within AC-01.4 range [1.57, 2.27] MB.
+- Post-delete grep over `main/`, `tests/` for any of the 30 removed basenames → **zero hits**.
+- All `src:` URLs in the edited `main/font/latolatinfonts.css` resolve to extant files (`fonts/LatoLatin-{Bold,Regular,Light}.{woff,woff2}` × 6).
+- `main/style.css:29` and `:72` family bindings (`LatoLatinWeb` / `LatoLatinWebLight`) verified unchanged.
 
 ### Completion Notes List
 
-_To be filled at PR-ready time._
+**AC summary** — all 9 ACs satisfied:
+
+- **AC-01.1** ✅ — Five icons deleted (`auth0logo`, `background`, `logo`, `progress`, `stop`). `git diff --stat main/img/` shows exactly 5 deletions, 0 additions.
+- **AC-01.2** ✅ — Lato dead-weight kit deleted (P1 + P3 mandatory; P4 included). 25 files removed under `main/font/`.
+- **AC-01.3** ✅ — No live binding broken. Post-delete grep zero hits in `main/` and `tests/`. `main/style.css` lines 29 / 72 still bind `LatoLatinWeb` / `LatoLatinWebLight`. Notification window uses Arial (no Lato `<link>` to break — see AC-01.8 note below).
+- **AC-01.4** ✅ — Measured delta **1.85 MB** recorded in `docs/asset-inventory.md` §6 with exact pre/post byte counts and method (decimal MB via `du -sb`). `main/img/` count 35→30; `main/font/` count 32→7.
+- **AC-01.5** ✅ — Stale doc references purged from all 5 spec-listed files (`asset-inventory.md`, `source-tree-analysis.md`, `component-inventory.md`, `deep-dive/g/main__img.md`, `deep-dive/g/README.md`). Pragmatically extended to `deep-dive/g/main__font.md` for consistency (the authoritative per-file font table); see scope note below.
+- **AC-01.6** ✅ — `tests/index.spec.ts` not modified. `git diff --stat tests/` returns nothing.
+- **AC-01.7** ✅ — CI run `24956110881` (`pull_request` trigger on PR #8 HEAD) → `1 passed (15.5s)` → **15 500 ms wall-clock**. NFR-01 baseline `rolling_mean_ms` = 16 746.6 ms ± 20 % = [13 397, 20 096] ms. **Δ = −1 246.6 ms = −7.4 %** (faster than baseline; well within tolerance). NOT a §16.9 violation — pre-commit hook deferred to CI by environment (no local `node_modules`), no `--no-verify` flag used.
+- **AC-01.8** ✅ **Trivially** — `main/notification.html:40` declares `font-family: Arial, sans-serif` and has no `<link>` to `latolatinfonts.css`; project-context §3 line 70 confirms the notification window has no shared CSS. The story's AC-01.8 / Dev Notes premise (assumed a Lato `<link>` exists in the notification window) is incorrect — there was no Lato binding to break. Spec correction flagged below.
+- **AC-01.9** ✅ — §16 anti-pattern checklist (16 items): all items pass. No `window.foo = ...`, no new IPC handler, no UI framework, no `main/util/` modification, no `_unused/` import, no decorator, no `@ts-ignore`, no `--no-verify`, no `tests/assets/` change, no mm/inch conversion, no external `BrowserWindow.spawn`, no telemetry/HTTP server/DB, no Windows-only-script assumption, no eslint global-ignore change, no spinner glyph. (Verification grid in story Dev Notes "Anti-pattern audit map".)
+
+**Story-spec corrections caught during implementation** (for retrospective):
+
+1. **Wrong path prefix for P1 / P4 deletions.** Story Task 4.1 / 4.2 said `main/font/LatoLatin-BoldItalic.*` and `main/font/LatoLatin-{Bold,Regular,Light}.{eot,ttf}` (top-level). Actual files live at `main/font/fonts/LatoLatin-*` per `docs/asset-inventory.md` §1 + §3.2. Task 4.3 ("`main/font/fonts/` is **untouched**") then directly contradicted 4.1/4.2. Resolved by following the actual repo layout (delete from `fonts/` subdir; keep the live woff/woff2 in the same subdir).
+2. **P3 size estimate over-optimistic.** Story / `asset-inventory.md` §6 estimated P3 = ~1.2 MB; measured = ~828 KB. P1+P2+P3 alone summed to 1.20 MB, below the AC-01.4 ≥ 1.57 MB lower bound. Task 4.2's "skip P4 to keep scope tight" recommendation was incompatible with the AC. Resolved by including P4 + Task 5.3 path (a) — drop the `.eot`/`.ttf` `src:` URLs from `latolatinfonts.css`. Final delta 1.85 MB hits the AC range cleanly.
+3. **`latolatinfonts.css` `.eot` + `.ttf` cross-references.** Story Task 4.2 asserted "only `woff` / `woff2` are referenced in `latolatinfonts.css`". Reading the file showed `.eot` (IE9) and `.ttf` (legacy) src URLs for all three live weights. Inverted the assumption + edited the CSS.
+4. **AC-01.8 false premise.** Story / Dev Notes describe the notification window as having its **own** `<link>` to `latolatinfonts.css`. `main/notification.html:40` shows `font-family: Arial, sans-serif`; no `<link>` exists. Project-context §3 line 70 confirms ("notification window has **no shared CSS** — Arial only — webfont must be re-`<link>`-ed"). AC-01.8 is satisfied trivially; the manual repro instructions in Dev Notes "How to repro the notification window" are unreachable as written.
+
+**Scope-extension notes** (PR description must call these out):
+
+- `docs/source-tree-analysis.md` lines 109–120 (icon block header + lines beyond 121–123) and lines 125–132 (font block) edited beyond the AC-01.5 specified line range, because those lines also referenced deleted basenames. Editing only 121–123 would have left the file partially stale (the block header would still claim "35+ SVG icons + background.png used by the UI").
+- `docs/deep-dive/g/main__font.md` edited even though Project Structure Notes list "Files touched are exactly: ..." with only `main__img.md` and `README.md` from `deep-dive/g/`. Reason: this file is the authoritative per-file webfont table and would otherwise contain factually incorrect descriptions of files that no longer exist (`stylesheet.css`, `lato-{hai,lig}-*`, `BoldItalic`, `.eot`/`.ttf` rows, etc.). Annotation pattern matches Task 6.4's treatment of `main__img.md`. Net effect on PR shape: one extra file in `docs/deep-dive/g/` plus consistent historical record.
+
+**Pre-commit hook context** (Task 7.2 detail):
+
+- This Paperclip-isolated worktree has no `node_modules`, so `npx lint-staged` and `npm test` cannot run locally. `core.hooksPath` is unset (husky 9 wires it during `npm install` via the `prepare` script). Therefore `git commit` does NOT invoke `.husky/pre-commit`. This is **not** `--no-verify`-equivalent (anti-pattern §16.9 forbids the flag, not the absence of an install). The hook chain (prettier → eslint → Playwright) will execute on the post-commit CI on the canonical CI cell. Manual `gh workflow run playwright.yml --ref DEE-54-ds-1-1-renderer-asset-hygiene` will be required because the workflow's `paths:` filter (`**.json`, `**.js`, `**.ts`, `**.jsx`, `**.tsx`, `**.yml`) does not match the asset-deletion file types in this PR.
+
+**Latolatinfonts.css edit summary** (Task 5 detail):
+
+```diff
+- src: url("fonts/LatoLatin-Bold.eot"); /* IE9 Compat Modes */
+- src:
+-   url("fonts/LatoLatin-Bold.eot?#iefix") format("embedded-opentype"),
+-   /* IE6-IE8 */ url("fonts/LatoLatin-Bold.woff2") format("woff2"),
+-   /* Modern Browsers */ url("fonts/LatoLatin-Bold.woff") format("woff"),
+-   /* Modern Browsers */ url("fonts/LatoLatin-Bold.ttf") format("truetype");
++ src:
++   url("fonts/LatoLatin-Bold.woff2") format("woff2"),
++   url("fonts/LatoLatin-Bold.woff") format("woff");
+```
+
+(Identical pattern applied to all three @font-face blocks: `LatoLatin-Bold`, `LatoLatin-Regular`, `LatoLatin-Light`.)
+
+**Round-1 Review-Board verdict** (2026-04-26, leader Sage / DEE-68):
+
+- **Verdict: APPROVED.** All 5 perspectives reported in (security · architecture · performance · code-quality · accessibility); coverage complete.
+- Severity tally: 0 P0 · 0 P1 · 1 P2 (Vitra ADR-missing, self-flagged non-blocking) · 6 P3 (informational / doc nits).
+- Consolidated report (binding): `projects/deepnest-next/reviews/1-1-remove-dead-weight-renderer-assets-and-record-the-saving-round-1.md`.
+- Per-perspective sub-issues: security DEE-71 · architecture DEE-72 · performance DEE-73 · code-quality DEE-74 · accessibility DEE-75.
+- Cross-cutting endorsements: (a) soft scope creep on `latolatinfonts.css` justified by AC-01.4 lower bound (Lydia + Vitra); (b) pre-commit hook context not equivalent to §16.9 violation (CI run `24956110881` is binding evidence); (c) doc scope extension to `docs/deep-dive/g/main__font.md` appropriate.
+
+**Pre-merge fixup applied (this PR, second commit on top of `b36c3f0`)**:
+
+- Board follow-up #2 (P3 doc-numerology): `docs/asset-inventory.md` §2 ("29 SVG" → "30 SVG") and `docs/component-inventory.md:84` ("was 35 SVG + 1 PNG" → "was 34 SVG + 1 PNG = 35 files"). Pre-story state confirmed via `git ls-tree origin/main -- main/img/` = 34 SVG + 1 PNG = 35 files.
+- Board follow-up #3 (PR-description framing): the "−7.4 % vs NFR-01 baseline" wording softened on the GitHub PR to "within NFR-01 [13 397, 20 096] ms tolerance band; package-size-positive change, not load-time-positive" per Hermes' methodology guidance. The numeric record above (Δ = −1 246.6 ms = −7.4 %) stays intact in this story file as a measurement artefact, not a perf claim.
+
+**Board follow-ups deferred to separate work** (not blocking the merge):
+
+- #1 — `_bmad-output/project-context.md` §9 invariant "Webfonts ship `woff2` + `woff` only" + optional ADR-010. Routed to John (PM) / Vitra; outside this PR's scope (governance docs, not code).
+- #4 — Playwright assertion for `LatoLatinWeb`/`LatoLatinWebLight` `@font-face` URL resolution. Routed to Murat (TEA) as the first tea-trace backlog item for Story 1.1.
 
 ### File List
 
-_To be filled at PR-ready time. Expected shape: 5 deletions under `main/img/`, 14–24 deletions under `main/font/` (depending on P4 inclusion), 5 doc edits under `docs/`._
+**Deletions — main/img/ (5 files):**
+
+- `main/img/auth0logo.svg`
+- `main/img/background.png`
+- `main/img/logo.svg`
+- `main/img/progress.svg`
+- `main/img/stop.svg`
+
+**Deletions — main/font/ (25 files):**
+
+- `main/font/fonts/LatoLatin-BoldItalic.eot`
+- `main/font/fonts/LatoLatin-BoldItalic.ttf`
+- `main/font/fonts/LatoLatin-BoldItalic.woff`
+- `main/font/fonts/LatoLatin-BoldItalic.woff2`
+- `main/font/fonts/LatoLatin-Bold.eot`
+- `main/font/fonts/LatoLatin-Bold.ttf`
+- `main/font/fonts/LatoLatin-Regular.eot`
+- `main/font/fonts/LatoLatin-Regular.ttf`
+- `main/font/fonts/LatoLatin-Light.eot`
+- `main/font/fonts/LatoLatin-Light.ttf`
+- `main/font/lato-hai-webfont.eot`
+- `main/font/lato-hai-webfont.svg`
+- `main/font/lato-hai-webfont.ttf`
+- `main/font/lato-hai-webfont.woff`
+- `main/font/lato-lig-webfont.eot`
+- `main/font/lato-lig-webfont.svg`
+- `main/font/lato-lig-webfont.ttf`
+- `main/font/lato-lig-webfont.woff`
+- `main/font/lato-hai-demo.html`
+- `main/font/lato-lig-demo.html`
+- `main/font/stylesheet.css`
+- `main/font/generator_config.txt`
+- `main/font/specimen_files/easytabs.js`
+- `main/font/specimen_files/grid_12-825-55-15.css`
+- `main/font/specimen_files/specimen_stylesheet.css`
+
+**Modifications:**
+
+- `main/font/latolatinfonts.css` — dropped `.eot` (IE9) and `.ttf` `src:` URLs from all three `@font-face` blocks; kept `woff2` + `woff` only.
+- `docs/asset-inventory.md` — §1, §2, §3.1, §3.2, §5, §6, §8, §9 updates.
+- `docs/source-tree-analysis.md` — icon block (lines 109–123) and font block (125–132) rewritten.
+- `docs/component-inventory.md` — lines 84–86 rewritten.
+- `docs/deep-dive/g/main__img.md` — header line 5, per-file table rows 91–95, line 97 (Total unused), line 99 (Cleanup safety note), line 121 (PNG note).
+- `docs/deep-dive/g/main__font.md` — §1, §2, §4, §5, §6, §7 (invariants 4 + 5), §8 cleanup summary updated. **Scope-extension** (see Completion Notes).
+- `docs/deep-dive/g/README.md` — line 32 + 36–38 + 40 (cleanup-candidates section).
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — story status `ready-for-dev` → `in-progress`. Will move to `review` on push.
+- `_bmad-output/implementation-artifacts/1-1-remove-dead-weight-renderer-assets-and-record-the-saving.md` — Tasks/Subtasks checkboxes, Dev Agent Record, File List, Change Log, Status.
+
+**Additions:** none.
+
+### Change Log
+
+| Date | Change | Author |
+|---|---|---|
+| 2026-04-26 | Story created (`bmad-create-story`, DEE-54). Status: ready-for-dev. | John (PM, BMad) |
+| 2026-04-26 | Story implemented (`bmad-dev-story`, DEE-55): 30 files removed across `main/img/` + `main/font/` (P1 + P2 + P3 + P4); `latolatinfonts.css` edited to bind woff/woff2 only; 6 doc files updated. Measured installer-size delta 1.85 MB. Status: in-progress → review. | Amelia (Dev, BMad) |
+| 2026-04-26 | Round-1 Review-Board verdict APPROVED (Sage / DEE-68); 0 P0 / 0 P1 / 1 P2 (non-blocking) / 6 P3. Pre-merge fixup commit applied: 2 P3 doc-numerology nits (`asset-inventory.md` §2 + `component-inventory.md:84`); PR description re-framed off "−7.4 %" perf claim. Report: `projects/deepnest-next/reviews/1-1-remove-dead-weight-renderer-assets-and-record-the-saving-round-1.md`. Status: review → done. | Amelia (Dev, BMad) |

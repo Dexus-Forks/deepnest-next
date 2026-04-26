@@ -29,15 +29,16 @@ Each doc follows the `DEE-11` shared template (purpose, public surface, IPC / si
 
 ## Cleanup candidates surfaced
 
-The deep-dives identified five **unused icons** and a larger **demo-only font cluster** that future cleanup stories can act on:
+The deep-dives identified five **unused icons** and a larger **demo-only font cluster**. **Resolved in Story 1.1 (DEE-55)** as a single PR — measured saving 1.85 MB:
 
-| Surface | Candidate | Approximate saving |
-|---|---|---|
-| `main/img/` | `auth0logo.svg`, `background.png`, `logo.svg`, `progress.svg`, `stop.svg` | ~32 KB total |
-| `main/font/fonts/` | `LatoLatin-BoldItalic.{eot,ttf,woff,woff2}` (no `@font-face` binding) | ~336 KB |
-| `main/font/` | The `lato-{hai,lig}-*` cluster + `stylesheet.css` + `specimen_files/` + `generator_config.txt` (only loaded by demo HTML pages) | ~1.2 MB |
+| Surface | Candidate | Approximate saving | Status |
+|---|---|---|---|
+| `main/img/` | `auth0logo.svg`, `background.png`, `logo.svg`, `progress.svg`, `stop.svg` | ~32 KB measured | Removed in Story 1.1, DEE-55 |
+| `main/font/fonts/` | `LatoLatin-BoldItalic.{eot,ttf,woff,woff2}` (no `@font-face` binding) | ~336 KB measured | Removed in Story 1.1, DEE-55 |
+| `main/font/` | The `lato-{hai,lig}-*` cluster + `stylesheet.css` + `specimen_files/` + `generator_config.txt` (only loaded by demo HTML pages) | ~828 KB measured | Removed in Story 1.1, DEE-55 |
+| `main/font/fonts/` | `.eot` + `.ttf` for the three live LatoLatin weights (Bold / Regular / Light) — kept woff2/woff only | ~650 KB measured | Removed in Story 1.1, DEE-55 |
 
-Total clean-up potential **~1.6 MB** of static resources. None are load-bearing for the live app.
+Total realised footprint reduction: **1.85 MB** of static resources. None were load-bearing for the live app — `latolatinfonts.css` was simultaneously edited to drop the `.eot`/`.ttf` `src:` URLs (Chromium uses `woff2`/`woff` natively).
 
 ## Cross-references
 

@@ -1,12 +1,9 @@
 /* Webfont: LatoLatin-Bold */
 @font-face {
   font-family: "LatoLatinWeb";
-  src: url("fonts/LatoLatin-Bold.eot"); /* IE9 Compat Modes */
   src:
-    url("fonts/LatoLatin-Bold.eot?#iefix") format("embedded-opentype"),
-    /* IE6-IE8 */ url("fonts/LatoLatin-Bold.woff2") format("woff2"),
-    /* Modern Browsers */ url("fonts/LatoLatin-Bold.woff") format("woff"),
-    /* Modern Browsers */ url("fonts/LatoLatin-Bold.ttf") format("truetype");
+    url("fonts/LatoLatin-Bold.woff2") format("woff2"),
+    url("fonts/LatoLatin-Bold.woff") format("woff");
   font-style: normal;
   font-weight: bold;
   text-rendering: optimizeLegibility;
@@ -15,12 +12,9 @@
 /* Webfont: LatoLatin-Regular */
 @font-face {
   font-family: "LatoLatinWeb";
-  src: url("fonts/LatoLatin-Regular.eot"); /* IE9 Compat Modes */
   src:
-    url("fonts/LatoLatin-Regular.eot?#iefix") format("embedded-opentype"),
-    /* IE6-IE8 */ url("fonts/LatoLatin-Regular.woff2") format("woff2"),
-    /* Modern Browsers */ url("fonts/LatoLatin-Regular.woff") format("woff"),
-    /* Modern Browsers */ url("fonts/LatoLatin-Regular.ttf") format("truetype");
+    url("fonts/LatoLatin-Regular.woff2") format("woff2"),
+    url("fonts/LatoLatin-Regular.woff") format("woff");
   font-style: normal;
   font-weight: normal;
   text-rendering: optimizeLegibility;
@@ -29,12 +23,9 @@
 /* Webfont: LatoLatin-Light */
 @font-face {
   font-family: "LatoLatinWebLight";
-  src: url("fonts/LatoLatin-Light.eot"); /* IE9 Compat Modes */
   src:
-    url("fonts/LatoLatin-Light.eot?#iefix") format("embedded-opentype"),
-    /* IE6-IE8 */ url("fonts/LatoLatin-Light.woff2") format("woff2"),
-    /* Modern Browsers */ url("fonts/LatoLatin-Light.woff") format("woff"),
-    /* Modern Browsers */ url("fonts/LatoLatin-Light.ttf") format("truetype");
+    url("fonts/LatoLatin-Light.woff2") format("woff2"),
+    url("fonts/LatoLatin-Light.woff") format("woff");
   font-style: normal;
   font-weight: normal;
   text-rendering: optimizeLegibility;

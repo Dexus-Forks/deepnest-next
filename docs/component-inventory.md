@@ -81,9 +81,8 @@ Renderer code reaches the legacy globals via the typed `getDeepNest()` / `getSvg
 
 ## Static UI assets
 
-- **Icons** (`main/img/`): 35 SVG icons + `background.png`. Light/dark variants present for `account`, `close`, `shop`, `spin`, `credits`, `unlimited`. New icons should follow the same convention.
-- **Fonts** (`main/font/`): Lato Light (`lato-lig-*`) and Lato Heavy (`lato-hai-*`) in EOT/SVG/TTF/WOFF, plus generator config and specimen pages.
-- **Auth icon**: `auth0logo.svg` — used by the login flow surface.
+- **Icons** (`main/img/`): 30 SVG icons (post-Story-1.1 / DEE-55; was 34 SVG + 1 PNG = 35 files). Light/dark variants present for `account`, `close`, `shop`, `spin`, `credits`, `unlimited`. New icons should follow the same convention.
+- **Fonts** (`main/font/`): LatoLatinWeb (Bold + Regular merged) and LatoLatinWebLight in `woff` + `woff2` only (post-Story-1.1 / DEE-55; the dead-weight `.eot` / `.ttf` / `BoldItalic` / `lato-{hai,lig}-*` demo specimen kit was removed for a measured 1.85 MB installer-size saving).
 
 ## Component dependency graph (renderer)
 
