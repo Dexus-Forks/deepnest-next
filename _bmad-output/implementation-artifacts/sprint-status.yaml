@@ -80,94 +80,95 @@ development_status:
 
 # Sprint risks — surfaced via Daily Standup (DEE-82, 2026-04-26; DEE-127, 2026-04-27).
 # Captured here per the standup convention: "Bei Blocker: Eintrag in sprint-status.yaml unter risks:".
-# 2026-04-26 risk-1/2/3 resolved by DEE-83 (CS batch-2) — kept under `resolved:` for sprint history.
-# 2026-04-27 standup adds three new active risks (all status-hygiene, no runtime blocker).
-active:
-  - id: risk-1-stale-blocked-parents-2026-04-27
-    surfaced_by: DEE-127 daily-2026-04-27.md
-    severity: medium-visibility / low-execution-impact
-    summary: |
-      Five issues read `blocked` in Paperclip. Three are stale (the underlying ship has
-      already merged) and need a status flip; two are by-design-blocked (external /
-      sequential) and need their `blockedBy` reason annotated.
+# 2026-04-26 risk-1/2/3 resolved by DEE-83 (CS batch-2) — kept under `risks.resolved:` for sprint history.
+# 2026-04-27 standup adds three new entries under `risks.active:` (all status-hygiene, no runtime blocker).
+risks:
+  active:
+    - id: risk-1-stale-blocked-parents-2026-04-27
+      surfaced_by: DEE-127 daily-2026-04-27.md
+      severity: medium-visibility / low-execution-impact
+      summary: |
+        Five issues read `blocked` in Paperclip. Three are stale (the underlying ship has
+        already merged) and need a status flip; two are by-design-blocked (external /
+        sequential) and need their `blockedBy` reason annotated.
 
-      Stale → flip to `done`:
-        - DEE-98  : ADR-008 amendment — shipped via PR #31 (591ce1e); Bundle 2/3 folded
-                    into Story 2.3 spec via PR #35 (012ffd9).
-        - DEE-102 : Workflow gap — fixes #1 (DEE-103/DEE-107 routine wrap), #2 (PR #28),
-                    #3 (PR #30) all merged.
-        - DEE-103 : Tea-trace dedupe key — shipped via DEE-107 routine wrap (skip_if_active);
-                    upstream extension split as DEE-108.
+        Stale → flip to `done`:
+          - DEE-98  : ADR-008 amendment — shipped via PR #31 (591ce1e); Bundle 2/3 folded
+                      into Story 2.3 spec via PR #35 (012ffd9).
+          - DEE-102 : Workflow gap — fixes #1 (DEE-103/DEE-107 routine wrap), #2 (PR #28),
+                      #3 (PR #30) all merged.
+          - DEE-103 : Tea-trace dedupe key — shipped via DEE-107 routine wrap (skip_if_active);
+                      upstream extension split as DEE-108.
 
-      By design — leave `blocked`, annotate reason:
-        - DEE-108 : Upstream Paperclip core team feature request.
-        - DEE-123 : Sequential — waits on DEE-124 / Story 2.3 DS merge for the
-                    AC-02.3.4 750 ms wall-clock CI guard tea-trace.
-    owner: Amelia
-    action: |
-      PATCH DEE-98 / DEE-102 / DEE-103 to status `done` with closing comments naming
-      the ship-PR. Annotate DEE-108 + DEE-123 with explicit external/sequential
-      blockedBy notes so the next standup can ignore them.
-  - id: risk-2-story-2-3-status-not-flipped
-    surfaced_by: DEE-127 daily-2026-04-27.md
-    severity: low
-    summary: |
-      Per the workflow note in the file header — "ready-for-dev → in-progress: Developer
-      actively working on implementation." DEE-124 / Story 2.3 DS has been
-      `in_progress` since 2026-04-26T22:53Z, but development_status above still reads
-      `2-3-…: ready-for-dev`.
-    owner: Amelia
-    action: |
-      Flip `2-3-…` → `in-progress` on the next DS heartbeat (NOT on this standup PR;
-      the standup keeps the status-map unchanged so the per-story flip remains
-      attributable to the DS commit).
-  - id: risk-3-doc-only-stories-no-owner
-    surfaced_by: DEE-127 daily-2026-04-27.md
-    severity: low
-    summary: |
-      Stories 3.2 (fixture-drift re-derivation), 6.2 (cite-the-§16 reviewer workflow),
-      2.4 (add-a-new-vendored-library workflow) have been authored on main but no DS
-      run is scheduled. Not urgent — Stream-A critical path runs 2.3 → 2.4 → Epic-4 /
-      Epic-5, and the doc trio is a Paige natural fit, but they should not be left to
-      drift past the next CS run.
-    owner: John (CS-side prioritisation) + Paige (DS execution)
-    action: |
-      Surface to John on the next CS run; if more than 3 standups go by without
-      ownership, escalate to CTO for Stream-D priority placement.
-resolved:
-  - id: risk-1-sprint-status-stale
-    surfaced_by: DEE-82 daily-2026-04-26.md
-    severity: medium-visibility / low-execution-impact
-    summary: |
-      Story 6.1 (.github/pull_request_template.md) was merged + Board-APPROVED
-      (DEE-58) + tea-trace gate PASS (DEE-76) but development_status above still
-      read `ready-for-dev` for 6-1.
-    resolved_by: DEE-83 / bmad-create-story batch-2 / 2026-04-26
-    resolution: 6-1 flipped to `done` in development_status above. Epic 6 was already in-progress.
-  - id: risk-2-batch-2-not-picked-up
-    surfaced_by: DEE-82 daily-2026-04-26.md
-    severity: medium
-    summary: |
-      Post stream-head merges (Day 1 of MVP-1 dev), no story was in_progress and no new
-      dev issue was assigned. Epics 2 / 4 / 5 had *no* story files at all.
-    resolved_by: DEE-83 / bmad-create-story batch-2 / 2026-04-26
-    resolution: |
-      Story files authored under `_bmad-output/implementation-artifacts/` for
-      stream heads 2-1 / 4-1 / 5-1 (and doc follow-ons 3-2 / 6-2). All five
-      promoted backlog → ready-for-dev. Epics 2 / 4 / 5 transitioned
-      backlog → in-progress (per "first story created" rule).
-      Handoff to Amelia (DS) per DEE-83 DoD; Stream A continues with Story 2.1
-      (Stream-A critical path), Streams B / C can pick 4-1 or 5-1 in parallel.
-  - id: risk-3-last-updated-drift
-    surfaced_by: DEE-82 daily-2026-04-26.md
-    severity: low
-    summary: |
-      `last_updated:` was refreshed for Story 3.1 only and did not mention Story 1.1
-      (DEE-55 / DEE-68 / DEE-77), Story 6.1 (DEE-57 / DEE-58 / DEE-76),
-      or the Story 3.1 hardening (DEE-69 / PR #15 / DEE-70).
-    resolved_by: DEE-83 / bmad-create-story batch-2 / 2026-04-26
-    resolution: |
-      The `last_updated:` line + the file-header `# last_updated:` comment
-      now both summarise the DEE-83 delta and cross-link the per-story
-      issue trail (DEE-55 / DEE-68 / DEE-77 ; DEE-56 / DEE-63 / DEE-69 / DEE-70 ;
-      DEE-57 / DEE-58 / DEE-76).
+        By design — leave `blocked`, annotate reason:
+          - DEE-108 : Upstream Paperclip core team feature request.
+          - DEE-123 : Sequential — waits on DEE-124 / Story 2.3 DS merge for the
+                      AC-02.3.4 750 ms wall-clock CI guard tea-trace.
+      owner: Amelia
+      action: |
+        PATCH DEE-98 / DEE-102 / DEE-103 to status `done` with closing comments naming
+        the ship-PR. Annotate DEE-108 + DEE-123 with explicit external/sequential
+        blockedBy notes so the next standup can ignore them.
+    - id: risk-2-story-2-3-status-not-flipped
+      surfaced_by: DEE-127 daily-2026-04-27.md
+      severity: low
+      summary: |
+        Per the workflow note in the file header — "ready-for-dev → in-progress: Developer
+        actively working on implementation." DEE-124 / Story 2.3 DS has been
+        `in_progress` since 2026-04-26T22:53Z, but development_status above still reads
+        `2-3-…: ready-for-dev`.
+      owner: Amelia
+      action: |
+        Flip `2-3-…` → `in-progress` on the next DS heartbeat (NOT on this standup PR;
+        the standup keeps the status-map unchanged so the per-story flip remains
+        attributable to the DS commit).
+    - id: risk-3-doc-only-stories-no-owner
+      surfaced_by: DEE-127 daily-2026-04-27.md
+      severity: low
+      summary: |
+        Stories 3.2 (fixture-drift re-derivation), 6.2 (cite-the-§16 reviewer workflow),
+        2.4 (add-a-new-vendored-library workflow) have been authored on main but no DS
+        run is scheduled. Not urgent — Stream-A critical path runs 2.3 → 2.4 → Epic-4 /
+        Epic-5, and the doc trio is a Paige natural fit, but they should not be left to
+        drift past the next CS run.
+      owner: John (CS-side prioritisation) + Paige (DS execution)
+      action: |
+        Surface to John on the next CS run; if more than 3 standups go by without
+        ownership, escalate to CTO for Stream-D priority placement.
+  resolved:
+    - id: risk-1-sprint-status-stale
+      surfaced_by: DEE-82 daily-2026-04-26.md
+      severity: medium-visibility / low-execution-impact
+      summary: |
+        Story 6.1 (.github/pull_request_template.md) was merged + Board-APPROVED
+        (DEE-58) + tea-trace gate PASS (DEE-76) but development_status above still
+        read `ready-for-dev` for 6-1.
+      resolved_by: DEE-83 / bmad-create-story batch-2 / 2026-04-26
+      resolution: 6-1 flipped to `done` in development_status above. Epic 6 was already in-progress.
+    - id: risk-2-batch-2-not-picked-up
+      surfaced_by: DEE-82 daily-2026-04-26.md
+      severity: medium
+      summary: |
+        Post stream-head merges (Day 1 of MVP-1 dev), no story was in_progress and no new
+        dev issue was assigned. Epics 2 / 4 / 5 had *no* story files at all.
+      resolved_by: DEE-83 / bmad-create-story batch-2 / 2026-04-26
+      resolution: |
+        Story files authored under `_bmad-output/implementation-artifacts/` for
+        stream heads 2-1 / 4-1 / 5-1 (and doc follow-ons 3-2 / 6-2). All five
+        promoted backlog → ready-for-dev. Epics 2 / 4 / 5 transitioned
+        backlog → in-progress (per "first story created" rule).
+        Handoff to Amelia (DS) per DEE-83 DoD; Stream A continues with Story 2.1
+        (Stream-A critical path), Streams B / C can pick 4-1 or 5-1 in parallel.
+    - id: risk-3-last-updated-drift
+      surfaced_by: DEE-82 daily-2026-04-26.md
+      severity: low
+      summary: |
+        `last_updated:` was refreshed for Story 3.1 only and did not mention Story 1.1
+        (DEE-55 / DEE-68 / DEE-77), Story 6.1 (DEE-57 / DEE-58 / DEE-76),
+        or the Story 3.1 hardening (DEE-69 / PR #15 / DEE-70).
+      resolved_by: DEE-83 / bmad-create-story batch-2 / 2026-04-26
+      resolution: |
+        The `last_updated:` line + the file-header `# last_updated:` comment
+        now both summarise the DEE-83 delta and cross-link the per-story
+        issue trail (DEE-55 / DEE-68 / DEE-77 ; DEE-56 / DEE-63 / DEE-69 / DEE-70 ;
+        DEE-57 / DEE-58 / DEE-76).
