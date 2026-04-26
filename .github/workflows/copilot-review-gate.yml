@@ -3,12 +3,12 @@ name: Copilot review gate
 # Publishes a commit status named "Copilot review" on every PR head SHA.
 #
 # State machine (per CEO policy in DEE-113):
-#   - pending  → no review yet from copilot-pull-request-reviewer[bot] on the
-#                current head SHA; merge button stays disabled by branch
-#                protection.
-#   - success  → Copilot has posted a review (any state) for the current head
-#                SHA; the wait gate is satisfied and the PR can merge once the
-#                other required checks pass.
+#   - pending  → no review yet from copilot-pull-request-reviewer[bot] (id
+#                175728472) on the current head SHA; merge button stays
+#                disabled by branch protection.
+#   - success  → Copilot has posted a review (any state) for the current
+#                head SHA; the wait gate is satisfied and the PR can merge
+#                once the other required checks pass.
 #
 # Why "any state" and not "APPROVED": copilot-pull-request-reviewer[bot]
 # leaves COMMENTED reviews — it does not APPROVE. CEO standard #1 in
@@ -16,9 +16,23 @@ name: Copilot review gate
 # enforce here. Resolving Copilot threads remains the author agent's job
 # per CEO standard #2 (revise loop) — that is enforced via SOP, not via
 # this status check.
+#
+# Security model — why pull_request_target, not pull_request:
+#   - pull_request_target runs the workflow file from the *base ref*
+#     (main), so a malicious PR cannot edit copilot-review-gate.yml on
+#     its own branch to post `success` unconditionally and bypass the
+#     required status check.
+#   - pull_request_target has GITHUB_TOKEN write scopes even for forks,
+#     so `repos.createCommitStatus` works on fork PRs (under
+#     pull_request, fork PRs get a read-only token and would 403,
+#     making fork PRs unmergeable since `Copilot review` is required).
+#   - This job NEVER checks out PR code, never installs PR-controlled
+#     dependencies, and only calls the GitHub REST API via
+#     actions/github-script. There is no injection surface for PR code.
+# (Findings from Copilot review on PR #33 — DEE-114 revise loop.)
 
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, reopened, synchronize, ready_for_review]
   pull_request_review:
     types: [submitted, edited, dismissed]
@@ -43,7 +57,12 @@ jobs:
             }
 
             const sha = pr.head.sha;
-            const COPILOT_LOGIN = 'copilot-pull-request-reviewer[bot]';
+
+            // Match by numeric GitHub user id, not login slug. The
+            // copilot-pull-request-reviewer[bot] login could change on
+            // app rename/reinstall and silently break the gate; the
+            // numeric id is stable for the app installation.
+            const COPILOT_USER_ID = 175728472;
 
             const reviews = await github.paginate(
               github.rest.pulls.listReviews,
@@ -58,7 +77,7 @@ jobs:
             const copilotReviewOnHead = reviews.find(
               (r) =>
                 r.user &&
-                r.user.login === COPILOT_LOGIN &&
+                r.user.id === COPILOT_USER_ID &&
                 r.commit_id === sha,
             );
 

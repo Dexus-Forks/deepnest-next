@@ -103,20 +103,44 @@ posted a review on the current head SHA.
 
 `.github/workflows/copilot-review-gate.yml` publishes the status:
 
-- Triggers on `pull_request` (`opened`, `reopened`, `synchronize`,
+- Triggers on `pull_request_target` (`opened`, `reopened`, `synchronize`,
   `ready_for_review`) — initial and post-push pending states.
 - Triggers on `pull_request_review` (`submitted`, `edited`, `dismissed`)
   — flips to success when Copilot posts on the current head SHA.
+- Identifies Copilot by numeric `user.id == 175728472`, not the login
+  string. The bot login (`copilot-pull-request-reviewer[bot]`) can
+  change on app rename/reinstall; the numeric id is stable for the
+  app installation. (Login is used elsewhere in this doc for human
+  readability only.)
 - Status state:
-  - `pending` until `copilot-pull-request-reviewer[bot]` has posted a
-    review whose `commit_id` matches the PR head SHA.
-  - `success` once such a review exists, regardless of `state`
+  - `pending` until a review from Copilot (matched by id) exists with
+    `commit_id == pr.head.sha`.
+  - `success` once such a review exists, regardless of review `state`
     (`COMMENTED` / `CHANGES_REQUESTED` / `APPROVED`). CEO standard #1 is
     "wait for the review to post"; resolving Copilot's threads remains
     the author agent's responsibility per CEO standard #2 (revise loop).
 - Re-fires on every push, so a force-push or rebase invalidates the prior
   success and re-pends the gate until Copilot reviews the new SHA. This
   matches the wait-for-review intent under sync rebases.
+
+#### Why `pull_request_target` and not `pull_request`
+
+This is a deliberate security choice for a workflow whose output gates
+merges:
+
+- **Tamper resistance.** `pull_request_target` runs the workflow file
+  from the base ref (`main`), so a malicious PR cannot edit
+  `copilot-review-gate.yml` on its own branch to post `success`
+  unconditionally and bypass the required status check.
+- **Fork support.** Under `pull_request`, fork PRs get a read-only
+  `GITHUB_TOKEN` regardless of the workflow's `permissions:` block, so
+  `repos.createCommitStatus` returns `403` and fork PRs become
+  unmergeable (because `Copilot review` is required). Under
+  `pull_request_target` the token has write scopes for forks too.
+- **No PR-code execution.** The job never checks out PR code, never
+  installs PR-controlled dependencies, and only calls the REST API via
+  `actions/github-script`. There is no injection surface for PR code,
+  which is the canonical hazard of `pull_request_target`.
 
 ### Auto-merge interaction
 
@@ -167,8 +191,5 @@ branch.
 - Migrate to a [repository ruleset][rulesets] if richer targeting (e.g.
   named release branches) is needed; rulesets require ≥1 named status
   check, so wait until CI checks exist.
-- Replace the bot-login string match with a `users[].id` check
-  (`175728472`) inside the publisher workflow if the GitHub App slug ever
-  changes.
 
 [rulesets]: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets
