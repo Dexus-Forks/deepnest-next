@@ -316,7 +316,7 @@ These behaviours shape the merge gate below (step 5). They are not aspirational 
 
 **Cross-references.**
 - Repo-side enforcement: `.github/branch-protection.json` (`Copilot review` required status check) + `.github/workflows/copilot-review-gate.yml` (status publisher) — landed as **DEE-114** (CTO / Cloud Dragonborn). The status check is the canonical gate; everything in step 5 above is the agent-side pre-flight discipline that mirrors it.
-- Per-thread workflow detail: see the auto-memory entry "PR review-thread workflow (validate → fix → reply → resolve)".
+- Per-thread workflow detail: see step 4 above for the validate → fix → reply → resolve workflow.
 - Copilot bot behaviour audit: see the **"Observed Copilot bot behaviour"** subsection at the top of this §15 SOP (the in-repo, doc-resolvable evidence; agent-side auto-memory entries are not committed to this repo and should not be cited from here).
 - §19 (Phase-5 SOP) — closer PRs follow this same gate.
 
