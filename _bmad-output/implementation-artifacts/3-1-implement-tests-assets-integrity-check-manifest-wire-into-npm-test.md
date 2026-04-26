@@ -341,6 +341,7 @@ Amelia (Dev) — `bmad-dev-story` — Claude Opus 4.7 (`claude-opus-4-7`) — 20
 | 2026-04-26 | Amelia (Dev) | DS step (DEE-56) — implemented Story 3.1: zero-dep `scripts/check-test-fixtures.mjs` + seed `.fixture-manifest.json` + `package.json` wire-in (interim shape, Story 2.3 pending). Status → review. |
 | 2026-04-26 | Amelia (Self-Review) | CR round 1 — **PASS** with one **Low** observation. Handoff to Review Board (Sage). |
 | 2026-04-26 | Murat (TEA) | DEE-70 post-merge — `bmad-tea-trace` matrix + NFR-01 CI confirmation. Gate **PASS** (88/100). Status `review` → `done`. NFR-01 +9.41 % vs. baseline (WITHIN tolerance). NFR-05 satisfied. Artefacts: `_bmad-output/quality-artifacts/3-1-trace-matrix.md`, `…/3-1-gate-decision.md`, `…/3-1-nfr01-ci-evidence.md`. |
+| 2026-04-26 | Amelia (Dev) | DEE-69 hardening follow-up — added labelled diagnostics + exit codes 4 (corrupt manifest) and 5 (symlink rejection), wrapped missing-spec ENOENT (exit 2), polished L1 wording (now `Searched lines 1..N.`), and softened F-PERF-1 chain-delta phrasing. Self-Review round 2 PASS. |
 
 ---
 
@@ -394,12 +395,12 @@ test_review score      : 88 ≥ 80   ✅
 | AC-03.2 | `git diff main..HEAD --stat .github/workflows` returns nothing | ✓ |
 | AC-03.3 | Drift output names `importsnav_count`, `placements_total`, `placements_max`, plus per-file `<-- drift` / `<-- removed` / `<-- new, no manifest entry` markers (verified across 3 adversarial scenarios: byte append, rename, new-subdir-file) | ✓ |
 | AC-03.4 | `tests/assets/.fixture-manifest.json` committed; shape exactly matches the recommended template (schema_version, captured_at, literals, files[]) | ✓ |
-| AC-03.5 | Green: `node scripts/check-test-fixtures.mjs` exits `0` on clean tree. Red: byte-append on `henny-penny.svg` → exits `1` with full diff message. Revert: green again | ✓ |
+| AC-03.5 | Green: `npm run test:fixtures:check` exits `0` on clean tree. Red: byte-append on `henny-penny.svg` → exits `1` with full diff message. Revert: green again | ✓ |
 | AC-03.6 | 5-run wall-clock: 76 / 68 / 59 / 61 / 56 ms; **p95 = 76 ms** (< 1 s budget by ~13×) | ✓ |
 | AC-03.7 | `git diff main..HEAD --name-only tests/assets/` returns only `tests/assets/.fixture-manifest.json`; SVGs byte-identical (`git diff main..HEAD -- tests/assets/*.svg` empty) | ✓ |
 | AC-03.8 | `git diff main..HEAD tests/index.spec.ts` empty | ✓ |
 | AC-03.9 | No new runtime `dependencies` in `package.json` (only `scripts.*` entries + `build.files` exclusion); `git log main..HEAD --pretty=fuller \| grep -i 'no.verify'` empty | ✓ |
-| AC-03.10 | Chain delta < 200 ms p95 (76 ms check + ~50–100 ms `npm run` overhead); ±20 % tolerance vs. `nfr01-baseline.json rolling_mean_ms = 16746.6` is ±3 349 ms — overshoot mathematically infeasible. CI evidence will resolve in-thread | ✓ (deferred to CI artefact) |
+| AC-03.10 | Chain delta < 200 ms p95 (76 ms check + ~50–100 ms `npm run` overhead) sits well inside the ±20 % tolerance window vs. `nfr01-baseline.json rolling_mean_ms = 16746.6` (±3 349 ms). CI evidence resolves in-thread | ✓ (deferred to CI artefact) |
 
 ### Adversarial CR exercises (additional, beyond the story's required transcripts)
 
@@ -430,8 +431,42 @@ test_review score      : 88 ≥ 80   ✅
 
 ### Observations (Low — not blockers)
 
-- **L1 — Spec-format-failure message wording (Task 2.3).** Task 2.3 wording asks for the exit-2 message to "name the line range searched". My implementation prints `Searched the entire file.` plus the regex match flags + expected pattern shapes. Functionally diagnostic (tells the developer exactly which regex failed and what shape to grep for), but not a numeric `lines 1..N` range. **Why this is Low:** the AC's stated purpose is "so a future spec-format change is immediately diagnosable" — that purpose is satisfied. **Follow-up:** a future iteration could print `lines 1..${src.split('\n').length}` for explicit numeric form. Not blocking for this PR.
+- **L1 — Spec-format-failure message wording (Task 2.3).** Task 2.3 wording asks for the exit-2 message to "name the line range searched". My implementation prints `Searched the entire file.` plus the regex match flags + expected pattern shapes. Functionally diagnostic (tells the developer exactly which regex failed and what shape to grep for), but not a numeric `lines 1..N` range. **Why this is Low:** the AC's stated purpose is "so a future spec-format change is immediately diagnosable" — that purpose is satisfied. **Follow-up:** a future iteration could print `lines 1..${src.split('\n').length}` for explicit numeric form. Not blocking for this PR. *Resolved in DEE-69 round 2 — the message now prints `Searched lines 1..N.`*
 
 ### PASS rationale
 
 All 10 ACs verified against the actual committed diff state (not author intent). Five additional adversarial scenarios passed cleanly. Architecture + NFR + anti-pattern checks clean. The single Low observation (L1) is wording-level only and does not block functional correctness or AC satisfaction. Handing off to Review Board (Sage) per the agent loop.
+
+---
+
+## Self-Review (round 2) — 2026-04-26 (DEE-69 hardening follow-up)
+
+**Skill:** `bmad-code-review--a122039844` (Phase-4 Self-Review).
+**Verdict:** **PASS** — Path A merge per Sage's Round 1 guidance; no fresh Board pass required (CTO gate context recorded on DEE-69).
+
+### Findings dispositions
+
+| ID | Severity | Disposition | Evidence |
+|---|---|---|---|
+| F-CQ-1 | P2 | Resolved | `readManifest()` now wraps `JSON.parse` in a labelled `try/catch`; corrupt manifest exits `4` with file path + parse-error line. Adversarial harness: `printf '{not json' > .fixture-manifest.json` → labelled error, exit `4`. |
+| F-CQ-2 | P2 | Resolved | `readSpecLiterals()` wraps the spec `readFileSync` ENOENT in `failSpecMissing()`; missing spec exits `2` with file path. Adversarial harness: `mv tests/index.spec.ts /tmp` → labelled error, exit `2`. |
+| F-SEC-1 | P3 | Resolved (reject) | `walk()` calls `entry.isSymbolicLink()`; symlink under `tests/assets/` exits `5` with link path + target. Adversarial harness: `ln -s /etc/passwd tests/assets/foo.svg` → labelled error, exit `5`. CTO's recommended default (reject) — no deviation. |
+| F-PERF-1 | P3 | Resolved | AC-03.10 row in Round 1 review reworded — "overshoot mathematically infeasible" → "sits well inside the ±20 % tolerance window". Same numbers, more precise wording. |
+| F-CQ-4 | P3 | Resolved | Story's Self-Review section + script's user-facing failure messages now use `npm run test:fixtures:check` consistently (script's `usage:` line keeps the literal `node scripts/...` form because that is the CLI invocation surface). |
+| L1 (round 1) | Low | Resolved | `failSpecFormat` now prints `Searched lines 1..${literals.lineCount}.` |
+
+### Verification
+
+- All five new exit-code branches exercised (`0`, `1`, `2`, `4`, `5`); `usage` exit `3` unchanged.
+- 5-run timing for `npm run test:fixtures:check` (post-hardening, dev laptop): 283 / 293 / 308 / 312 / 331 ms — **p95 ≈ 331 ms** (`npm run` envelope; direct `node` invocation: 52 / 53 / 59 / 60 / 79 ms — p95 ≈ 79 ms). Both well under the < 1 s budget; no regression vs. Round 1's 76 ms direct p95.
+- Zero-dep posture preserved: only `fs` (added `readlinkSync` from `node:fs`), `path`, `crypto`. `lstatSync` not needed — `Dirent.isSymbolicLink()` from `readdirSync({ withFileTypes: true })` is sufficient and avoids a redundant stat call.
+- §16 anti-patterns: untouched (story does not enter any of the §16 surfaces).
+- AC impact: none. ACs 03.1..03.10 remain green.
+
+### Scope-cap escalation note
+
+Final script diff: **+58 / -6** (~52 net new lines), exceeding CTO's ≤ 25-line scope cap. Cause: the brief asks for new error paths to "mirror the existing `failSpecFormat` shape" (13 lines per helper) — three new helpers cannot fit a 25-line cap and still satisfy the labelled-diagnostics contract. The implementation has been compressed (helpers trimmed to 7–9 lines apiece, exit-code table reduced to a single comment line) but the floor is structural, not stylistic. Escalated to CTO on DEE-69 before pushing the PR; awaiting acknowledgement before opening the PR.
+
+### PASS rationale
+
+All four Board P2/P3 findings + the L1 round-1 observation are functionally resolved with adversarial harness evidence. Wording-only items (F-PERF-1, F-CQ-4, L1) re-read as cleaner without changing semantics. The scope-cap breach is a brief-shape issue, not a missed-something signal — escalated to CTO per his explicit guidance.
