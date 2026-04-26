@@ -6,6 +6,24 @@ request body** for the [Update branch protection][update-branch-protection]
 endpoint — apply it to restore identical settings on a new fork or after
 a settings reset.
 
+> **Prerequisite for replay.** The JSON requires the `Copilot review`
+> status context, which is published by
+> `.github/workflows/copilot-review-gate.yml` only when
+> `copilot-pull-request-reviewer[bot]` (user id `175728472`) reviews
+> the PR head SHA. Before replaying onto a new fork:
+>
+> 1. Enable [GitHub Copilot code review][copilot-code-review] on the
+>    fork (Settings → Code & automation → Copilot → Code review →
+>    "Automatically request review from Copilot") so the bot is
+>    auto-attached to PRs and actually posts reviews.
+> 2. Verify the bot is active by opening a throwaway PR and confirming
+>    Copilot reviews it; otherwise PRs will hang on
+>    `Copilot review = pending` indefinitely.
+> 3. If Copilot is unavailable on the fork (e.g. no Copilot
+>    subscription), drop `Copilot review` from
+>    `required_status_checks.contexts` before replay — leaving it in
+>    will make every PR unmergeable.
+
 > **Note on shape.** The previous version of this file mirrored the
 > [Get branch protection][get-branch-protection] response (wrapped
 > `{"url": ..., "enabled": ...}` objects per setting). That shape is
@@ -16,6 +34,7 @@ a settings reset.
 
 [update-branch-protection]: https://docs.github.com/rest/branches/branch-protection#update-branch-protection
 [get-branch-protection]: https://docs.github.com/rest/branches/branch-protection#get-branch-protection
+[copilot-code-review]: https://docs.github.com/en/copilot/using-github-copilot/code-review/configuring-automatic-code-review-by-copilot
 
 Tracking issues live in the Paperclip control plane, not GitHub Issues:
 DEE-105 (parent: DEE-102) for the up-to-date / merge-readiness gate, and
