@@ -46,7 +46,7 @@ Tick each item as **NOT violated**. If any item is violated, describe the carve-
 - [ ] Copilot review by `copilot-pull-request-reviewer` present and **latest review state is APPROVED** — verify with the explicit author filter (PR-level `reviewDecision` is NOT Copilot-attributable until DEE-114 lands):
   ```
   gh pr view <n> --json reviews \
-    --jq '[.reviews[] | select(.author.login == "copilot-pull-request-reviewer")] | last | .state == "APPROVED"'
+    --jq '[.reviews[] | select(.author.login == "copilot-pull-request-reviewer")] | last | .state? == "APPROVED"'
   ```
   Once DEE-114 branch protection makes Copilot review required, `reviewDecision == "APPROVED"` becomes a sufficient proxy.
 - [ ] All Copilot comment threads resolved (per `validate → fix → reply → resolve` workflow). INVALID/DEFER threads only resolved on reviewer ack, 24 h SLA from the reply with no counter-response, or a linked DEFER follow-up issue id (resolving comment names the basis).
