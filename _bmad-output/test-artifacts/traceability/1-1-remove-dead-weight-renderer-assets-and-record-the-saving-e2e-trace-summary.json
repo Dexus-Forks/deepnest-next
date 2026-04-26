@@ -34,7 +34,7 @@
     "priority_breakdown": {
       "P0": { "total": 4, "covered": 4, "pct": 100 },
       "P1": { "total": 4, "covered": 4, "pct": 100 },
-      "P2": { "total": 0, "covered": 0, "pct": 100 },
+      "P2": { "total": 0, "covered": 0, "pct": null },
       "P3": { "total": 1, "covered": 1, "pct": 100 }
     },
     "by_level": {
