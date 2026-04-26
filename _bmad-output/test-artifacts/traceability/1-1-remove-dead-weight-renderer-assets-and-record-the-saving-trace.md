@@ -161,7 +161,7 @@ tempCoverageMatrixPath: '_bmad-output/test-artifacts/traceability/1-1-remove-dea
     - `docs/deep-dive/g/README.md` (line 32 + 36–38 + 40)
     - `docs/asset-inventory.md` (covered by AC-01.4)
   - `verify-doc-cleanup-scope-extension` — `docs/deep-dive/g/main__font.md` also updated (Story Task 6.6 scope-extension), reasoned as the authoritative per-file webfont table; preserves the deep-dive table shape per AC-01.5's "Preserve the deep-dive table shape" clause.
-  - `verify-grep-zero-stale-refs` — post-merge `grep -rnE 'auth0logo|background\.png|logo\.svg|progress\.svg|stop\.svg|LatoLatin-BoldItalic|lato-(hai|lig)-(webfont|demo)|stylesheet\.css|specimen_files|generator_config' docs/ | grep -vE 'removed in Story 1\.1|DEE-55|historical|annotated'` returns no un-annotated hits — every doc reference is either purged or annotated `(removed in Story 1.1, DEE-55)` per AC-01.5's "annotate them as `(removed in Story 1.1, DEE-54 follow-up)`" allowance.
+  - `verify-grep-zero-stale-refs` — post-merge `grep -rnE 'auth0logo|background\.png|logo\.svg|progress\.svg|stop\.svg|LatoLatin-BoldItalic|lato-(hai|lig)-(webfont|demo)|stylesheet\.css|specimen_files|generator_config' docs/ | grep -vE 'removed in Story 1\.1|DEE-55|historical|annotated'` returns no un-annotated hits — every doc reference is either purged or annotated `(removed in Story 1.1, DEE-55)`, where DEE-55 is the implementation issue for the AC-01.5 allowance described as the `DEE-54` follow-up.
 - **Gaps:** none.
 - **Recommendation:** none — doc cleanup passes the AC's annotation+purge contract. The scope extension to `main__font.md` is a goodwill consistency edit endorsed by the Round-1 Board.
 
