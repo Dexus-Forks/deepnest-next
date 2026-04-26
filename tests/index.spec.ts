@@ -74,12 +74,19 @@ test("Nest", async ({}, testInfo) => {
     await test.step("Lato webfonts resolved", async () => {
       const latoFacesResolved = await mainWindow.evaluate(async () => {
         await document.fonts.ready;
+        await Promise.all([
+          document.fonts.load("1em LatoLatinWeb"),
+          document.fonts.load("bold 1em LatoLatinWeb"),
+          document.fonts.load("1em LatoLatinWebLight"),
+        ]);
         return {
           web: document.fonts.check("1em LatoLatinWeb"),
+          webBold: document.fonts.check("bold 1em LatoLatinWeb"),
           webLight: document.fonts.check("1em LatoLatinWebLight"),
         };
       });
       expect(latoFacesResolved.web).toBe(true);
+      expect(latoFacesResolved.webBold).toBe(true);
       expect(latoFacesResolved.webLight).toBe(true);
     });
     const configTab = mainWindow.locator("#config");
