@@ -1,0 +1,161 @@
+name: NFR-01 Baseline Capture
+
+# DEE-52 — Sprint-Start gate for DEE-44 MVP epics.
+# Captures the rolling 5-run baseline of `npm test` on the canonical CI cell
+# (Ubuntu-22.04 x Node 22.x per architecture overlay §8 / CE Gate G-1).
+# Manually dispatched: this is a one-time pre-MVP-sprint capture.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    env:
+      HUSKY: '0'
+    steps:
+      - name: Install boost + xvfb + python
+        run: sudo apt-get update && sudo apt-get install -yq libboost-dev xvfb python3
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fix Ubuntu chrome-sandbox perms (electron/electron#17972)
+        run: |
+          file=node_modules/electron/dist/chrome-sandbox
+          sudo chown root $file
+          sudo chmod 4755 $file
+
+      - name: Build
+        run: npm run build
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Capture runs
+        id: capture
+        env:
+          DEBUG: 'pw:browser*'
+        run: |
+          set -u
+          mkdir -p _bmad-output/planning-artifacts
+          GIT_SHA="$(git rev-parse HEAD)"
+          CAPTURED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          # CA §8 / DEE-52 mandate exactly 5 consecutive runs on the same SHA.
+          # Hardcoded — not a workflow input — to prevent accidental
+          # non-conforming captures.
+          RUNS=5
+
+          : > runs.tsv
+          for i in $(seq 1 "$RUNS"); do
+            echo "::group::Run $i"
+            START_NS="$(date +%s%N)"
+            set +e
+            xvfb-run --auto-servernum npm test
+            CODE=$?
+            set -e
+            END_NS="$(date +%s%N)"
+            MS=$(( (END_NS - START_NS) / 1000000 ))
+            echo "Run $i: ${MS}ms exit=${CODE}"
+            printf '%s\t%s\n' "$MS" "$CODE" >> runs.tsv
+            echo "::endgroup::"
+          done
+
+          python3 - "$CAPTURED_AT" "$GIT_SHA" runs.tsv <<'PY'
+          import json, statistics, sys
+          captured_at, git_sha, runs_path = sys.argv[1], sys.argv[2], sys.argv[3]
+          runs = []
+          with open(runs_path) as f:
+              for line in f:
+                  ms_s, code_s = line.strip().split('\t')
+                  runs.append({'ms': int(ms_s), 'exit_code': int(code_s)})
+          ms = [r['ms'] for r in runs]
+          mean = sum(ms) / len(ms)
+          stddev = statistics.pstdev(ms)
+          payload = {
+              'captured_at': captured_at,
+              'runner_cell': 'ubuntu-22.04 / node-22.x',
+              'git_sha': git_sha,
+              'runs': runs,
+              'rolling_mean_ms': round(mean, 1),
+              'stddev_ms': round(stddev, 1),
+              'tolerance_pct': 20,
+          }
+          with open('_bmad-output/planning-artifacts/nfr01-baseline.json', 'w') as f:
+              json.dump(payload, f, indent=2)
+              f.write('\n')
+          print(json.dumps(payload, indent=2))
+          PY
+
+      - name: Sanity check (CA §8 / DEE-52 acceptance)
+        id: sanity
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          d = json.load(open('_bmad-output/planning-artifacts/nfr01-baseline.json'))
+          ms = [r['ms'] for r in d['runs']]
+          codes = [r['exit_code'] for r in d['runs']]
+          spread = max(ms) - min(ms)
+          # Recompute mean from raw ms so the 50% threshold is not perturbed by
+          # the 1-decimal rounding applied to rolling_mean_ms in the persisted
+          # JSON. d['rolling_mean_ms'] is the display value; this is the
+          # comparison value.
+          raw_mean = (sum(ms) / len(ms)) if ms else 0.0
+          flaky = spread > 0.5 * raw_mean
+          all_pass = all(c == 0 for c in codes)
+          if len(ms) != 5:
+              print(f"FAIL: expected exactly 5 runs, got {len(ms)} (CA §8 / DEE-52)")
+              sys.exit(1)
+          print(f"runs              : {len(ms)}")
+          print(f"exit_codes        : {codes}")
+          print(f"ms                : {ms}")
+          print(f"raw_mean_ms       : {raw_mean}")
+          print(f"persisted_mean_ms : {d['rolling_mean_ms']} (display, rounded to 1dp)")
+          print(f"stddev_ms         : {d['stddev_ms']}")
+          print(f"spread_ms         : {spread} ({'>' if flaky else '<='} 50% of raw_mean)")
+          print(f"flaky?            : {flaky}")
+          if not all_pass:
+              print("FAIL: at least one run had non-zero exit_code")
+              sys.exit(1)
+          if flaky:
+              print("CONCERN: spread exceeds 50% of mean — consider re-capture per CA §8 / IR rule")
+              sys.exit(2)
+          print("PASS: well-formed baseline, all runs green, spread within tolerance")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: nfr01-baseline-evidence
+          path: |
+            _bmad-output/planning-artifacts/nfr01-baseline.json
+            playwright-report/
+            runs.tsv
+          retention-days: 30
+
+      - name: Commit baseline to current branch
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add _bmad-output/planning-artifacts/nfr01-baseline.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit (baseline already up to date)."
+            exit 0
+          fi
+          TITLE='feat(NFR-01): capture pre-MVP-sprint baseline on canonical CI cell'
+          BODY='DEE-52 / Gate G-1: 5x npm test on ubuntu-22.04 / node-22.x, persists rolling mean + stddev for future regression checks. Generated by .github/workflows/nfr01-baseline.yml. HUSKY=0 used so the CI commit does not re-run the full Playwright suite via the pre-commit hook (the 5 capture runs already cover it).'
+          git commit -m "$TITLE" -m "$BODY"
+          git push origin "HEAD:${GITHUB_REF_NAME}"

@@ -421,15 +421,30 @@ The PRD (FR-04) requires that **all three exit paths** — graceful quit, in-app
 ### Persistence
 
 - **`_bmad-output/planning-artifacts/nfr01-baseline.json`**.
-- Schema (suggested): `{ "captured_at": "<iso8601>", "runner_cell": "ubuntu-22.04 / node-22.x", "git_sha": "<sha>", "runs": [<5 wall-clock-ms numbers>], "rolling_mean_ms": <number>, "stddev_ms": <number>, "tolerance_pct": 20 }`.
-- Future merge regressions are evaluated as `abs(observed_ms - rolling_mean_ms) / rolling_mean_ms <= tolerance_pct/100`.
+- Schema (canonical, as implemented in DEE-52):
+  ```json
+  {
+    "captured_at": "<iso8601>",
+    "runner_cell": "ubuntu-22.04 / node-22.x",
+    "git_sha": "<sha>",
+    "runs": [
+      { "ms": <wall-clock-ms>, "exit_code": <int> },
+      ... 5 entries total ...
+    ],
+    "rolling_mean_ms": <number, 1 decimal>,
+    "stddev_ms": <number, 1 decimal, population stddev>,
+    "tolerance_pct": 20
+  }
+  ```
+  Per-run objects (rather than bare numbers) preserve the `npm test` `exit_code` so the IR gate can verify acceptance #1 ("all 5 `runs[].exit_code` equal 0"). Population stddev (`statistics.pstdev`) is the persisted formula; informational only — the regression check is `tolerance_pct`-based, not stddev-based.
+- Future merge regressions are evaluated as `abs(observed_ms - rolling_mean_ms) / rolling_mean_ms <= tolerance_pct/100`, where `observed_ms` is the wall-clock duration of the `npm test` invocation on the canonical cell.
 
 ### Procedure (single PR, pre-MVP)
 
-1. Add a Playwright JSON reporter to `playwright.config.ts` (`reporter: [['html'], ['json', { outputFile: 'playwright-report/results.json' }]]` or equivalent), guarded so it does not slow non-CI local runs. Reuse existing reporter wiring; no new test dependency.
-2. Run the **canonical CI cell** (Linux / Ubuntu-22.04 × Node 22.x) **5 times** (rerun-on-success on the same SHA, no code changes between runs).
-3. Extract per-run wall-clock duration from the JSON reporter for the canonical `tests/index.spec.ts` test.
-4. Commit the 5 numbers, the rolling mean, and the standard deviation as `_bmad-output/planning-artifacts/nfr01-baseline.json`.
+1. Add a Playwright JSON reporter to `playwright.config.ts` (`reporter: [['html'], ['json', { outputFile: 'playwright-report/results.json' }]]` or equivalent), guarded so it does not slow non-CI local runs. Reuse existing reporter wiring; no new test dependency. The JSON reporter is wired for diagnostic evidence (uploaded as a workflow artifact); it is **not** the timing source for the baseline.
+2. Run the **canonical CI cell** (Linux / Ubuntu-22.04 × Node 22.x) **5 times** (rerun-on-success on the same SHA, no code changes between runs). The exact cell + node version is pinned by the capture workflow `.github/workflows/nfr01-baseline.yml`.
+3. Time each run as the wall-clock duration of the `xvfb-run npm test` invocation (`(date +%s%N)` end − start, divided to ms). This includes node startup, electron-builder install-app-deps verification, and Playwright config load — all real-world overhead a future `npm test` regression would also experience. Capture the npm process `exit_code` alongside the duration.
+4. Commit the 5 `{ms, exit_code}` records, the rolling mean, and the population standard deviation as `_bmad-output/planning-artifacts/nfr01-baseline.json`.
 5. Update PRD §NFR-01 to reference the file as the authoritative baseline (a one-line edit; can land in the same PR).
 
 ### IR-gate enforcement
