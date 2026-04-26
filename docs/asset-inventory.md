@@ -103,7 +103,7 @@ Each invariant below is a load-bearing constraint for downstream BMad workflows 
 6. **`tests/assets/` count, placement count, and `#importsnav li` count are coupled.** The 54/54 placement assertion is the canary for SVG sub-path decomposition. Drop a fixture, add a fixture, or re-encode a fixture → re-derive both literals from a fresh run.
 7. **`tests/assets/` is excluded from the installer** by `!test**` in `package.json` `build.files`. Moving fixtures elsewhere risks shipping them; keep test data under `tests/`.
 8. **No icon font.** The earlier deepnest.io build used a Lato-derived icon font; the current build uses individual SVG backgrounds. Reintroducing an icon font would require rewriting every `background-image: url(img/...)` rule in `main/style.css`.
-9. **Webfonts ship `woff2` + `woff` only.** Canonical wording in [`_bmad-output/project-context.md` §9.9](../_bmad-output/project-context.md); architectural decision in [`docs/architecture.md` §10 ADR-010](./architecture.md). The measurement that motivated the rule lives in §6 P4 below; do not duplicate it here.
+9. **Webfonts ship `woff2` + `woff` only.** See [`_bmad-output/project-context.md` §9 invariant #9](../_bmad-output/project-context.md) for the canonical wording. Decision narrative + measurement live in §5 / §6 P4 / §8 of this document — do not duplicate the rule here.
 
 ## 5. Packaged-asset surface (electron-builder)
 
