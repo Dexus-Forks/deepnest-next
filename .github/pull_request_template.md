@@ -41,7 +41,7 @@ Tick each item as **NOT violated**. If any item is violated, describe the carve-
 
 ## Merge gate (CEO policy DEE-113 — `_bmad-output/project-context.md` §15 "PR merge gate (Copilot wait + revise)")
 
-> **Reviewer rule (reaffirmed):** if either box below is unchecked, request changes / block merge. No carve-outs — applies to feature PRs, BMad / planning-artifact auto-merge PRs, and TEA Phase-5 closer PRs alike.
+> **Reviewer rule (reaffirmed):** if **any** box below is unchecked, request changes / block merge. No carve-outs — applies to feature PRs, BMad / planning-artifact auto-merge PRs, and TEA Phase-5 closer PRs alike.
 
 - [ ] DEE-114 **`Copilot review`** required status check is `success` (server-enforced; merge button blocks until green). Verify with `gh pr view <n> --json statusCheckRollup --jq '.statusCheckRollup[] | select(.name == "Copilot review")'`. **Review state is NOT checked** — `copilot-pull-request-reviewer` returns `COMMENTED` even when satisfied (per `_bmad-output/project-context.md` §15 "Observed Copilot bot behaviour"; DEE-115 dogfood + DEE-114 confirmation).
 - [ ] All Copilot comment threads resolved — including any Copilot "Potential fix for pull request finding" auto-push commits (per `validate → fix → reply → resolve` workflow). INVALID/DEFER threads only resolved on reviewer ack, 24 h SLA from the reply with no counter-response, or a linked DEFER follow-up issue id (resolving comment names the basis). DEE-114's status check does NOT enforce conversation-resolution — this remains agent-side discipline.
