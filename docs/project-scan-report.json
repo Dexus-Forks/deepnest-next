@@ -2,8 +2,9 @@
   "workflow_version": "1.2.0",
   "timestamps": {
     "started": "2026-04-25T23:10:00Z",
-    "last_updated": "2026-04-26T00:30:00Z",
-    "completed": "2026-04-25T23:30:00Z"
+    "last_updated": "2026-04-26T03:00:00Z",
+    "completed": "2026-04-26T03:00:00Z",
+    "dp_rerun_dee_45": "2026-04-26T03:00:00Z"
   },
   "mode": "deep_dive",
   "scan_level": "deep",
@@ -83,6 +84,12 @@
       "status": "completed",
       "timestamp": "2026-04-25T23:30:00Z",
       "summary": "Workflow complete"
+    },
+    {
+      "step": "dp_rerun_dee_45",
+      "status": "completed",
+      "timestamp": "2026-04-26T03:00:00Z",
+      "summary": "DEE-45 DP rerun: cross-checked existing BMad-canonical set against documentation-requirements.csv row for project_type_id=desktop. All seven canonical files (index.md, project-overview.md, architecture.md, source-tree-analysis.md, component-inventory.md, development-guide.md, deployment-guide.md) present. Filled the only gap (requires_asset_inventory: true) by aggregating deep-dive/g/main__img.md + deep-dive/g/main__font.md + deep-dive/j/tests__assets.md into docs/asset-inventory.md. No CONTRIBUTING.md exists → contribution-guide.md not required. Single-part → integration-architecture.md / project-parts.json not required. requires_api_scan / requires_data_models = false → api-contracts.md / data-models.md not required. No Winston-authored files modified."
     }
   ],
   "project_classification": {
@@ -132,10 +139,33 @@
     "docs/development-guide.md",
     "docs/component-inventory.md",
     "docs/deployment-guide.md",
+    "docs/asset-inventory.md",
     "docs/index.md"
   ],
   "incomplete_docs_list": [],
-  "resume_instructions": "Documentation generation complete. To deep-dive a specific module (e.g. main/background.js or main/svgparser.js), re-run the bmad-document-project skill and select option 2 (Deep-dive).",
+  "bmad_canonical_completeness": {
+    "checked_at": "2026-04-26T03:00:00Z",
+    "checked_for_issue": "DEE-45",
+    "project_type_id": "desktop",
+    "required_present": [
+      {"doc": "index.md", "path": "docs/index.md", "source": "DEE-11"},
+      {"doc": "project-overview.md", "path": "docs/project-overview.md", "source": "DEE-11"},
+      {"doc": "architecture.md", "path": "docs/architecture.md", "source": "DEE-11 (Winston, ADR-001..007)"},
+      {"doc": "source-tree-analysis.md", "path": "docs/source-tree-analysis.md", "source": "DEE-11"},
+      {"doc": "component-inventory.md", "path": "docs/component-inventory.md", "source": "DEE-11"},
+      {"doc": "development-guide.md", "path": "docs/development-guide.md", "source": "DEE-11"},
+      {"doc": "deployment-guide.md", "path": "docs/deployment-guide.md", "source": "DEE-11"},
+      {"doc": "asset-inventory.md", "path": "docs/asset-inventory.md", "source": "DEE-45 (aggregates deep-dive/g/main__img.md + deep-dive/g/main__font.md + deep-dive/j/tests__assets.md)"}
+    ],
+    "not_required": [
+      {"doc": "api-contracts.md", "reason": "requires_api_scan == false for project_type_id=desktop"},
+      {"doc": "data-models.md", "reason": "requires_data_models == false for project_type_id=desktop"},
+      {"doc": "contribution-guide.md", "reason": "no CONTRIBUTING.md found at repo root"},
+      {"doc": "integration-architecture.md", "reason": "single-part project (parts_count=1)"},
+      {"doc": "project-parts.json", "reason": "single-part project (parts_count=1)"}
+    ]
+  },
+  "resume_instructions": "Documentation generation complete. DEE-45 DP rerun confirmed completeness on 2026-04-26. To deep-dive a specific module (e.g. main/background.js or main/svgparser.js), re-run the bmad-document-project skill and select option 2 (Deep-dive).",
   "deep_dive_completion": {
     "a": {
       "issue": "DEE-33",
