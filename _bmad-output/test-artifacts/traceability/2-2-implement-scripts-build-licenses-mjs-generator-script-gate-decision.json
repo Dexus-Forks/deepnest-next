@@ -1,0 +1,63 @@
+{
+  "schema_version": "0.1.0",
+  "evaluated_at": "2026-04-26T00:00:00Z",
+  "repo": "deepnest-next",
+  "target": {
+    "type": "story",
+    "id": "2.2",
+    "label": "Story 2.2 — Implement scripts/build-licenses.mjs generator + Sage Round-1 architectural addendum",
+    "slug": "2-2-implement-scripts-build-licenses-mjs-generator-script",
+    "merge_sha": "74a795fd49c92ccdfebac0f5514266d13f5c940f",
+    "pr_url": "https://github.com/Dexus-Forks/deepnest-next/pull/23",
+    "pr_head_sha": "f40843f66a7cb3b82ebc9a06007de4c23ec03368",
+    "pre_merge_base_sha": "db6592b"
+  },
+  "collection_status": "COLLECTED",
+  "gate_basis": "priority_thresholds",
+  "gate_status": "PASS",
+  "rationale": "P0 coverage 100% (6/6) ✅ — AC-02.2.1 (Node-stable + zero-dep + .mjs + 298 LOC), AC-02.2.2 (licenses:build deterministic, two-run byte-identical), AC-02.2.3 (licenses:check --check flag wired; NOT in scripts.test per spec — Story 2.3/A4 owns wire-in), AC-02.2.4 (byte-for-byte regression: git diff db6592b..74a795f -- LICENSES.md = exactly 4 cells = 3 SPDX deltas + 1 latolatinfonts.css block move), AC-02.2.5 (main/LICENSE.yml passthrough — option (a); first-party block rows 1-6 match spec ordering verbatim; Boost legal-compliance anchor preserved), AC-02.2.11 (NFR-01 wall-clock band confirmed at TWO independent CI runs: 24961417841 PR head f40843f = 17000 ms ∈ [13397, 20096] ms; 24961493231 push-to-main 74a795f = 17000 ms ∈ band; Δ vs rolling_mean_ms 16746.6 = +253.4 ms). P1 coverage 100% (4/4) ✅ — AC-02.2.6 (SPDX normalisation 3 cell deltas verified), AC-02.2.7 (first_party flag added to latolatinfonts.css; row position confirmed), AC-02.2.12 (§16 16/16 PASS — Sage independent re-grep + Murat re-verified), AC-02.2.13 (file-set scope = 11 named files only; zero diff to vendored utilities/fixtures/installer-config). P2 coverage 100% (3/3) ✅ — AC-02.2.8 (ADR-008 §5 step 1 'Schema reference' subsection added, headers reduced; option α; round-1 finding on main/LICENSE.yml > 3-line header closed via fixup commit 16c81b8), AC-02.2.9 (β-with-deferred-impl decision documented in story file; manifest fixup commit f40843f mechanical regen disclosed in File List + Change Log), AC-02.2.10 (sprint-status flip ready-for-dev→done + last_updated refreshed). Sage Round-1 (DEE-93) APPROVED with severity.max = P2; 4×P2 + 6×P3 across 4 dispatched perspectives (Aegis findings:[]; Vitra 3×P2 + 2×P3; Hermes 1×P3; Lydia 1×P2 + 3×P3); Iris correctly conditional-skipped (touchesUI=false). All 10 follow-ups bundled into DEE-98 (Bundle 1: Vitra ADR alignment; Bundle 2: Lydia parser test harness — Story 2.3/A4 scope-add; Bundle 3: Hermes wall-clock CI guard for licenses:check itself — Story 2.3/A4 AC). All Story 2.1 deferred follow-ups (P2-01 + P3-01 + P3-02 + P3-03) closed in this PR — verified by Sage pre-flight + Murat re-verification.",
+  "p0_status": "MET",
+  "p1_status": "MET",
+  "overall_status": "MET",
+  "critical_open": 0,
+  "carry_forward": [
+    {
+      "id": "DEE-98-vitra-bundle-1",
+      "priority": "P2",
+      "owner": "Story 2.3 author / Winston (Architect) via DEE-98 Bundle 1",
+      "action": "Vitra Bundle 1 — ADR-008 alignment refinements (3×P2 + 2×P3 spec/impl alignment improvements at the ADR-008 layer; e.g. naming conventions for passthrough mechanism, schema-flag default discussion, ADR §271 cross-reference). Folded into Story 2.3 / A4 review surface."
+    },
+    {
+      "id": "DEE-98-lydia-bundle-2",
+      "priority": "P2",
+      "owner": "Story 2.3 author (Amelia) via DEE-98 Bundle 2",
+      "action": "Lydia Bundle 2 — parser test harness scope-add: automated test coverage for parser fail-fast branches and --check drift-detection path. Natural surface of Story 2.3 / A4 since A4 wires licenses:check into scripts.test. P2-04 'parser harness scope-add' tracked in DEE-98 Bundle 2."
+    },
+    {
+      "id": "DEE-98-hermes-bundle-3",
+      "priority": "P3",
+      "owner": "Story 2.3 author / Hermes via DEE-98 Bundle 3",
+      "action": "Hermes P3-06 — wall-clock CI guard for licenses:check itself (750 ms threshold), separate from npm test wall-clock band. Becomes a Story 2.3 / A4 AC."
+    },
+    {
+      "id": "DEE-98-copilot-comments",
+      "priority": "P3",
+      "owner": "Story 2.3 author (Amelia) via DEE-98 Bundles 1/2/3",
+      "action": "Fold 4× COMMENTED inline GitHub Copilot findings (notes-type validation, absolute-path rejection in deriveUnit, drift-diff unified-format honesty, failIO() prefix) — all already routed into DEE-98 bundles, no re-review needed."
+    }
+  ],
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability/2-2-implement-scripts-build-licenses-mjs-generator-script-trace.md",
+    "trace_matrix_path": "_bmad-output/test-artifacts/traceability/2-2-implement-scripts-build-licenses-mjs-generator-script-trace.matrix.json",
+    "e2e_trace_summary_path": "_bmad-output/test-artifacts/traceability/2-2-implement-scripts-build-licenses-mjs-generator-script-e2e-trace-summary.json",
+    "ci_run_url_pr_head": "https://github.com/Dexus-Forks/deepnest-next/actions/runs/24961417841",
+    "ci_run_url_push_main": "https://github.com/Dexus-Forks/deepnest-next/actions/runs/24961493231",
+    "story_file": "_bmad-output/implementation-artifacts/2-2-implement-scripts-build-licenses-mjs-generator-script.md",
+    "board_report": {
+      "type": "in-repo",
+      "status": "available",
+      "path": "projects/deepnest-next/reviews/2-2-implement-scripts-build-licenses-mjs-generator-script-round-1.md",
+      "description": "Sage Round-1 consolidated Review-Board report (DEE-93): APPROVED, severity.max = P2"
+    }
+  }
+}
