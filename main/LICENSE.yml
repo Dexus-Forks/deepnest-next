@@ -1,18 +1,6 @@
-# LICENSE.yml — main/ (root first-party + in-installer-but-out-of-tree passthrough)
-# Schema: see _bmad-output/planning-artifacts/architecture.md §5 ADR-008 step 1 "Schema reference".
+# LICENSE.yml — main/ (first-party + in-installer-but-out-of-tree passthrough)
+# Schema: see _bmad-output/planning-artifacts/architecture.md §5 ADR-008 step 1 "Schema reference" (this file's `path:` is the LITERAL Unit-column value).
 # Line endings: LF only.
-#
-# Story 2.2 §2a option (a): this file is the passthrough source for the 5 first-party rows
-# in LICENSES.md. Per Sage Round-1 P2-01 + ADR-008 §271, the generator does NOT emit
-# attribution for out-of-tree packages; this file IS that explicit metadata path for
-# in-installer-but-out-of-tree first-party rows (`@deepnest/calculate-nfp` ships under
-# node_modules/ via build.files: ['**/*'] no-asar; Boost requires attribution).
-#
-# `path:` interpretation NOTE: in main/LICENSE.yml only, `path:` is the LITERAL Unit-column
-# value (not folder-relative). The generator special-cases this file because rows like
-# `minkowski.cc, minkowski.h` and `/polygon` are not in-tree paths under main/. All other
-# LICENSE.yml files use the default folder-relative derivation
-# (Unit = `/<containing folder>/<path>`).
 
 - path: /main
   name: deepnest-next /main (first-party)
