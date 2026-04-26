@@ -1,0 +1,79 @@
+# generated: 2026-04-26
+# last_updated: 2026-04-26
+# project: deepnest-next
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: {project-root}/_bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - Developer typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-04-26
+last_updated: 2026-04-26
+project: deepnest-next
+project_key: NOKEY
+tracking_system: file-system
+story_location: "{project-root}/_bmad-output/implementation-artifacts"
+
+development_status:
+  # Epic 1 — Renderer asset hygiene (Gate G-2 prerequisite consumer)
+  epic-1: backlog
+  1-1-remove-dead-weight-renderer-assets-and-record-the-saving: backlog
+  epic-1-retrospective: optional
+
+  # Epic 2 — LICENSES.md generator + per-folder metadata (FR-02, expanded scope)
+  epic-2: backlog
+  2-1-bootstrap-per-folder-license-yml-metadata-regenerate-licenses-md-data-hygiene-fixes-included: backlog
+  2-2-implement-scripts-build-licenses-mjs-generator-script: backlog
+  2-3-wire-licenses-check-into-npm-test-ci-drift-gate: backlog
+  2-4-document-the-add-a-new-vendored-library-workflow-in-docs-development-guide-md: backlog
+  epic-2-retrospective: optional
+
+  # Epic 3 — Test-fixture integrity gate (FR-03)
+  epic-3: backlog
+  3-1-implement-tests-assets-integrity-check-manifest-wire-into-npm-test: backlog
+  3-2-document-the-fixture-drift-re-derivation-procedure-in-docs-development-guide-md: backlog
+  epic-3-retrospective: optional
+
+  # Epic 4 — Background-worker shutdown safety (FR-04, NFR-02)
+  epic-4: backlog
+  4-1-implement-app-shuttingdown-sentinel-bounded-try-catch-boundary-in-main-js: backlog
+  4-2-nfr-02-manual-repro-evidence-15-15-trials-across-3-exit-paths: backlog
+  epic-4-retrospective: optional
+
+  # Epic 5 — SvgParserInstance type-gap closure (FR-05)
+  epic-5: backlog
+  5-1-add-transformparse-and-polygonifypath-to-svgparserinstance-in-index-d-ts: backlog
+  epic-5-retrospective: optional
+
+  # Epic 6 — Anti-pattern preservation rails (FR-06, IR Pre-condition #7 mitigation)
+  epic-6: backlog
+  6-1-add-github-pull-request-template-md-anchored-on-project-context-md-16: backlog
+  6-2-document-the-cite-the-16-item-number-reviewer-workflow-in-docs-development-guide-md: backlog
+  epic-6-retrospective: optional
