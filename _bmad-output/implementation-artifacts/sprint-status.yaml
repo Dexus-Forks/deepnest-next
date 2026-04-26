@@ -77,3 +77,46 @@ development_status:
   6-1-add-github-pull-request-template-md-anchored-on-project-context-md-16: ready-for-dev
   6-2-document-the-cite-the-16-item-number-reviewer-workflow-in-docs-development-guide-md: backlog
   epic-6-retrospective: optional
+
+# Sprint risks — surfaced via Daily Standup (DEE-82, 2026-04-26).
+# Captured here per the standup convention: "Bei Blocker: Eintrag in sprint-status.yaml unter risks:".
+# These three are sprint-visibility hygiene gaps, not runtime blockers — no sync call required.
+risks:
+  - id: risk-1-sprint-status-stale
+    surfaced_by: DEE-82 daily-2026-04-26.md
+    severity: medium-visibility / low-execution-impact
+    scope_note: |
+      Reduced after `git checkout main`: 1-1 and 3-1 are already `done` upstream.
+      Only Story 6.1 remains stale (still ready-for-dev despite merge ccdd214,
+      Board APPROVED DEE-58, tea-trace PASS DEE-76).
+    summary: |
+      Story 6.1 (.github/pull_request_template.md) is merged + Board-APPROVED
+      (DEE-58) + tea-trace gate PASS (DEE-76) but development_status above still
+      reads `ready-for-dev` for 6-1. bmad-sprint-status (CS) will misreport Epic 6
+      until refreshed.
+    owner: Amelia (developer)
+    next_action: flip 6-1 → done at the next bmad-sprint-status (CS) run; refresh `last_updated:` to mention DEE-57 / DEE-58 / DEE-76.
+    target_resolution: next heartbeat
+  - id: risk-2-batch-2-not-picked-up
+    surfaced_by: DEE-82 daily-2026-04-26.md
+    severity: medium
+    summary: |
+      Post stream-head merges (Day 1 of MVP-1 dev), no story is in_progress and no new
+      dev issue is assigned. Epics 2 / 4 / 5 still have *no* story files at all
+      (only epic-level entries exist). Velocity will stall without a CS run for the
+      next stream-head batch.
+    owner: John (PM, CS skill owner)
+    next_action: bmad-create-story for Epic-2 / 4 / 5 stream-head stories (2-1, 4-1, 5-1) and the Epic-1/3/6 doc follow-ons (1-2 / 3-2 / 6-2). Follow-up issue to be filed by Amelia at standup close.
+    target_resolution: 2026-04-27
+  - id: risk-3-last-updated-drift
+    surfaced_by: DEE-82 daily-2026-04-26.md
+    severity: low
+    summary: |
+      `last_updated:` was refreshed on main for Story 3.1 only ("DEE-56 …
+      Story 3.1 merged via PR #7; Board APPROVED DEE-63; status → done").
+      It still does not mention Story 1.1 (DEE-55 / DEE-68 / DEE-77),
+      Story 6.1 (DEE-57 / DEE-58 / DEE-76), or the Story 3.1 hardening
+      (DEE-69 / PR #15). Will be folded into the risk-1 refresh.
+    owner: Amelia (developer)
+    next_action: refresh as part of the bmad-sprint-status run that resolves risk-1.
+    target_resolution: next heartbeat
