@@ -159,6 +159,7 @@ Electron Main Process  (main.js)
 6. **Notification window is its own typography island.** Adding the webfont there requires a fresh `<link>` to `latolatinfonts.css` plus an explicit `font-family`.
 7. **No icon font.** The earlier deepnest.io build had one; the current build uses individual SVG backgrounds. Reintroducing an icon font means rewriting every `background-image: url(img/...)` rule.
 8. **`tests/assets/` is excluded from the installer** by `!test**` in `package.json` `build.files`. Keep test fixtures under `tests/`.
+9. **Webfonts ship `woff2` + `woff` only.** Do not reintroduce `.eot` or `.ttf` `src:` URLs in `main/font/latolatinfonts.css` or sibling CSS. Electron is Chromium-only (ADR-001 + ADR-004); `.eot` was IE9 fallback, `.ttf` was secondary fallback — both removed in Story 1.1 (DEE-55, ~650 KB measured — see `docs/asset-inventory.md` §6 P4). Adding a new webfont follows the same `{woff2, woff}` set: declare via `@font-face` in `main/font/`, listing both `format("woff2")` and `format("woff")` `src:` entries. Codified as ADR-010 in `docs/architecture.md` §10.
 
 ## 10. TypeScript / language rules
 

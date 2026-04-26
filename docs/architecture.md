@@ -311,6 +311,30 @@ The mixing of compiled and uncompiled JS is intentional — the legacy core engi
 - (+) New modules cannot regress on type safety.
 - (−) Type information for the legacy modules lives entirely in `index.d.ts` and `main/ui/types/index.ts` — keep these in sync when the JS changes.
 
+> **Note on ADR-008 / ADR-009**: these numbers are reserved by the MVP planning overlay (`_bmad-output/planning-artifacts/architecture.md` §5 — ADR-008 LICENSES generator, ADR-009 background-worker shutdown sentinel). They are not yet promoted into this canonical file. ADR-010 below skips that gap deliberately — when 008/009 are promoted, they slot in above.
+
+### ADR-010 — Webfonts ship `woff2` + `woff` only
+
+**Status**: Accepted.
+
+**Context**: The bundled Lato webfont kit historically shipped four `src:` formats per face: `eot`, `woff2`, `woff`, `ttf`. `eot` is an IE-only legacy format (introduced for IE9 and earlier); `ttf` was a secondary fallback for very old browsers. Story 1.1 (DEE-55, MVP-1 Stream A1) removed the `.eot` and `.ttf` files for the three live LatoLatin weights (Bold, Regular, Light) and trimmed the corresponding `src:` URLs from `main/font/latolatinfonts.css`. Measured installer-size saving for this slice: ~650 KB across 6 files (full Story-1.1 footprint reduction was ~1.85 MB, see `docs/asset-inventory.md` §6 P4 row + §8 verification recap). This ADR codifies the post-Story-1.1 state as a binding architectural rule.
+
+**Decision**: Webfonts in this app ship as a `{woff2, woff}` pair only. `.eot` and `.ttf` `src:` URLs MUST NOT be reintroduced in `main/font/latolatinfonts.css` or any sibling stylesheet under `main/`. Adding a new webfont follows the same `{woff2, woff}` set: declare via `@font-face` in `main/font/`, listing both `format("woff2")` and `format("woff")` `src:` entries.
+
+**Consequences**:
+- (+) Smaller installer footprint per added face — no dead-weight legacy formats ship.
+- (+) Single canonical loading path; reviewers can grep `src:` URLs against this ADR mechanically.
+- (+) Removes the implicit-fallback chain that previously masked rendering regressions on the live Chromium-only target.
+- (−) The rule is justified only by the Chromium-only deployment context (ADR-001 + ADR-004). If a future story adds a non-Electron renderer surface (e.g. a web build, or a renderer that loads remote content), this ADR must be revisited per face — `.woff` is still the appropriate broad-compatibility companion to `.woff2`, but `.ttf` may legitimately re-enter the matrix in that hypothetical.
+- (−) `LatoLatin-BoldItalic.{woff,woff2}` stays out of scope — it had no `@font-face` binding pre-Story-1.1 (P1 in `docs/asset-inventory.md` §6) and is not reintroduced by this ADR.
+
+**Cross-references**:
+- ADR-001 (multi-process Electron), ADR-004 (`nodeIntegration: true`, no remote content) — establish the Chromium-only deployment context that makes `.eot`/`.ttf` redundant.
+- `_bmad-output/project-context.md` §9.9 — invariant binding for code-touching agents (canonical wording).
+- `docs/asset-inventory.md` §4 (cross-link), §6 P4 (measured saving), §8 (verification recap).
+- Story 1.1 / DEE-55 (PR #8, merge `8c3afa8`) — origin of the removal.
+- Round-1 Review-Board on DEE-68 — surfaced the codification follow-up that became DEE-78.
+
 ## 11. Known Risks & Open TODOs
 
 Pulled from in-source markers and `CHANGELOG.md`:
