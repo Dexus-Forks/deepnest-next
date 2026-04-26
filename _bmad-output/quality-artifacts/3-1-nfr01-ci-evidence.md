@@ -28,7 +28,7 @@
 | Trigger | `push` to `main` |
 | HEAD SHA | `73daa8a4d959528bb651f2a5232f4da5490978f8` (squash-merge of PR #7) |
 | Status | `completed` / `success` |
-| Runner cell | `ubuntu-latest` (= `ubuntu-24.04` per the runner image migration since baseline) |
+| Runner cell | `ubuntu-latest` (`ubuntu-24.04` at time of run; runner image migration since baseline) |
 | Step "Run Playwright tests" — start | `2026-04-26T12:19:20.187Z` |
 | Step "Run Playwright tests" — end | `2026-04-26T12:19:38.510Z` |
 | **Wall-clock** | **18 323 ms** |
