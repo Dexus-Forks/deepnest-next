@@ -295,7 +295,7 @@ These behaviours shape the merge gate below (step 5). They are not aspirational 
      gh pr view <n> --json reviews \
        --jq '[.reviews[] | select(.author.login == "copilot-pull-request-reviewer[bot]") | .submittedAt] | max'
 
-     # (b) Most recent Copilot review-comment timestamp (per-thread + top-level)
+     # (b) Most recent Copilot review-comment timestamp (inline diff review comments)
      gh api repos/<owner>/<repo>/pulls/<n>/comments \
        --jq '[.[] | select(.user.login == "copilot-pull-request-reviewer[bot]") | .updated_at] | max'
 
