@@ -24,7 +24,7 @@ deepnest-next/
 ├── icon.icns                                  ← macOS app icon (electron-builder mac.icon)
 ├── icon.ico                                   ← Windows app icon (electron-builder win.icon, also linux.icon)
 ├── main/
-│   ├── img/                                   ← 30 UI icons (29 SVG, all in use post-Story-1.1)
+│   ├── img/                                   ← 30 UI icons (30 SVG, all in use post-Story-1.1)
 │   └── font/
 │       ├── latolatinfonts.css                 ← LIVE webfont binding (loaded by main/index.html)
 │       └── fonts/                             ← LatoLatin-{Bold,Regular,Light} × {woff,woff2} (6 files, all live)

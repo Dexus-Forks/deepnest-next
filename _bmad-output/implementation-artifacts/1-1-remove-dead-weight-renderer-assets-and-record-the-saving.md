@@ -1,6 +1,6 @@
 # Story 1.1: Remove dead-weight renderer assets and record the saving
 
-Status: review
+Status: done
 
 > Authored by John (PM, BMad) on 2026-04-26 via `bmad-create-story` for **MVP-1 / Stream A head**. Sprint plan reference: `_bmad-output/planning-artifacts/sprint-plan.md` §3 row A1. Epic anchor: `_bmad-output/planning-artifacts/epics.md` §"Story 1.1" lines 213–264.
 
@@ -370,6 +370,24 @@ Amelia (Developer agent, Paperclip), `claude-opus-4-7`, 2026-04-26 via DEE-55 wa
 
 (Identical pattern applied to all three @font-face blocks: `LatoLatin-Bold`, `LatoLatin-Regular`, `LatoLatin-Light`.)
 
+**Round-1 Review-Board verdict** (2026-04-26, leader Sage / DEE-68):
+
+- **Verdict: APPROVED.** All 5 perspectives reported in (security · architecture · performance · code-quality · accessibility); coverage complete.
+- Severity tally: 0 P0 · 0 P1 · 1 P2 (Vitra ADR-missing, self-flagged non-blocking) · 6 P3 (informational / doc nits).
+- Consolidated report (binding): `projects/deepnest-next/reviews/1-1-remove-dead-weight-renderer-assets-and-record-the-saving-round-1.md`.
+- Per-perspective sub-issues: security DEE-71 · architecture DEE-72 · performance DEE-73 · code-quality DEE-74 · accessibility DEE-75.
+- Cross-cutting endorsements: (a) soft scope creep on `latolatinfonts.css` justified by AC-01.4 lower bound (Lydia + Vitra); (b) pre-commit hook context not equivalent to §16.9 violation (CI run `24956110881` is binding evidence); (c) doc scope extension to `docs/deep-dive/g/main__font.md` appropriate.
+
+**Pre-merge fixup applied (this PR, second commit on top of `b36c3f0`)**:
+
+- Board follow-up #2 (P3 doc-numerology): `docs/asset-inventory.md` §2 ("29 SVG" → "30 SVG") and `docs/component-inventory.md:84` ("was 35 SVG + 1 PNG" → "was 34 SVG + 1 PNG = 35 files"). Pre-story state confirmed via `git ls-tree origin/main -- main/img/` = 34 SVG + 1 PNG = 35 files.
+- Board follow-up #3 (PR-description framing): the "−7.4 % vs NFR-01 baseline" wording softened on the GitHub PR to "within NFR-01 [13 397, 20 096] ms tolerance band; package-size-positive change, not load-time-positive" per Hermes' methodology guidance. The numeric record above (Δ = −1 246.6 ms = −7.4 %) stays intact in this story file as a measurement artefact, not a perf claim.
+
+**Board follow-ups deferred to separate work** (not blocking the merge):
+
+- #1 — `_bmad-output/project-context.md` §9 invariant "Webfonts ship `woff2` + `woff` only" + optional ADR-010. Routed to John (PM) / Vitra; outside this PR's scope (governance docs, not code).
+- #4 — Playwright assertion for `LatoLatinWeb`/`LatoLatinWebLight` `@font-face` URL resolution. Routed to Murat (TEA) as the first tea-trace backlog item for Story 1.1.
+
 ### File List
 
 **Deletions — main/img/ (5 files):**
@@ -428,3 +446,4 @@ Amelia (Developer agent, Paperclip), `claude-opus-4-7`, 2026-04-26 via DEE-55 wa
 |---|---|---|
 | 2026-04-26 | Story created (`bmad-create-story`, DEE-54). Status: ready-for-dev. | John (PM, BMad) |
 | 2026-04-26 | Story implemented (`bmad-dev-story`, DEE-55): 30 files removed across `main/img/` + `main/font/` (P1 + P2 + P3 + P4); `latolatinfonts.css` edited to bind woff/woff2 only; 6 doc files updated. Measured installer-size delta 1.85 MB. Status: in-progress → review. | Amelia (Dev, BMad) |
+| 2026-04-26 | Round-1 Review-Board verdict APPROVED (Sage / DEE-68); 0 P0 / 0 P1 / 1 P2 (non-blocking) / 6 P3. Pre-merge fixup commit applied: 2 P3 doc-numerology nits (`asset-inventory.md` §2 + `component-inventory.md:84`); PR description re-framed off "−7.4 %" perf claim. Report: `projects/deepnest-next/reviews/1-1-remove-dead-weight-renderer-assets-and-record-the-saving-round-1.md`. Status: review → done. | Amelia (Dev, BMad) |
