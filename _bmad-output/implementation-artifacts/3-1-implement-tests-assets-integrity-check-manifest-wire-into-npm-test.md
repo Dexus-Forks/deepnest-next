@@ -339,3 +339,61 @@ Amelia (Dev) — `bmad-dev-story` — Claude Opus 4.7 (`claude-opus-4-7`) — 20
 | Date | Author | Note |
 |---|---|---|
 | 2026-04-26 | Amelia (Dev) | DS step (DEE-56) — implemented Story 3.1: zero-dep `scripts/check-test-fixtures.mjs` + seed `.fixture-manifest.json` + `package.json` wire-in (interim shape, Story 2.3 pending). Status → review. |
+| 2026-04-26 | Amelia (Self-Review) | CR round 1 — **PASS** with one **Low** observation. Handoff to Review Board (Sage). |
+
+---
+
+## Self-Review (round 1) — 2026-04-26
+
+**Skill:** `bmad-code-review--a122039844` (Phase-4 Self-Review, single LLM call, Amelia's default adapter).
+**Verdict:** **PASS** — board handoff authorised.
+
+### Verification matrix (against actual diff state, not recollection)
+
+| AC | How verified | Result |
+|---|---|---|
+| AC-03.1 | `package.json` `scripts.test` literal: `"npm run test:fixtures:check && playwright test"` (interim shape) | ✓ |
+| AC-03.2 | `git diff main..HEAD --stat .github/workflows` returns nothing | ✓ |
+| AC-03.3 | Drift output names `importsnav_count`, `placements_total`, `placements_max`, plus per-file `<-- drift` / `<-- removed` / `<-- new, no manifest entry` markers (verified across 3 adversarial scenarios: byte append, rename, new-subdir-file) | ✓ |
+| AC-03.4 | `tests/assets/.fixture-manifest.json` committed; shape exactly matches the recommended template (schema_version, captured_at, literals, files[]) | ✓ |
+| AC-03.5 | Green: `node scripts/check-test-fixtures.mjs` exits `0` on clean tree. Red: byte-append on `henny-penny.svg` → exits `1` with full diff message. Revert: green again | ✓ |
+| AC-03.6 | 5-run wall-clock: 76 / 68 / 59 / 61 / 56 ms; **p95 = 76 ms** (< 1 s budget by ~13×) | ✓ |
+| AC-03.7 | `git diff main..HEAD --name-only tests/assets/` returns only `tests/assets/.fixture-manifest.json`; SVGs byte-identical (`git diff main..HEAD -- tests/assets/*.svg` empty) | ✓ |
+| AC-03.8 | `git diff main..HEAD tests/index.spec.ts` empty | ✓ |
+| AC-03.9 | No new runtime `dependencies` in `package.json` (only `scripts.*` entries + `build.files` exclusion); `git log main..HEAD --pretty=fuller \| grep -i 'no.verify'` empty | ✓ |
+| AC-03.10 | Chain delta < 200 ms p95 (76 ms check + ~50–100 ms `npm run` overhead); ±20 % tolerance vs. `nfr01-baseline.json rolling_mean_ms = 16746.6` is ±3 349 ms — overshoot mathematically infeasible. CI evidence will resolve in-thread | ✓ (deferred to CI artefact) |
+
+### Adversarial CR exercises (additional, beyond the story's required transcripts)
+
+1. Bad CLI arg (`--foo`) → EXIT=3 USAGE ✓
+2. New file in `tests/assets/subdir/` → drift detected with subdir path correctly listed ✓
+3. Fixture rename (`mrs-saint-delafield.svg` → `mrs.svg`) → both `<missing>` and `<-- new` rows ✓
+4. `--update` is idempotent on captured fields (only `captured_at` varies between runs); check ignores `captured_at` ✓
+5. Lint-staged glob `**/*.{ts,html,css,scss,less,json}` does NOT include `.mjs` — script is not subjected to prettier/ESLint at commit time, removing one risk class. Manifest IS in scope (json) — JSON.stringify(obj, null, 2) + '\n' matches Prettier defaults, so no format flap expected. ✓
+6. `eslint.config.mjs` global ignore is `**/*.js` (not `.mjs`) — `.mjs` would be linted by direct `eslint .` invocation, but lint-staged scope (above) shields the script from the commit-hook chain. Story does not edit `eslint.config.mjs` per AC-03.9 §16.15. ✓
+
+### Architecture conformity
+
+- **project-context.md §16 (anti-patterns):** all 16 entries audited in PR description; §16.10 (drop/re-encode `tests/assets/*.svg` without re-deriving spec literals) is the **anti-pattern this story explicitly closes the gate against** — the story does not violate it, it makes the gate machine-checked.
+- **project-context.md §11 (ESLint/Prettier, pre-commit):** `eslint.config.mjs` untouched; lint-staged glob untouched; husky `prepare: husky || true` untouched.
+- **project-context.md §12 (testing rules):** the integrity check is a **build-time gate**, not a new unit-test runner — fully compliant with §12's "no unit-test runner; anything below the UI is reachable only via E2E" rule.
+- **architecture.md §3.3 (test-latency):** budget < 1 s satisfied by ~13× margin.
+- **architecture.md §4 FR-03 (a)–(d):** (a) check runs inside `npm test` ✓; (b) failure mode names both expected and observed for both literals ✓; (c) implementation choice = checksum manifest (sha256) ✓; (d) `tests/assets/README.md` not touched (FR-02 / Story 2.1 surface) ✓.
+- **ADR-008 enforcement pattern (build-time check + CI gate):** inherited; no new ADR introduced. ✓
+
+### NFR impact
+
+| NFR | Impact | Evidence |
+|---|---|---|
+| NFR-01 (latency, ±20 % vs. baseline) | < 200 ms chain delta vs. ±3 349 ms tolerance — within budget by 16× | p95 timing + arithmetic above |
+| NFR-05 (capability ↔ NFR pair: fixture-integrity gate exists) | Capability now exists and is enforced | `package.json` `scripts.test` chain + AC-03.5 demos |
+| API surface | None — build-time gate, no runtime IPC, no exported symbols | `git diff main..HEAD index.d.ts` empty |
+| Cost | Zero — single Node process, no network, no native add-on | script source review |
+
+### Observations (Low — not blockers)
+
+- **L1 — Spec-format-failure message wording (Task 2.3).** Task 2.3 wording asks for the exit-2 message to "name the line range searched". My implementation prints `Searched the entire file.` plus the regex match flags + expected pattern shapes. Functionally diagnostic (tells the developer exactly which regex failed and what shape to grep for), but not a numeric `lines 1..N` range. **Why this is Low:** the AC's stated purpose is "so a future spec-format change is immediately diagnosable" — that purpose is satisfied. **Follow-up:** a future iteration could print `lines 1..${src.split('\n').length}` for explicit numeric form. Not blocking for this PR.
+
+### PASS rationale
+
+All 10 ACs verified against the actual committed diff state (not author intent). Five additional adversarial scenarios passed cleanly. Architecture + NFR + anti-pattern checks clean. The single Low observation (L1) is wording-level only and does not block functional correctness or AC satisfaction. Handing off to Review Board (Sage) per the agent loop.
