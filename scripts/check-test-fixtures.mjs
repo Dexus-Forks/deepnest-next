@@ -197,7 +197,7 @@ function failSpecMissing() {
   const rel = path.relative(REPO_ROOT, SPEC_PATH);
   process.stderr.write(
     `[test:fixtures:check] FAIL — spec file not found at ${rel}.\n` +
-      `  Restore tests/index.spec.ts before \`npm run test:fixtures:check\`. See ${DOCS_POINTER}.\n`,
+      `  Restore tests/index.spec.ts before rerunning fixtures (\`npm run test:fixtures:check\` or \`npm run test:fixtures:update\`). See ${DOCS_POINTER}.\n`,
   );
   process.exit(EXIT_SPEC_FORMAT);
 }
