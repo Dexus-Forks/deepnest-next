@@ -54,7 +54,7 @@ Ship the six MVP epics that close FR-01..06 against the deepnest-next brownfield
 |---|---|---|---|---|
 | #1 architecture.md present + open questions tracked | PASS | unchanged | — | ✅ PASS |
 | #2 ADRs documented (ADR-008, ADR-009) | PASS | unchanged | — | ✅ PASS |
-| #3 NFR-01 baseline file present, well-formed | **FAIL** | **PRESENT** — 5 runs, mean 16746.6 ms, spread (max−min)=8128 ms = 48.5% of mean (under the 50% CONCERNS threshold) | DEE-52 (TEA / Murat) shipped `nfr01-baseline.json` | ✅ **PASS now** |
+| #3 NFR-01 baseline file present, well-formed | **FAIL** | **PRESENT** — 5 runs, mean 16746.6 ms, spread (max−min)=8115 ms = 48.5% of mean (under the 50% CONCERNS threshold) | DEE-52 (TEA / Murat) shipped `nfr01-baseline.json` | ✅ **PASS now** |
 | #4 PRD FR/NFR coverage complete | PASS | unchanged | — | ✅ PASS |
 | #5 epics.md cites every FR/NFR | PASS | unchanged | — | ✅ PASS |
 | #6 every story has pre-flight reads + ACs + risk callouts | PASS | unchanged | — | ✅ PASS |
@@ -70,7 +70,12 @@ Ship the six MVP epics that close FR-01..06 against the deepnest-next brownfield
 
 ## 3. Epic sequencing & parallel streams
 
-The 12 stories sequence into three execution streams. Streams are independent (no shared files at the source-edit level except `docs/development-guide.md`, which collects per-stream doc additions by append, not by section overwrite). Streams run in parallel; per-epic ordering is sequential within a stream.
+The 12 stories sequence into three execution streams. Streams are independent at the source-edit level **except for two known shared edit points**:
+
+1. **`docs/development-guide.md`** — collects per-stream doc additions by append (not by section overwrite). All three streams append independent sections; no merge conflict expected.
+2. **`package.json`** — both Story 2.3 (Stream A, adds `npm run licenses:check`) and Story 3.1 (Stream B, adds `npm run test:fixtures:check`) extend the `scripts.test` chain. **Treat `package.json` as an ordered merge point:** Stream A's Story 2.3 lands the initial `licenses:check` wiring first; Stream B's Story 3.1 then rebases and **appends** its `test:fixtures:check` to the existing chain rather than replacing it (target shape: `"test": "npm run licenses:check && npm run test:fixtures:check && playwright test"`, which is the canonical form already cited in `epics.md` Story 3.1's "Files to edit" section). Two PRs in flight is fine; the merge order on `main` is what matters.
+
+Streams otherwise run in parallel; per-epic ordering is sequential within a stream. **Implication for Stream B:** Story 3.1's `package.json` wire-in step is gated on Story 2.3 having merged. Stream B can begin Story 3.1's non-`package.json` work (the `check-test-fixtures.mjs` script + the `.fixture-manifest.json`) in parallel with Stream A; only the final wire-in commit needs the rebase.
 
 ### Stream A — Hygiene & assets (sequential)
 
@@ -99,9 +104,9 @@ The 12 stories sequence into three execution streams. Streams are independent (n
 | C2 | Epic 5 / Story 5.1 — Add `transformParse` and `polygonifyPath` to `SvgParserInstance` in `index.d.ts` | Amelia (Dev) | Type-only; lands once the §16 PR template (C1) is governing reviews. |
 | C3 | Epic 6 / Story 6.2 — Document the "cite the §16 item number" reviewer workflow | Paige (Tech-Writer) | Doc; lands last — closes the loop on C1 by codifying the reviewer-side workflow. |
 
-**Parallelism note.** A1, B1, and C1 are the three head-of-stream items and have **no shared files**. They can land in any order or simultaneously. After the heads land, each stream serializes internally.
+**Parallelism note.** A1 (Story 1.1, asset removal) and C1 (Story 6.1, PR template) share no files with each other or with B1 — they can land in any order or simultaneously. **B1 (Story 3.1)** can also start in parallel (its `scripts/check-test-fixtures.mjs` + `tests/assets/.fixture-manifest.json` work is independent), but its `package.json` wire-in step is **gated on Stream A reaching Story 2.3** (per §3 shared-edit-point #2). In practice: B1's PR can be opened in parallel; merging B1 just waits for A1→A2→A3→A4 (Story 2.3) to land first, then B1 rebases and merges. After the heads land, each stream serializes internally.
 
-**Critical-path note.** The sprint's critical path is **Stream A** (5 items) — Stream A is also the longest stream. Stream B (4 items) and Stream C (3 items) have slack against Stream A.
+**Critical-path note.** The sprint's critical path is **Stream A** (5 items) — Stream A is also the longest stream and gates Stream B's first merge. Stream C (3 items) has full slack against Stream A.
 
 ---
 

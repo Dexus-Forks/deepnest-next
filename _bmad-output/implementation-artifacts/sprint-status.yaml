@@ -18,7 +18,7 @@
 #
 # Story Status:
 #   - backlog: Story only exists in epic file
-#   - ready-for-dev: Story file created in stories folder
+#   - ready-for-dev: Story file created under the implementation artifacts folder (canonical: _bmad-output/implementation-artifacts/{story_key}.md)
 #   - in-progress: Developer actively working on implementation
 #   - review: Ready for code review (via Dev's code-review workflow)
 #   - done: Story completed
