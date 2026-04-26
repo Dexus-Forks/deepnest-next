@@ -15,6 +15,7 @@ Phase-5 = post-merge cleanup and verification (closer PR, traceability artefacts
 | # | SOP | Doc anchor | Owner | Source issue |
 |---|-----|------------|-------|--------------|
 | 1 | TEA closer PR pre-flight — `git fetch origin main && git rebase origin/main` before `gh pr create`; close branch as superseded if rebase reveals work already merged (no force-push of no-op PRs) | `_bmad-output/project-context.md` §19 | Murat (TEA) | DEE-106 (Fix #4 of DEE-102) |
+| 2 | PR merge gate (Copilot wait + revise) — after `gh pr create` (or auto-merge flip), poll for a Copilot review, walk every Copilot thread (`validate → fix → reply → resolve`), merge only when the **latest** review by `copilot-pull-request-reviewer` is APPROVED (explicit `reviews[]` author filter — `reviewDecision` rollup is NOT Copilot-attributable until DEE-114 branch protection lands) and all Copilot threads are resolved (with INVALID/DEFER threads only resolved on reviewer ack, 24 h SLA, or a linked DEFER follow-up issue); no carve-out for closer or artifact PRs | `_bmad-output/project-context.md` §15 ("PR merge gate (Copilot wait + revise)") + §19 closer-PR carve-out clarification | Wes (Workflow Builder) | DEE-115 (child of DEE-113 CEO policy) |
 
 ## Related governance work (cross-SOP)
 
