@@ -46,16 +46,26 @@ so future maintainers do not undo that by reintroducing a bypass.
 
 ## Where the dedupe gate lives (do not duplicate it elsewhere)
 
-Paperclip core ships fingerprint-based dispatch dedupe for routine-driven
-issues. Source-of-truth pointers (so future maintainers see where the
-guarantee lives):
+The dispatch dedupe primitive lives in **Paperclip core**, the upstream
+runtime that hosts this company. It is **not** in this `deepnest-next`
+repo — the file paths below name modules inside the Paperclip server
+codebase (internal to the Paperclip platform, separate from this repo).
+The canonical, in-repo entry point for the design rationale is the
+[DEE-103 plan document](/DEE/issues/DEE-103#document-plan); start there.
 
-| Concern | Location |
-|---------|----------|
-| `dispatchFingerprint` computation (`sha256` over canonical payload + title + description + assignee + workspace) | `server/src/services/routines.ts:341` |
-| `findLiveExecutionIssue` lookup + `concurrencyPolicy=skip_if_active` enforcement | `server/src/services/routines.ts:661` |
-| Audit columns recording the skip decision | `routine_runs.{dispatchFingerprint, linkedIssueId, coalescedIntoRunId, source, triggerId}` |
-| Activity log entry on dispatch | `routine.run_triggered` |
+| Concern | Location | Where it lives |
+|---------|----------|----------------|
+| Schema + ADR for the dedupe contract | [DEE-103#document-plan](/DEE/issues/DEE-103#document-plan) | Paperclip board (this company) |
+| `dispatchFingerprint` computation (`sha256` over canonical payload + title + description + assignee + workspace) | `server/src/services/routines.ts:341` | Paperclip core (upstream, internal) |
+| `findLiveExecutionIssue` lookup + `concurrencyPolicy=skip_if_active` enforcement | `server/src/services/routines.ts:661` | Paperclip core (upstream, internal) |
+| Audit columns recording the skip decision | `routine_runs.{dispatchFingerprint, linkedIssueId, coalescedIntoRunId, source, triggerId}` | Paperclip core (upstream, internal) |
+| Activity log entry on dispatch | `routine.run_triggered` | Paperclip core (upstream, internal) |
+
+> The `server/src/...` paths and `routine_runs.*` columns are Paperclip
+> core internals. They are not navigable from this `deepnest-next`
+> checkout. Treat them as orientation pointers for someone reading the
+> Paperclip core source; for everything actionable from this repo, use
+> the [DEE-103 plan document](/DEE/issues/DEE-103#document-plan).
 
 Filing-time dedupe (live duplicate suppressed) and runtime dedupe (replay
 audit trail) share the same fingerprint. There is **no** parallel
@@ -89,8 +99,11 @@ Amelia's `Handoff zu Quality` step, or any other dispatcher surface:
 - [ ] Does the change render the trace issue title/description in caller
       code? Templates belong in the Routine config; reject duplication.
 - [ ] If the change adds a "filing-time dedupe" helper / script / guard,
-      reject it — the gate already exists in `routines.ts`. Bug reports
-      against the gate go to [DEE-107](/DEE/issues/DEE-107) or [DEE-103](/DEE/issues/DEE-103).
+      reject it — the gate already exists in Paperclip core (the upstream
+      runtime; the dedupe primitive is _not_ shipped from this repo).
+      Schema + ADR: [DEE-103#document-plan](/DEE/issues/DEE-103#document-plan).
+      File bug reports / extension requests against [DEE-107](/DEE/issues/DEE-107)
+      (Routine config) or [DEE-103](/DEE/issues/DEE-103) (dedupe primitive).
 
 ## Acceptance evidence
 
