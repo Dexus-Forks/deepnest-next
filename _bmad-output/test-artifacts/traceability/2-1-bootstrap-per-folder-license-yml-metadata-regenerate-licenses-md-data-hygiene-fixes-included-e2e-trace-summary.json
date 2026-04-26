@@ -86,6 +86,7 @@
     "gate_decision_path": "_bmad-output/test-artifacts/traceability/2-1-bootstrap-per-folder-license-yml-metadata-regenerate-licenses-md-data-hygiene-fixes-included-gate-decision.json",
     "trace_report_url": "",
     "artifact_url": "",
+    "journey_evidence_url": "https://github.com/Dexus-Forks/deepnest-next/actions/runs/24960094498",
     "journey_evidence_url_postfix_pr": "https://github.com/Dexus-Forks/deepnest-next/actions/runs/24960094498",
     "journey_evidence_url_push_main": "https://github.com/Dexus-Forks/deepnest-next/actions/runs/24960135893"
   },
