@@ -1,5 +1,5 @@
 # generated: 2026-04-26
-# last_updated: 2026-04-26 (DEE-55 / Round-1 Review-Board APPROVED via DEE-68 — Story 1.1 transitioned review → done; Stream A head merged)
+# last_updated: 2026-04-26 (DEE-83 / bmad-create-story batch-2 — Story 6.1 flipped ready-for-dev → done (PR #6 / DEE-58 Board APPROVED / DEE-76 tea-trace PASS); restated Story 1.1 (DEE-55 / DEE-68 / DEE-77) and Story 3.1 + hardening (DEE-56 / DEE-63 / DEE-69 PR #15 / DEE-70); promoted backlog → ready-for-dev: stream heads 2-1, 4-1, 5-1 + doc follow-ons 3-2, 6-2. Sprint-status hygiene risks risk-1 / risk-2 / risk-3 resolved — see resolved: block below.)
 # project: deepnest-next
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-26
-last_updated: 2026-04-26 (DEE-56 / bmad-dev-story — Story 3.1 merged via PR #7; Board APPROVED DEE-63; status → done)
+last_updated: 2026-04-26 (DEE-83 / bmad-create-story batch-2 — see file-header comment for the full delta list)
 project: deepnest-next
 project_key: NOKEY
 tracking_system: file-system
@@ -48,8 +48,8 @@ development_status:
   epic-1-retrospective: optional
 
   # Epic 2 — LICENSES.md generator + per-folder metadata (FR-02, expanded scope)
-  epic-2: backlog
-  2-1-bootstrap-per-folder-license-yml-metadata-regenerate-licenses-md-data-hygiene-fixes-included: backlog
+  epic-2: in-progress
+  2-1-bootstrap-per-folder-license-yml-metadata-regenerate-licenses-md-data-hygiene-fixes-included: ready-for-dev
   2-2-implement-scripts-build-licenses-mjs-generator-script: backlog
   2-3-wire-licenses-check-into-npm-test-ci-drift-gate: backlog
   2-4-document-the-add-a-new-vendored-library-workflow-in-docs-development-guide-md: backlog
@@ -58,65 +58,64 @@ development_status:
   # Epic 3 — Test-fixture integrity gate (FR-03)
   epic-3: in-progress
   3-1-implement-tests-assets-integrity-check-manifest-wire-into-npm-test: done
-  3-2-document-the-fixture-drift-re-derivation-procedure-in-docs-development-guide-md: backlog
+  3-2-document-the-fixture-drift-re-derivation-procedure-in-docs-development-guide-md: ready-for-dev
   epic-3-retrospective: optional
 
   # Epic 4 — Background-worker shutdown safety (FR-04, NFR-02)
-  epic-4: backlog
-  4-1-implement-app-shuttingdown-sentinel-bounded-try-catch-boundary-in-main-js: backlog
+  epic-4: in-progress
+  4-1-implement-app-shuttingdown-sentinel-bounded-try-catch-boundary-in-main-js: ready-for-dev
   4-2-nfr-02-manual-repro-evidence-15-15-trials-across-3-exit-paths: backlog
   epic-4-retrospective: optional
 
   # Epic 5 — SvgParserInstance type-gap closure (FR-05)
-  epic-5: backlog
-  5-1-add-transformparse-and-polygonifypath-to-svgparserinstance-in-index-d-ts: backlog
+  epic-5: in-progress
+  5-1-add-transformparse-and-polygonifypath-to-svgparserinstance-in-index-d-ts: ready-for-dev
   epic-5-retrospective: optional
 
   # Epic 6 — Anti-pattern preservation rails (FR-06, IR Pre-condition #7 mitigation)
   epic-6: in-progress
-  6-1-add-github-pull-request-template-md-anchored-on-project-context-md-16: ready-for-dev
-  6-2-document-the-cite-the-16-item-number-reviewer-workflow-in-docs-development-guide-md: backlog
+  6-1-add-github-pull-request-template-md-anchored-on-project-context-md-16: done
+  6-2-document-the-cite-the-16-item-number-reviewer-workflow-in-docs-development-guide-md: ready-for-dev
   epic-6-retrospective: optional
 
 # Sprint risks — surfaced via Daily Standup (DEE-82, 2026-04-26).
 # Captured here per the standup convention: "Bei Blocker: Eintrag in sprint-status.yaml unter risks:".
-# These three are sprint-visibility hygiene gaps, not runtime blockers — no sync call required.
-risks:
+# All three open risks resolved by DEE-83 (CS batch-2). Kept as `resolved:` notes for sprint history.
+# If a NEW risk surfaces at the next standup, append it under a fresh `risks:` (active) block above this `resolved:` block.
+resolved:
   - id: risk-1-sprint-status-stale
     surfaced_by: DEE-82 daily-2026-04-26.md
     severity: medium-visibility / low-execution-impact
-    scope_note: |
-      Reduced after `git checkout main`: 1-1 and 3-1 are already `done` upstream.
-      Only Story 6.1 remains stale (still ready-for-dev despite merge ccdd214,
-      Board APPROVED DEE-58, tea-trace PASS DEE-76).
     summary: |
-      Story 6.1 (.github/pull_request_template.md) is merged + Board-APPROVED
+      Story 6.1 (.github/pull_request_template.md) was merged + Board-APPROVED
       (DEE-58) + tea-trace gate PASS (DEE-76) but development_status above still
-      reads `ready-for-dev` for 6-1. bmad-sprint-status (CS) will misreport Epic 6
-      until refreshed.
-    owner: Amelia (developer)
-    next_action: flip 6-1 → done at the next bmad-sprint-status (CS) run; refresh `last_updated:` to mention DEE-57 / DEE-58 / DEE-76.
-    target_resolution: next heartbeat
+      read `ready-for-dev` for 6-1.
+    resolved_by: DEE-83 / bmad-create-story batch-2 / 2026-04-26
+    resolution: 6-1 flipped to `done` in development_status above. Epic 6 was already in-progress.
   - id: risk-2-batch-2-not-picked-up
     surfaced_by: DEE-82 daily-2026-04-26.md
     severity: medium
     summary: |
-      Post stream-head merges (Day 1 of MVP-1 dev), no story is in_progress and no new
-      dev issue is assigned. Epics 2 / 4 / 5 still have *no* story files at all
-      (only epic-level entries exist). Velocity will stall without a CS run for the
-      next stream-head batch.
-    owner: John (PM, CS skill owner)
-    next_action: bmad-create-story for Epic-2 / 4 / 5 stream-head stories (2-1, 4-1, 5-1) and the Epic-1/3/6 doc follow-ons (1-2 / 3-2 / 6-2). Follow-up issue to be filed by Amelia at standup close.
-    target_resolution: 2026-04-27
+      Post stream-head merges (Day 1 of MVP-1 dev), no story was in_progress and no new
+      dev issue was assigned. Epics 2 / 4 / 5 had *no* story files at all.
+    resolved_by: DEE-83 / bmad-create-story batch-2 / 2026-04-26
+    resolution: |
+      Story files authored under `_bmad-output/implementation-artifacts/` for
+      stream heads 2-1 / 4-1 / 5-1 (and doc follow-ons 3-2 / 6-2). All five
+      promoted backlog → ready-for-dev. Epics 2 / 4 / 5 transitioned
+      backlog → in-progress (per "first story created" rule).
+      Handoff to Amelia (DS) per DEE-83 DoD; Stream A continues with Story 2.1
+      (Stream-A critical path), Streams B / C can pick 4-1 or 5-1 in parallel.
   - id: risk-3-last-updated-drift
     surfaced_by: DEE-82 daily-2026-04-26.md
     severity: low
     summary: |
-      `last_updated:` was refreshed on main for Story 3.1 only ("DEE-56 …
-      Story 3.1 merged via PR #7; Board APPROVED DEE-63; status → done").
-      It still does not mention Story 1.1 (DEE-55 / DEE-68 / DEE-77),
-      Story 6.1 (DEE-57 / DEE-58 / DEE-76), or the Story 3.1 hardening
-      (DEE-69 / PR #15). Will be folded into the risk-1 refresh.
-    owner: Amelia (developer)
-    next_action: refresh as part of the bmad-sprint-status run that resolves risk-1.
-    target_resolution: next heartbeat
+      `last_updated:` was refreshed for Story 3.1 only and did not mention Story 1.1
+      (DEE-55 / DEE-68 / DEE-77), Story 6.1 (DEE-57 / DEE-58 / DEE-76),
+      or the Story 3.1 hardening (DEE-69 / PR #15 / DEE-70).
+    resolved_by: DEE-83 / bmad-create-story batch-2 / 2026-04-26
+    resolution: |
+      The `last_updated:` line + the file-header `# last_updated:` comment
+      now both summarise the DEE-83 delta and cross-link the per-story
+      issue trail (DEE-55 / DEE-68 / DEE-77 ; DEE-56 / DEE-63 / DEE-69 / DEE-70 ;
+      DEE-57 / DEE-58 / DEE-76).
