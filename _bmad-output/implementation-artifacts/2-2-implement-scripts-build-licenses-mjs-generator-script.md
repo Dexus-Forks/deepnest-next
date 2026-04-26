@@ -388,22 +388,49 @@ tests/assets/mrs-saint-delafield.svg (size: 26281, sha256: 92435c37...)
 
 ### Agent Model Used
 
-_(Populated by the implementing Dev agent at story execution time.)_
+Amelia (Dev) via `bmad-dev-story`. Adapter: `claude_local`. Model: `claude-opus-4-7`. Run id: `95fd5ab5-cdcc-411a-9aa1-dbed1975e300` (DEE-92).
 
 ### Debug Log References
 
-_(Populated by the implementing Dev agent.)_
+- Local `node scripts/build-licenses.mjs` wall-clock: ~68 ms (well under the < 1 s budget per AC-02.2.1; mirrors `scripts/check-test-fixtures.mjs` precedent).
+- Local `npm run licenses:check` exit 0 against the regenerated `LICENSES.md` (post-§2.6 + §2.7 deltas applied).
+- Drift detection verified end-to-end: temporary mutation of `LICENSES.md` produced exit 1 with the unified-diff-style stderr; restoration produced exit 0 again.
+- `git diff origin/main -- LICENSES.md` reduces (post-DS) to exactly the §2.6 SPDX deltas (3 cells) + the §2.7 `latolatinfonts.css` row move (third-party block → first-party block, position 6). All other rows byte-identical to commit `db6592b`.
 
 ### Completion Notes List
 
-_(Populated by the implementing Dev agent.)_
+- **§2a passthrough mechanism — option (a) `main/LICENSE.yml`.** Selected per John's spec-time recommendation (Dev-Notes "Spec-authoring engagement note"). Rationale: schema homogeneity, locality match (metadata co-located with `/main/svgparser.js` + `/main/deepnest.js`), and zero ADR-008 §271 amendment cost. The 5 first-party rows are emitted in the same order as Sage's preflight-validated Story 2.1 baseline. No ping to Mary / Winston needed — the spec already authorised (a) as the recommended path and the implementation matches it verbatim.
+- **§2.6 SPDX normalisation.** `Boost` → `BSL-1.0` (×2: `minkowski.cc, minkowski.h` and `/polygon`); `GPLv3` → `GPL-3.0-only` (×1: `/main/deepnest.js`). All values cross-verified against SPDX 2.3 §10.1 (per Sage Round-1 P3-01).
+- **§2.7 `first_party: true` placement flag.** Added to `main/font/LICENSE.yml` `latolatinfonts.css` entry. Generator routes the row into the first-party block at position 6 (after the 5 `main/LICENSE.yml` passthrough rows), matching the spec's expected first-party block ordering verbatim. Third-party block shrinks from 23 → 22 rows; total 28 rows unchanged.
+- **§2.8 schema canonicalisation — option (α) ADR-008 §5 step 1 amendment.** Selected per spec recommendation. Appended a "Schema reference" subsection to `architecture.md` §5 ADR-008 step 1 with the canonical field set (required: `path`, `name`, `license` SPDX, `copyright`, `upstream_url`; optional: `notes`, `first_party`) plus a note describing the special-case `path:` interpretation in `main/LICENSE.yml` (literal Unit-column value, not folder-relative). All 4 `LICENSE.yml` headers (`main/`, `main/util/`, `main/font/`, `tests/assets/`) reduced to ≤ 3 lines (`# LICENSE.yml — <folder>/`, `# Schema: see _bmad-output/planning-artifacts/architecture.md §5 ADR-008 step 1 "Schema reference".`, optional per-file context, `# Line endings: LF only.`). Per-file context preserved where it existed (`# Post-Story-1.1 webfont kit: see docs/asset-inventory.md §6.` for `main/font/`; fixture-integrity reminder for `tests/assets/`).
+- **§2.9 fixture-manifest interaction — (β) with implementation deferred.** Documented in PR description; `scripts/check-test-fixtures.mjs` and `tests/assets/.fixture-manifest.json` are NOT modified by this PR (zero-touch, per AC-02.2.9 & spec line 75 recommendation). A Story 3.1.x follow-up issue is recommended in the PR body for narrowing `listFixtures()` to a fixture-only allow-list to decouple the FR-02 / FR-03 gates cleanly.
+- **YAML `copyright:` cell hygiene (necessary scope-add to fulfil AC-02.2.4 byte-for-byte regression target).** First-pass regen surfaced 13 rows of latent inconsistency between `LICENSE.yml` `copyright:` fields (full upstream attribution) and the Story 2.1 hand-regenerated `LICENSES.md` cells (shorter forms). To meet AC-02.2.4 — *"`git diff origin/main -- LICENSES.md` is empty modulo §2.6 + §2.7 deltas"* — `copyright:` fields were trimmed to match the rendered cells; the dropped audit-grade detail (e.g. *"JavaScript port by Timo (2016)"*, *"All rights reserved"*, the upstream-`Reserved Font Name` declarations) was preserved by extending the corresponding `notes:` field of each entry. Rows touched: `clipper.js`, `pathsegpolyfill.js`, `simplify.js`, `_unused/clippernode.js`, `_unused/json.js` (`main/util/LICENSE.yml`); 6× Lato woff/woff2 (`main/font/LICENSE.yml`); `henny-penny.svg`, `mrs-saint-delafield.svg` (`tests/assets/LICENSE.yml`). Net effect: regen byte-for-byte matches `db6592b` LICENSES.md modulo named §2.6 + §2.7 deltas; full upstream attribution still grep-able via the `notes:` field. This is a one-time hygiene step — Story 2.3's `licenses:check` gate will lock the YAML/cell agreement going forward.
+- **§16 anti-pattern audit.** 16/16 pass. Generator is `.mjs` outside `main/`, so the strict-TS surface (§16.7 / ADR-007) is unchanged. No `window` global (§16.1), no IPC channel (§16.2/§16.3), no `// @ts-ignore` (§16.8), no edits under `main/util/*.{js,ts}` / `main/util/_unused/*` source / `main/font/fonts/` / `tests/assets/*.svg` / `eslint.config.mjs` / `tsconfig.json` / `.github/` / `scripts/check-test-fixtures.mjs`. Commit composed without `--no-verify` (§16.9). `package-lock.json` unchanged (zero-dep guarantee per AC-02.2.1).
+- **NFR-01 wall-clock.** Recorded vs `_bmad-output/planning-artifacts/nfr01-baseline.json` `rolling_mean_ms = 16746.6` (tolerance ±20 % → [13 397, 20 096] ms): not measured on the canonical CI cell at DS time. `scripts.test` chain is unchanged in this PR (per AC-02.2.3 — Story 2.3 / A4 wires the gate, not this one), so the wall-clock change is expected to be near-zero. The PR's CI Playwright run will record the duration; Murat (TEA) reviews the regression check on the PR.
 
 ### File List
 
-_(Populated by the implementing Dev agent.)_
+**New files (3):**
+
+- `main/LICENSE.yml` — root first-party-passthrough metadata (5 rows: `/main`, `/main/svgparser.js`, `/main/deepnest.js`, `minkowski.cc, minkowski.h`, `/polygon`; all `first_party: true`; SPDX-canonical). §2a option (a). Resolves Sage Round-1 P2-01.
+- `scripts/build-licenses.mjs` — deterministic `LICENSES.md` generator. Node-stable + zero-dep + `.mjs`. Modes: `(no flag)` writes `LICENSES.md`; `--check` regenerates in memory + diffs against committed file (exit 1 on drift, 0 on match). Mirrors `scripts/check-test-fixtures.mjs` shape. Wall-clock budget < 1 s confirmed.
+- `_bmad-output/implementation-artifacts/2-2-implement-scripts-build-licenses-mjs-generator-script.md` — story file (created by John in CS commit `f710308`; populated by Amelia at DS time per the standard Dev-Agent-Record block). Carried through to `main` in this PR (PR #21's content is inlined here).
+
+**Modified files (7):**
+
+- `LICENSES.md` — regenerated. 28 rows total (6 first-party + 22 third-party). `git diff origin/main` reduces to exactly the §2.6 + §2.7 deltas.
+- `package.json` — added `"licenses:build": "node scripts/build-licenses.mjs"` and `"licenses:check": "node scripts/build-licenses.mjs --check"` to `scripts`. **NOT** wired into `scripts.test` (Story 2.3 / A4 owns that). `package-lock.json` unchanged.
+- `main/util/LICENSE.yml` — header reduced to ≤ 3 lines per AC-02.2.8; `copyright:` field trimmed on 5 rows (`clipper.js`, `pathsegpolyfill.js`, `simplify.js`, `_unused/clippernode.js`, `_unused/json.js`) to match canonical LICENSES.md cells with audit-grade detail preserved in extended `notes:`.
+- `main/font/LICENSE.yml` — header reduced to ≤ 3 lines (per-file context preserved) per AC-02.2.8; `first_party: true` flag added to `latolatinfonts.css` entry per AC-02.2.7; `copyright:` field trimmed on 6 woff/woff2 rows to match canonical LICENSES.md cells.
+- `tests/assets/LICENSE.yml` — header reduced to ≤ 3 lines (fixture-integrity reminder preserved) per AC-02.2.8; `copyright:` field trimmed on 2 SVG-specimen rows with `Reserved Font Name` detail preserved in `notes:`.
+- `_bmad-output/planning-artifacts/architecture.md` — §5 ADR-008 step 1 amended with the canonical "Schema reference" subsection (field-by-field table) per AC-02.2.8 option (α). §271 out-of-tree clause stands; the amendment names `main/LICENSE.yml` as the explicit passthrough mechanism for `@deepnest/calculate-nfp` (in-installer-but-out-of-tree first-party rows; Boost legal-compliance anchor).
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — `2-2-implement-scripts-build-licenses-mjs-generator-script: ready-for-dev → done`; `last_updated:` refreshed to mention DEE-92 + the DS deliverables. (CS-side flip backlog → ready-for-dev was already done in commit `f710308`.)
+
+**Untouched (verified by `git diff`):** `scripts/check-test-fixtures.mjs`, `tests/assets/.fixture-manifest.json`, `package-lock.json`, `eslint.config.mjs`, `tsconfig.json`, `.github/`, all `main/util/*.{js,ts}`, all `main/util/_unused/*` source files, all `main/font/fonts/*`, all `tests/assets/*.svg` / `*.woff` / `*.woff2`, `main.js`, `index.d.ts`.
 
 ### Change Log
 
 | Date | Change | Author |
 |---|---|---|
 | 2026-04-26 | Story created (`bmad-create-story`, DEE-90 — CS follow-up to DEE-84/Story 2.1). Sage Round-1 architectural addendum (P2-01 + P3-01 + P3-02 + P3-03) baked into ACs / Tasks. Status: ready-for-dev. | John (PM, BMad) |
+| 2026-04-26 | Story implemented (`bmad-dev-story`, DEE-92). All 13 ACs (AC-02.2.1..AC-02.2.13) pass. §2a option (a) `main/LICENSE.yml` selected; §2.8 option (α) ADR-008 amendment selected; §2.9 (β) deferred. Status: done. | Amelia (Dev, BMad) |

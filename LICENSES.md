@@ -4,16 +4,16 @@ This software contains different units with different licenses, copyrights and a
 | - | - | - |
 | /main | MIT | Copyright (c) 2015 Jack Qiao |
 | /main/svgparser.js | MIT | Copyright (c) 2015 Jack Qiao (svgnest origin) |
-| /main/deepnest.js | GPLv3 | Copyright (c) 2018 Daniel Sagor and Deepnest contributors (deepnest.io); fork of SVGnest by Jack Qiao |
-| minkowski.cc, minkowski.h | Boost | Copyright 2010 Intel Corporation</br>Copyright 2015 Jack Qiao |
-| /polygon | Boost | Copyright 2018 Glen Joseph Fernandes |
+| /main/deepnest.js | GPL-3.0-only | Copyright (c) 2018 Daniel Sagor and Deepnest contributors (deepnest.io); fork of SVGnest by Jack Qiao |
+| minkowski.cc, minkowski.h | BSL-1.0 | Copyright 2010 Intel Corporation</br>Copyright 2015 Jack Qiao |
+| /polygon | BSL-1.0 | Copyright 2018 Glen Joseph Fernandes |
+| /main/font/latolatinfonts.css | MIT | Copyright (c) 2015 Jack Qiao (svgnest origin); maintained by Deepnest contributors |
 | /main/font/fonts/LatoLatin-Bold.woff | OFL-1.1 | Copyright (c) 2010-2014 Łukasz Dziedzic (tyPoland Sp. z o.o.) |
 | /main/font/fonts/LatoLatin-Bold.woff2 | OFL-1.1 | Copyright (c) 2010-2014 Łukasz Dziedzic (tyPoland Sp. z o.o.) |
 | /main/font/fonts/LatoLatin-Light.woff | OFL-1.1 | Copyright (c) 2010-2014 Łukasz Dziedzic (tyPoland Sp. z o.o.) |
 | /main/font/fonts/LatoLatin-Light.woff2 | OFL-1.1 | Copyright (c) 2010-2014 Łukasz Dziedzic (tyPoland Sp. z o.o.) |
 | /main/font/fonts/LatoLatin-Regular.woff | OFL-1.1 | Copyright (c) 2010-2014 Łukasz Dziedzic (tyPoland Sp. z o.o.) |
 | /main/font/fonts/LatoLatin-Regular.woff2 | OFL-1.1 | Copyright (c) 2010-2014 Łukasz Dziedzic (tyPoland Sp. z o.o.) |
-| /main/font/latolatinfonts.css | MIT | Copyright (c) 2015 Jack Qiao (svgnest origin); maintained by Deepnest contributors |
 | /main/util/HullPolygon.ts | ISC | Copyright 2010-2016 Mike Bostock |
 | /main/util/_unused/clippernode.js | BSL-1.0 | Copyright 2010-2014 Angus Johnson |
 | /main/util/_unused/filesaver.js | MIT | Copyright (c) 2015 Eli Grey |

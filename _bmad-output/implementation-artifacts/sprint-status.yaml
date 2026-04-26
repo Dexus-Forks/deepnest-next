@@ -1,5 +1,5 @@
 # generated: 2026-04-26
-# last_updated: 2026-04-26 (DEE-90 / bmad-create-story — Story 2.2 promoted backlog → ready-for-dev. Story file authored at _bmad-output/implementation-artifacts/2-2-implement-scripts-build-licenses-mjs-generator-script.md with Sage Round-1 architectural addendum (P2-01 in-installer-but-out-of-tree passthrough + P3-01 SPDX normalisation + P3-02 first_party flag + P3-03 schema canonicalisation) baked into ACs / Tasks per the DEE-90 issue scope. Earlier same-day delta: DEE-84 / Story 2.1 merged — Story 2.1 flipped ready-for-dev → done (PR #19 / DEE-85 Board APPROVED severity.max=P2 / Sage Round-1 consolidated report at projects/deepnest-next/reviews/2-1-...-round-1.md). Earlier same-day batch-2 entry: DEE-83 / bmad-create-story batch-2 — Story 6.1 flipped ready-for-dev → done (PR #6 / DEE-58 Board APPROVED / DEE-76 tea-trace PASS); restated Story 1.1 (DEE-55 / DEE-68 / DEE-77) and Story 3.1 + hardening (DEE-56 / DEE-63 / DEE-69 PR #15 / DEE-70); promoted backlog → ready-for-dev: stream heads 2-1, 4-1, 5-1 + doc follow-ons 3-2, 6-2. Sprint-status hygiene risks risk-1 / risk-2 / risk-3 resolved — see resolved: block below.)
+# last_updated: 2026-04-26 (DEE-92 / Story 2.2 DS — Story 2.2 flipped ready-for-dev → done. Stream-A3 generator landed: scripts/build-licenses.mjs (Node-stable + zero-dep + .mjs) + main/LICENSE.yml passthrough (§2a option a) + ADR-008 §5 step 1 "Schema reference" amendment (§2.8 option α) + SPDX normalisation (Boost→BSL-1.0 ×2, GPLv3→GPL-3.0-only) + first_party flag on latolatinfonts.css (P3-02 placement). Sage Round-1 P2-01 + P3-01 + P3-02 + P3-03 closure visible in PR diff. CS predecessor inlined: DEE-90 / bmad-create-story — Story 2.2 spec at _bmad-output/implementation-artifacts/2-2-implement-scripts-build-licenses-mjs-generator-script.md. Earlier same-day delta: DEE-84 / Story 2.1 merged — Story 2.1 flipped ready-for-dev → done (PR #19 / DEE-85 Board APPROVED severity.max=P2 / Sage Round-1 consolidated report at projects/deepnest-next/reviews/2-1-...-round-1.md). Earlier same-day batch-2 entry: DEE-83 / bmad-create-story batch-2 — Story 6.1 flipped ready-for-dev → done (PR #6 / DEE-58 Board APPROVED / DEE-76 tea-trace PASS); restated Story 1.1 (DEE-55 / DEE-68 / DEE-77) and Story 3.1 + hardening (DEE-56 / DEE-63 / DEE-69 PR #15 / DEE-70); promoted backlog → ready-for-dev: stream heads 2-1, 4-1, 5-1 + doc follow-ons 3-2, 6-2. Sprint-status hygiene risks risk-1 / risk-2 / risk-3 resolved — see resolved: block below.)
 # project: deepnest-next
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-26
-last_updated: 2026-04-26 (DEE-90 / Story 2.2 promoted backlog → ready-for-dev — see file-header comment for the full delta list)
+last_updated: 2026-04-26 (DEE-92 / Story 2.2 DS done — see file-header comment for the full delta list)
 project: deepnest-next
 project_key: NOKEY
 tracking_system: file-system
@@ -50,7 +50,7 @@ development_status:
   # Epic 2 — LICENSES.md generator + per-folder metadata (FR-02, expanded scope)
   epic-2: in-progress
   2-1-bootstrap-per-folder-license-yml-metadata-regenerate-licenses-md-data-hygiene-fixes-included: done
-  2-2-implement-scripts-build-licenses-mjs-generator-script: ready-for-dev
+  2-2-implement-scripts-build-licenses-mjs-generator-script: done
   2-3-wire-licenses-check-into-npm-test-ci-drift-gate: backlog
   2-4-document-the-add-a-new-vendored-library-workflow-in-docs-development-guide-md: backlog
   epic-2-retrospective: optional

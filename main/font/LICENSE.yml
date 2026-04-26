@@ -1,59 +1,47 @@
 # LICENSE.yml — main/font/
-#
-# Per-folder vendored-asset metadata for FR-02 / ADR-008 (deepnest-next).
-# Schema: top-level array of entry maps, one per third-party / vendored item.
-# Required fields: path, name, license (SPDX ID), copyright, upstream_url.
-# Optional fields: notes.
-#
-# `path` is relative to this LICENSE.yml's folder (i.e. relative to main/font/).
-# Story 2.2's `scripts/build-licenses.mjs` parses this shape and regenerates
-# `LICENSES.md`. Story 2.3 wires the determinism check into `npm test`.
+# Schema: see _bmad-output/planning-artifacts/architecture.md §5 ADR-008 step 1 "Schema reference".
+# Post-Story-1.1 webfont kit: see docs/asset-inventory.md §6.
 # Line endings: LF only.
-#
-# Post-Story-1.1 webfont kit: 6 woff/woff2 (Bold + Regular + Light, 2 formats each)
-# + the @font-face declaration file. Files removed by Story 1.1 (BoldItalic kit,
-# lato-{hai,lig}-* demo kit, *.eot/*.ttf, stylesheet.css, specimen_files/) are
-# explicitly NOT enumerated here — see docs/asset-inventory.md §6.
 
 - path: fonts/LatoLatin-Bold.woff
   name: Lato Latin (Bold weight, WOFF)
   license: OFL-1.1
-  copyright: "Copyright (c) 2010-2014 Łukasz Dziedzic (dziedzic@typoland.com), tyPoland Sp. z o.o., with Reserved Font Name \"Lato\""
+  copyright: "Copyright (c) 2010-2014 Łukasz Dziedzic (tyPoland Sp. z o.o.)"
   upstream_url: https://fonts.google.com/specimen/Lato
   notes: "SIL Open Font License 1.1. Latin-subset webfont kit (Font Squirrel generator). Live binding via main/font/latolatinfonts.css → LatoLatinWeb family."
 
 - path: fonts/LatoLatin-Bold.woff2
   name: Lato Latin (Bold weight, WOFF2)
   license: OFL-1.1
-  copyright: "Copyright (c) 2010-2014 Łukasz Dziedzic (dziedzic@typoland.com), tyPoland Sp. z o.o., with Reserved Font Name \"Lato\""
+  copyright: "Copyright (c) 2010-2014 Łukasz Dziedzic (tyPoland Sp. z o.o.)"
   upstream_url: https://fonts.google.com/specimen/Lato
   notes: "SIL Open Font License 1.1. WOFF2 sibling of fonts/LatoLatin-Bold.woff."
 
 - path: fonts/LatoLatin-Light.woff
   name: Lato Latin (Light weight, WOFF)
   license: OFL-1.1
-  copyright: "Copyright (c) 2010-2014 Łukasz Dziedzic (dziedzic@typoland.com), tyPoland Sp. z o.o., with Reserved Font Name \"Lato\""
+  copyright: "Copyright (c) 2010-2014 Łukasz Dziedzic (tyPoland Sp. z o.o.)"
   upstream_url: https://fonts.google.com/specimen/Lato
   notes: "SIL Open Font License 1.1. Live binding via main/font/latolatinfonts.css → LatoLatinWebLight family."
 
 - path: fonts/LatoLatin-Light.woff2
   name: Lato Latin (Light weight, WOFF2)
   license: OFL-1.1
-  copyright: "Copyright (c) 2010-2014 Łukasz Dziedzic (dziedzic@typoland.com), tyPoland Sp. z o.o., with Reserved Font Name \"Lato\""
+  copyright: "Copyright (c) 2010-2014 Łukasz Dziedzic (tyPoland Sp. z o.o.)"
   upstream_url: https://fonts.google.com/specimen/Lato
   notes: "SIL Open Font License 1.1. WOFF2 sibling of fonts/LatoLatin-Light.woff."
 
 - path: fonts/LatoLatin-Regular.woff
   name: Lato Latin (Regular weight, WOFF)
   license: OFL-1.1
-  copyright: "Copyright (c) 2010-2014 Łukasz Dziedzic (dziedzic@typoland.com), tyPoland Sp. z o.o., with Reserved Font Name \"Lato\""
+  copyright: "Copyright (c) 2010-2014 Łukasz Dziedzic (tyPoland Sp. z o.o.)"
   upstream_url: https://fonts.google.com/specimen/Lato
   notes: "SIL Open Font License 1.1. Live binding via main/font/latolatinfonts.css → LatoLatinWeb family."
 
 - path: fonts/LatoLatin-Regular.woff2
   name: Lato Latin (Regular weight, WOFF2)
   license: OFL-1.1
-  copyright: "Copyright (c) 2010-2014 Łukasz Dziedzic (dziedzic@typoland.com), tyPoland Sp. z o.o., with Reserved Font Name \"Lato\""
+  copyright: "Copyright (c) 2010-2014 Łukasz Dziedzic (tyPoland Sp. z o.o.)"
   upstream_url: https://fonts.google.com/specimen/Lato
   notes: "SIL Open Font License 1.1. WOFF2 sibling of fonts/LatoLatin-Regular.woff."
 
@@ -62,4 +50,5 @@
   license: MIT
   copyright: "Copyright (c) 2015 Jack Qiao (svgnest origin); maintained by Deepnest contributors"
   upstream_url: https://github.com/Dexus-Forks/deepnest-next
-  notes: "First-party @font-face stylesheet binding the LatoLatinWeb / LatoLatinWebLight families to the woff/woff2 files in fonts/. Catalogued here per AC-02.1.2 to keep the webfont kit auditable as a unit; the file itself is first-party (covered by /main MIT under Jack Qiao)."
+  first_party: true
+  notes: "First-party @font-face stylesheet binding the LatoLatinWeb / LatoLatinWebLight families to the woff/woff2 files in fonts/. Catalogued here per AC-02.1.2 to keep the webfont kit auditable as a unit; the file itself is first-party (covered by /main MIT under Jack Qiao). Story 2.2 AC-02.2.7 promotes the existing first-party note to behaviour via this flag — the row renders into the LICENSES.md first-party block."
