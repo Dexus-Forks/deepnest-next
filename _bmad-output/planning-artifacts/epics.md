@@ -147,10 +147,24 @@ Add a PR template (or update the existing one) anchored on `_bmad-output/project
 - **Owner:** **TEA (Murat)** via `bmad-testarch-nfr` (`NR`) workflow downstream. Architect (Winston) sign-off acceptable as fallback if TEA is unavailable.
 - **Why a gate, not a regular story:** capturing the baseline on a Paperclip worker / dev laptop produces a number on the wrong hardware (every future merge is measured on a CI runner) — apples-to-oranges baselines compound the GA's stochastic noise. This is intentionally deferred to a one-time CI-runner capture before the first MVP epic ships.
 - **Procedure (single PR, pre-MVP):**
-  1. Add a Playwright JSON reporter to `playwright.config.ts` (e.g. `reporter: [['html'], ['json', { outputFile: 'playwright-report/results.json' }]]`), guarded so it does not slow non-CI local runs. Reuse existing reporter wiring; no new test dependency.
+  1. Add a Playwright JSON reporter to `playwright.config.ts` (e.g. `reporter: [['html'], ['json', { outputFile: 'playwright-report/results.json' }]]`), guarded so it does not slow non-CI local runs. Reuse existing reporter wiring; no new test dependency. The JSON reporter is wired for diagnostic evidence (uploaded as a workflow artifact); it is **not** the timing source for the baseline.
   2. Run the canonical CI cell (Linux / Ubuntu-22.04 × Node 22.x) **5 times** (rerun-on-success on the same SHA, no code changes between runs).
-  3. Extract per-run wall-clock duration from the JSON reporter for the canonical `tests/index.spec.ts` test.
-  4. Commit `_bmad-output/planning-artifacts/nfr01-baseline.json` with schema: `{ "captured_at": "<iso8601>", "runner_cell": "ubuntu-22.04 / node-22.x", "git_sha": "<sha>", "runs": [<5 wall-clock-ms numbers>], "rolling_mean_ms": <number>, "stddev_ms": <number>, "tolerance_pct": 20 }`.
+  3. Time each run as the wall-clock duration of the `xvfb-run npm test` invocation (`(date +%s%N)` end − start, divided to ms). Capture the npm process `exit_code` alongside the duration.
+  4. Commit `_bmad-output/planning-artifacts/nfr01-baseline.json` with schema (canonical, as implemented in DEE-52):
+     ```json
+     {
+       "captured_at": "<iso8601>",
+       "runner_cell": "ubuntu-22.04 / node-22.x",
+       "git_sha": "<sha>",
+       "runs": [
+         { "ms": <wall-clock-ms>, "exit_code": <int> },
+         ... 5 entries total ...
+       ],
+       "rolling_mean_ms": <number, 1 decimal>,
+       "stddev_ms": <number, 1 decimal, population stddev>,
+       "tolerance_pct": 20
+     }
+     ```
   5. Optionally: amend `prd.md` §NFR-01 to reference the file as the authoritative baseline (one-line edit, can land in the same PR).
 - **IR-gate verdict (per architecture overlay §8):**
   - **PASS** if the file is present and well-formed (5 runs, schema correct).

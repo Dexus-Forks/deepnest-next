@@ -6,12 +6,7 @@ name: NFR-01 Baseline Capture
 # Manually dispatched: this is a one-time pre-MVP-sprint capture.
 
 on:
-  workflow_dispatch:
-    inputs:
-      runs:
-        description: 'Number of consecutive runs to capture (CA §8 calls for 5)'
-        required: false
-        default: '5'
+  workflow_dispatch: {}
 
 permissions:
   contents: write
@@ -56,8 +51,10 @@ jobs:
           mkdir -p _bmad-output/planning-artifacts
           GIT_SHA="$(git rev-parse HEAD)"
           CAPTURED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          RUNS="${{ inputs.runs }}"
-          RUNS="${RUNS:-5}"
+          # CA §8 / DEE-52 mandate exactly 5 consecutive runs on the same SHA.
+          # Hardcoded — not a workflow input — to prevent accidental
+          # non-conforming captures.
+          RUNS=5
 
           : > runs.tsv
           for i in $(seq 1 "$RUNS"); do
@@ -109,16 +106,24 @@ jobs:
           ms = [r['ms'] for r in d['runs']]
           codes = [r['exit_code'] for r in d['runs']]
           spread = max(ms) - min(ms)
-          mean = d['rolling_mean_ms']
-          flaky = spread > 0.5 * mean
+          # Recompute mean from raw ms so the 50% threshold is not perturbed by
+          # the 1-decimal rounding applied to rolling_mean_ms in the persisted
+          # JSON. d['rolling_mean_ms'] is the display value; this is the
+          # comparison value.
+          raw_mean = (sum(ms) / len(ms)) if ms else 0.0
+          flaky = spread > 0.5 * raw_mean
           all_pass = all(c == 0 for c in codes)
-          print(f"runs       : {len(ms)}")
-          print(f"exit_codes : {codes}")
-          print(f"ms         : {ms}")
-          print(f"mean_ms    : {mean}")
-          print(f"stddev_ms  : {d['stddev_ms']}")
-          print(f"spread_ms  : {spread} ({'>' if flaky else '<='} 50% of mean)")
-          print(f"flaky?     : {flaky}")
+          if len(ms) != 5:
+              print(f"FAIL: expected exactly 5 runs, got {len(ms)} (CA §8 / DEE-52)")
+              sys.exit(1)
+          print(f"runs              : {len(ms)}")
+          print(f"exit_codes        : {codes}")
+          print(f"ms                : {ms}")
+          print(f"raw_mean_ms       : {raw_mean}")
+          print(f"persisted_mean_ms : {d['rolling_mean_ms']} (display, rounded to 1dp)")
+          print(f"stddev_ms         : {d['stddev_ms']}")
+          print(f"spread_ms         : {spread} ({'>' if flaky else '<='} 50% of raw_mean)")
+          print(f"flaky?            : {flaky}")
           if not all_pass:
               print("FAIL: at least one run had non-zero exit_code")
               sys.exit(1)
