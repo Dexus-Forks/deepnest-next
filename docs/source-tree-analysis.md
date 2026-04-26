@@ -106,9 +106,9 @@ main/
 │       ├── json.js
 │       └── placementworker.js
 │
-├── img/                             # 35+ SVG icons + background.png used by the UI
-│   ├── logo.svg / logosmall.svg
-│   ├── start.svg / stop.svg / reset.svg / spin.svg
+├── img/                             # 30 SVG icons used by the UI (post-Story-1.1 / DEE-55)
+│   ├── logosmall.svg
+│   ├── start.svg / reset.svg / spin.svg
 │   ├── import.svg / download.svg / settings.svg / delete.svg
 │   ├── plus.svg / minus.svg / add_sheet.svg
 │   ├── arrow_up.svg / arrow_down.svg / arrow_right.svg
@@ -118,19 +118,12 @@ main/
 │   ├── spin_dark.svg / dark_mode.svg
 │   ├── credits.svg + credits_light.svg
 │   ├── unlimited.svg + unlimited_light.svg
-│   ├── code.svg / info.svg / progress.svg / zoomin.svg / zoomout.svg
-│   ├── auth0logo.svg
-│   └── background.png
+│   └── code.svg / info.svg / zoomin.svg / zoomout.svg
 │
-└── font/                            # Lato webfonts (light + heavy weights) + specimen pages
-    ├── stylesheet.css
+└── font/                            # LatoLatin webfont (woff/woff2 only, post-Story-1.1 / DEE-55)
     ├── latolatinfonts.css
-    ├── lato-lig-webfont.{eot,svg,ttf,woff}
-    ├── lato-hai-webfont.{eot,svg,ttf,woff}
-    ├── lato-lig-demo.html / lato-hai-demo.html
-    ├── generator_config.txt
-    └── specimen_files/              # Browser font specimen scaffolding
-        └── …
+    └── fonts/
+        └── LatoLatin-{Bold,Regular,Light}.{woff,woff2}
 ```
 
 ## Critical Directories

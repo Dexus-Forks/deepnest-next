@@ -2,8 +2,8 @@
 
 **Generated:** 2026-04-26 by Paige (Tech Writer); **re-verified** 2026-04-26 against `HEAD` for [DEE-39](/DEE/issues/DEE-39) (Paperclip-isolated full redo of the Group G deep-dive; parent: [DEE-11](/DEE/issues/DEE-11)).
 **Group:** G — deep-dive static surfaces.
-**Surface:** `main/img/` (35 files = 34 SVGs + 1 PNG).
-**Mode:** Single write-up — naming convention + inventory + cleanup candidates. The unused-icon list (auth0logo, background.png, logo.svg, progress.svg, stop.svg) was re-confirmed by `grep -r 'img/(auth0logo|background\.png|logo\.svg|progress\.svg|stop\.svg)' main/` on 2026-04-26 — zero hits.
+**Surface:** `main/img/` (30 files, all SVG; was 35 = 34 SVG + 1 PNG pre-Story-1.1 / DEE-55).
+**Mode:** Single write-up — naming convention + inventory + cleanup candidates. The unused-icon list (auth0logo, background.png, logo.svg, progress.svg, stop.svg) was re-confirmed by `grep -r 'img/(auth0logo|background\.png|logo\.svg|progress\.svg|stop\.svg)' main/` on 2026-04-26 — zero hits — and **resolved by deletion in Story 1.1 (DEE-55)** the same day.
 
 ## 1. Naming convention
 
@@ -88,15 +88,15 @@ grep -rn '<file>' --include='*.css' --include='*.ts' --include='*.js' \
 
 | File | Size | Status | Note |
 |---|---|---|---|
-| `auth0logo.svg` | 1.9 KB | **Unused** | Auth0 brand mark — leftover from an OAuth login flow that was removed when the deepnest.io payment surface was disabled. The `#account_tab` is commented out in `main/index.html:126`; this icon is part of the same cluster of dead surfaces. |
-| `background.png` | 18.8 KB | **Unused** | The only PNG in the directory. No CSS rule loads it. Likely a legacy splash / onboarding asset. The biggest single file in the directory. |
-| `logo.svg` | 10.5 KB | **Unused** | The full deepnest logo. The info page (`main/index.html:3346-3536`) uses an **inline** `<svg>` reproduction of the logo (lines 3449-3535) rather than this file, so removing `logo.svg` does not affect the about page. |
-| `progress.svg` | 0.7 KB | **Unused** | The progress indicator inside the top-nav uses an **inline** `<circle>` SVG (`main/index.html:51-83`), not this file. |
-| `stop.svg` | 0.7 KB | **Unused** | The "Stop nest" button (`#stopnest`) inherits `.button.stop` styling, which CSS line 262 binds to `spin.svg` — there is no rule that uses `stop.svg`. The file appears to be an orphan from an earlier design where the stop button had its own glyph. |
+| `auth0logo.svg` | 1.9 KB | **Removed in Story 1.1, DEE-55** (was: Unused) | Auth0 brand mark — leftover from an OAuth login flow that was removed when the deepnest.io payment surface was disabled. The `#account_tab` is commented out in `main/index.html:126`; this icon was part of the same cluster of dead surfaces. |
+| `background.png` | 18.8 KB | **Removed in Story 1.1, DEE-55** (was: Unused) | Was the only PNG in the directory. No CSS rule loaded it. Likely a legacy splash / onboarding asset; was the biggest single file in the directory. |
+| `logo.svg` | 10.5 KB | **Removed in Story 1.1, DEE-55** (was: Unused) | The full deepnest logo. The info page (`main/index.html:3346-3536`) uses an **inline** `<svg>` reproduction of the logo (lines 3449-3535) rather than this file, so removing `logo.svg` did not affect the about page. |
+| `progress.svg` | 0.7 KB | **Removed in Story 1.1, DEE-55** (was: Unused) | The progress indicator inside the top-nav uses an **inline** `<circle>` SVG (`main/index.html:51-83`), not this file. |
+| `stop.svg` | 0.7 KB | **Removed in Story 1.1, DEE-55** (was: Unused) | The "Stop nest" button (`#stopnest`) inherits `.button.stop` styling, which CSS line 262 binds to `spin.svg` — there was no rule that used `stop.svg`. The file was an orphan from an earlier design where the stop button had its own glyph. |
 
-Total unused payload: **~32 KB** (mostly `background.png`).
+Total unused payload: **~32 KB** — **resolved (removed in Story 1.1, DEE-55)**.
 
-> **Cleanup safety note**: Before deleting any of these, also strip the matching docs entries. `docs/source-tree-analysis.md:121-123` and `docs/component-inventory.md:84-86` mention `auth0logo.svg`, `background.png`, `logo.svg`, `progress.svg`, and `stop.svg` by name — those references were authored when the icons were assumed in-use. The inventory above is the authoritative truth as of `HEAD` on 2026-04-26.
+> **Cleanup safety note (historical, retained for audit)**: Before deleting any of these, the corresponding docs entries had to be stripped. `docs/source-tree-analysis.md:121-123` and `docs/component-inventory.md:84-86` mentioned `auth0logo.svg`, `background.png`, `logo.svg`, `progress.svg`, and `stop.svg` by name — those references were authored when the icons were assumed in-use. **Action complete**: Story 1.1 (DEE-55) deleted the icons and stripped the matching docs entries in the same PR. The inventory above is preserved as the historical record of the dead-weight set.
 
 ## 5. Theme-variant pairs (light/dark suffixes)
 
@@ -118,7 +118,7 @@ Note the **asymmetry**: `account`, `close`, `shop`, `spin` use `_dark` (icon for
 1. **No JS/TS file imports an icon URL.** This is a load-bearing constraint — bundlers and Electron-builder configs don't need to track these assets at the JS level. They are static resources copied via the `extraResources` (or default packaging) flow.
 2. **`spin.svg` is the universal busy indicator**. If you add a new `.spinner` state, do not introduce a new spin glyph; reuse the existing one to keep the visual language consistent.
 3. **The dark-mode toggle (`body.dark-mode`) does not change which icon is loaded.** It only repaints the surrounding chrome and text. If you need a dark-mode-specific icon, prefer recolouring via CSS filters (`filter: invert(1)`) or by rebuilding the SVG inline so `currentColor` can flow through.
-4. **Avoid PNGs in this directory** — `background.png` is the only one and it is unused. New artwork should be SVG so it scales with HiDPI displays without bitmap artefacts.
+4. **No PNGs in this directory.** Pre-Story-1.1 the directory held one PNG (`background.png`); post-Story-1.1 (DEE-55) the directory is SVG-only. New artwork should remain SVG so it scales with HiDPI displays without bitmap artefacts.
 5. **No icon font.** The earlier deepnest.io build used a Lato-derived icon font; the current build uses individual SVG backgrounds. Re-introducing an icon font would mean rewriting every `background-image: url(img/...)` rule to `font-family` + glyph code.
 
 ## 7. Test coverage

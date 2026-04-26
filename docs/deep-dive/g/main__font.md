@@ -3,28 +3,39 @@
 **Generated:** 2026-04-26 by Paige (Tech Writer); **re-verified** 2026-04-26 against `HEAD` for [DEE-39](/DEE/issues/DEE-39) (Paperclip-isolated full redo of the Group G deep-dive; parent: [DEE-11](/DEE/issues/DEE-11)).
 **Group:** G — deep-dive static surfaces.
 **Surface:** `main/font/` (web-font assets + binding stylesheets).
-**Mode:** Single write-up — weights packaged, CSS binding, who loads what. `latolatinfonts.css` line ranges (Bold+Regular `:1-27`; Light `:29-41`) and `style.css` cited rules (`:29` body, `:72` heading family) re-checked against `HEAD` on 2026-04-26.
+**Mode:** Single write-up — weights packaged, CSS binding, who loads what. `latolatinfonts.css` cited rules (`style.css:29` body, `:72` heading family) re-checked against `HEAD` on 2026-04-26. **Updated 2026-04-26 in Story 1.1 (DEE-55)** to reflect the dead-weight removal — `latolatinfonts.css` now binds woff2/woff only and the demo specimen kit / `BoldItalic` family / `.eot` / `.ttf` files are gone.
 
 ## 1. What ships in this directory
 
 ```
-main/font/
+main/font/                                                                 ← post-Story-1.1 (DEE-55)
 ├── latolatinfonts.css         ← LIVE binding stylesheet (loaded by main/index.html)
-├── stylesheet.css             ← DEMO binding stylesheet (loaded by demo HTML only)
-├── generator_config.txt       ← Font Squirrel generator settings (not loaded at runtime)
 │
-├── lato-hai-webfont.{eot,svg,ttf,woff}   ← latohairline (UNUSED by app — demo only)
-├── lato-lig-webfont.{eot,svg,ttf,woff}   ← latolight (UNUSED by app — demo only)
-├── lato-hai-demo.html         ← Font specimen page (not loaded by app)
-├── lato-lig-demo.html         ← Font specimen page (not loaded by app)
+└── fonts/                     ← LIVE LatoLatinWeb / LatoLatinWebLight assets (woff/woff2 only)
+    ├── LatoLatin-Bold.{woff,woff2}        ← bound to LatoLatinWeb (bold)
+    ├── LatoLatin-Regular.{woff,woff2}     ← bound to LatoLatinWeb (regular)
+    └── LatoLatin-Light.{woff,woff2}       ← bound to LatoLatinWebLight
+```
+
+**Removed in Story 1.1 (DEE-55)** — preserved here as historical record:
+
+```
+main/font/                                                                 ← pre-Story-1.1
+├── stylesheet.css             ← DEMO binding stylesheet (only loaded by demo HTML)             ← removed
+├── generator_config.txt       ← Font Squirrel generator settings (not loaded at runtime)        ← removed
 │
-├── fonts/                     ← LIVE LatoLatinWeb / LatoLatinWebLight assets
-│   ├── LatoLatin-Bold.{eot,ttf,woff,woff2}        ← bound to LatoLatinWeb (bold)
-│   ├── LatoLatin-Regular.{eot,ttf,woff,woff2}     ← bound to LatoLatinWeb (regular)
-│   ├── LatoLatin-Light.{eot,ttf,woff,woff2}       ← bound to LatoLatinWebLight
-│   └── LatoLatin-BoldItalic.{eot,ttf,woff,woff2}  ← UNUSED (no @font-face binding)
+├── lato-hai-webfont.{eot,svg,ttf,woff}   ← latohairline (UNUSED by app — demo only)             ← removed
+├── lato-lig-webfont.{eot,svg,ttf,woff}   ← latolight (UNUSED by app — demo only)                ← removed
+├── lato-hai-demo.html         ← Font specimen page (not loaded by app)                          ← removed
+├── lato-lig-demo.html         ← Font specimen page (not loaded by app)                          ← removed
 │
-└── specimen_files/            ← Support assets for the demo HTML pages
+├── fonts/
+│   ├── LatoLatin-Bold.{eot,ttf}           ← .eot/.ttf legacy fallbacks (live family)            ← removed
+│   ├── LatoLatin-Regular.{eot,ttf}                                                              ← removed
+│   ├── LatoLatin-Light.{eot,ttf}                                                                ← removed
+│   └── LatoLatin-BoldItalic.{eot,ttf,woff,woff2}  ← UNUSED (no @font-face binding)              ← removed
+│
+└── specimen_files/            ← Support assets for the demo HTML pages                          ← removed
     ├── easytabs.js
     ├── grid_12-825-55-15.css
     └── specimen_stylesheet.css
@@ -36,10 +47,8 @@ main/font/
 |---|---|---|---|
 | `main/index.html:6-11` | `<link href="font/latolatinfonts.css">` | `main/font/latolatinfonts.css` | Defines `LatoLatinWeb` (Bold + Regular merged) and `LatoLatinWebLight` (Light). |
 | `main/notification.html` | — | (none — the notification window inlines `font-family: Arial, sans-serif`) | No webfont in the notification window. |
-| `main/font/lato-hai-demo.html:24` | `<link href="stylesheet.css">` | `main/font/stylesheet.css` | Demo-only — defines `latohairline`. |
-| `main/font/lato-lig-demo.html:24` | `<link href="stylesheet.css">` | `main/font/stylesheet.css` | Demo-only — defines `latolight`. |
 
-**The live application loads exactly one font CSS file: `main/font/latolatinfonts.css`.** `stylesheet.css` is loaded only by the two `lato-*-demo.html` pages, which are font-specimen documents shipped with the original Font Squirrel package and are not reachable through the app navigation. They are vestigial.
+**The live application loads exactly one font CSS file: `main/font/latolatinfonts.css`.** Pre-Story-1.1 the directory also held `stylesheet.css` (loaded only by `lato-{hai,lig}-demo.html` specimen pages); both the stylesheet and the specimen pages were vestigial Font Squirrel artefacts and have been removed in Story 1.1 (DEE-55).
 
 ## 3. Live bindings (`latolatinfonts.css` → `main/style.css`)
 
@@ -61,53 +70,50 @@ Other rules in `style.css` inherit through the cascade — they do not reset `fo
 
 ## 4. Inventory — `main/font/fonts/` (live `LatoLatin*` files)
 
+Post-Story-1.1 (DEE-55):
+
 | File | Bound by `latolatinfonts.css`? | Purpose |
 |---|---|---|
-| `LatoLatin-Bold.eot/.ttf/.woff/.woff2` | ✅ — `font-family: LatoLatinWeb`, weight `bold` | bold runs of body text |
-| `LatoLatin-Regular.eot/.ttf/.woff/.woff2` | ✅ — `font-family: LatoLatinWeb`, weight `normal` | default body text |
-| `LatoLatin-Light.eot/.ttf/.woff/.woff2` | ✅ — `font-family: LatoLatinWebLight`, weight `normal` | the heading rule on `style.css:72` |
-| `LatoLatin-BoldItalic.eot/.ttf/.woff/.woff2` | ❌ **No `@font-face` binding** | **Unused at runtime.** No CSS declaration loads them, no rule asks for `font-style: italic` + `font-weight: bold`. ~336 KB of dead weight across the 4 formats. |
+| `LatoLatin-Bold.{woff,woff2}` | ✅ — `font-family: LatoLatinWeb`, weight `bold` | bold runs of body text |
+| `LatoLatin-Regular.{woff,woff2}` | ✅ — `font-family: LatoLatinWeb`, weight `normal` | default body text |
+| `LatoLatin-Light.{woff,woff2}` | ✅ — `font-family: LatoLatinWebLight`, weight `normal` | the heading rule on `style.css:72` |
 
-> **Cleanup candidate**: `LatoLatin-BoldItalic.*`. If a rule ever needs bold-italic, the engine will silently synthesise it (or fall back to the next family). Either delete the four files, or extend `latolatinfonts.css` to bind them — pick one.
+Pre-Story-1.1 the directory also held the `.eot` + `.ttf` legacy fallbacks for the three live weights (~650 KB) and the entire `LatoLatin-BoldItalic.{eot,ttf,woff,woff2}` family (~336 KB; never bound). Both sets were removed; `latolatinfonts.css` was simultaneously edited to drop the `.eot` (IE9) and `.ttf` `src:` URLs because Electron is Chromium-only and resolves to `woff2`/`woff` before falling through to `.ttf`. **Cleanup candidate "BoldItalic" — resolved.** **Cleanup candidate ".eot/.ttf" — resolved.**
 
-The directory ships **all four format variants per weight** (`.eot` for IE9, `.woff2` modern, `.woff` modern, `.ttf` legacy / fallback) plus an `.eot` for `LatoLatin-BoldItalic`. Electron always uses Chromium, which will pick `.woff2` first, so the `.eot` and `.ttf` files are effectively dead-weight on the Electron target. They are kept because the assets came from Font Squirrel as a bundle and no one has trimmed them. Trimming `.eot` and `.ttf` from the live three weights would save ~700 KB; defer until a packaging-size story warrants it.
+## 5. Inventory — `lato-hai-*` and `lato-lig-*` (demo-only family — removed in Story 1.1, DEE-55)
 
-## 5. Inventory — `lato-hai-*` and `lato-lig-*` (demo-only family)
+Pre-Story-1.1 the directory also held a second binding stylesheet (`stylesheet.css`) that defined two more `font-family` names but was **not loaded by the app**:
 
-`stylesheet.css` defines two more `font-family` names but is **not loaded by the app**:
+| `font-family` | Files (historical) | Loaded where (historical) | Status |
+|---|---|---|---|
+| `latohairline` | `lato-hai-webfont.{eot,svg,ttf,woff}` | `lato-hai-demo.html:24` (specimen page) | Removed in Story 1.1, DEE-55 |
+| `latolight` | `lato-lig-webfont.{eot,svg,ttf,woff}` | `lato-lig-demo.html:24` (specimen page) | Removed in Story 1.1, DEE-55 |
 
-| `font-family` | Files | Loaded where |
-|---|---|---|
-| `latohairline` | `lato-hai-webfont.{eot,svg,ttf,woff}` | `main/font/lato-hai-demo.html:24` (specimen page) |
-| `latolight` | `lato-lig-webfont.{eot,svg,ttf,woff}` | `main/font/lato-lig-demo.html:24` (specimen page) |
+The kit (8 webfont binaries, 2 demo HTML pages, `stylesheet.css`, `specimen_files/`, `generator_config.txt`) was vestigial Font Squirrel output — only the demo HTML pages loaded `stylesheet.css`, and they were not reachable through the app navigation. **Cleanup candidate "demo specimen kit" — resolved.** Measured saving: ~828 KB.
 
-Confirmed by greps on the codebase: no source file outside `main/font/` references the `latohairline` or `latolight` family names. The two demo HTML files exist purely as the standard Font Squirrel "specimen" preview sheets shipped with the original generator output.
+The four pre-removal `lato-{hai,lig}-webfont.svg` files alone accounted for ~470 KB — SVG-format webfonts (an early-2010s format — Chromium dropped support after Chrome 38), categorically dead.
 
-> **Cleanup candidate (larger)**: the entire pairing of `lato-hai-*`, `lato-lig-*`, `lato-hai-demo.html`, `lato-lig-demo.html`, `stylesheet.css`, and the `specimen_files/` directory is **demo-only**. Removing the lot is safe so long as you also delete `stylesheet.css` (which only the demo pages load). Approximate savings: ~1.2 MB across ~12 files.
+## 6. `generator_config.txt` (removed in Story 1.1, DEE-55)
 
-The four `lato-{hai,lig}-webfont.svg` files alone account for ~470 KB — those are SVG-format webfonts (an early-2010s format — Chromium dropped support after Chrome 38). They are categorically dead.
-
-## 6. `generator_config.txt`
-
-A Font Squirrel generator settings dump (`{"mode":"optimal","formats":["ttf","woff","eotz"], …}`). Loaded by nothing at runtime. Useful only if a maintainer needs to rebuild the webfont kit through the Font Squirrel UI. Keep it next to the assets it generated, or remove it together with the `lato-hai-*` / `lato-lig-*` cluster — there is no policy reason to retain `generator_config.txt` once those fonts are gone.
+Pre-Story-1.1 the directory held `generator_config.txt`, a Font Squirrel generator settings dump (`{"mode":"optimal","formats":["ttf","woff","eotz"], …}`). Loaded by nothing at runtime. Removed alongside the demo specimen kit in Story 1.1.
 
 ## 7. Invariants & gotchas
 
 1. **Family names are case-sensitive in `style.css`.** `LatoLatinWeb` ≠ `latolatinweb` — the cascade silently falls through to the OS fallback if the casing is wrong. Don't normalise.
 2. **`LatoLatinWeb` is a *combined* family** (Bold + Regular share one name with different `font-weight`s). `font-weight: bold` automatically pulls `LatoLatin-Bold.*`; `font-weight: normal` pulls `LatoLatin-Regular.*`. **`LatoLatinWebLight` is a *separate* family** that only contains the Light face — switching to it requires changing `font-family`, not `font-weight`. This is a deliberate Font Squirrel pattern; do not collapse them into a single name.
 3. **The notification window does NOT use any webfont.** `notification.html:40` declares `font-family: Arial, sans-serif`. If a future feature wants the notification window to share the main app's typography, it must add a `<link rel="stylesheet" href="font/latolatinfonts.css">` and set `font-family: "LatoLatinWeb"` explicitly — there is no automatic inheritance because the notification window loads no shared CSS.
-4. **Electron target is Chromium-only.** `.eot` (IE9) is dead weight; `.ttf` is fallback; `.woff2` is the only file that should reach a user. Until a packaging-size story lands, the extras stay.
-5. **`fonts/` is two levels deep, but the URLs in `latolatinfonts.css` are relative to the CSS file** (`url("fonts/LatoLatin-Bold.eot")`), so they resolve to `main/font/fonts/LatoLatin-Bold.eot`. Don't move `latolatinfonts.css` without updating the URLs.
+4. **Electron target is Chromium-only.** `.eot` (IE9) and `.ttf` were legacy fallbacks; `.woff2` and `.woff` are the only formats Chromium needs. Story 1.1 (DEE-55) removed the `.eot` / `.ttf` files and dropped the corresponding `src:` URLs from `latolatinfonts.css`.
+5. **`fonts/` is two levels deep, but the URLs in `latolatinfonts.css` are relative to the CSS file** (`url("fonts/LatoLatin-Bold.woff2")`), so they resolve to `main/font/fonts/LatoLatin-Bold.woff2`. Don't move `latolatinfonts.css` without updating the URLs.
 
 ## 8. Cleanup summary
 
-If a future story takes on font-related cleanup, the safe-to-remove set is (in increasing scope):
+**All P1 + P3 + P4 candidates resolved in Story 1.1 (DEE-55) — measured 1.85 MB saving across `main/img/` + `main/font/`.** Historical risk-by-scope table:
 
-| Risk | Items | Approx. saving |
-|---|---|---|
-| **Zero risk** | `LatoLatin-BoldItalic.eot/.ttf/.woff/.woff2` | ~336 KB |
-| Low — affects developer-only specimen pages | `lato-hai-webfont.*`, `lato-lig-webfont.*`, `lato-hai-demo.html`, `lato-lig-demo.html`, `stylesheet.css`, `specimen_files/`, `generator_config.txt` | ~1.2 MB |
-| Medium — only safe on Electron target | `.eot` + `.ttf` for the three live weights (keep `.woff2` + `.woff` only) | ~700 KB |
+| Risk | Items | Approx. saving | Status |
+|---|---|---|---|
+| **Zero risk** | `LatoLatin-BoldItalic.eot/.ttf/.woff/.woff2` | ~336 KB measured | Removed in Story 1.1 (DEE-55) |
+| Low — affected developer-only specimen pages | `lato-hai-webfont.*`, `lato-lig-webfont.*`, `lato-hai-demo.html`, `lato-lig-demo.html`, `stylesheet.css`, `specimen_files/`, `generator_config.txt` | ~828 KB measured | Removed in Story 1.1 (DEE-55) |
+| Low — only safe on Electron target | `.eot` + `.ttf` for the three live weights (kept `.woff2` + `.woff` only) | ~650 KB measured | Removed in Story 1.1 (DEE-55) |
 
 Do **not** remove `latolatinfonts.css`, the three live weight families (`Bold`, `Regular`, `Light`), or the `<link>` in `main/index.html` — they are load-bearing for body text rendering across every page.
 
