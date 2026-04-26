@@ -71,6 +71,17 @@ test("Nest", async ({}, testInfo) => {
   }
   await test.step("Config", async () => {
     await mainWindow.locator("#config_tab").click();
+    await test.step("Lato webfonts resolved", async () => {
+      const latoFacesResolved = await mainWindow.evaluate(async () => {
+        await document.fonts.ready;
+        return {
+          web: document.fonts.check("1em LatoLatinWeb"),
+          webLight: document.fonts.check("1em LatoLatinWebLight"),
+        };
+      });
+      expect(latoFacesResolved.web).toBe(true);
+      expect(latoFacesResolved.webLight).toBe(true);
+    });
     const configTab = mainWindow.locator("#config");
     await configTab.getByRole("link", { name: "set all to default" }).click();
     await test.step("units mm", () =>
