@@ -1,5 +1,5 @@
 # generated: 2026-04-26
-# last_updated: 2026-04-26
+# last_updated: 2026-04-26 (DEE-54 / bmad-create-story — three stream-head stories promoted backlog → ready-for-dev; epics 1/3/6 transitioned backlog → in-progress)
 # project: deepnest-next
 # project_key: NOKEY
 # tracking_system: file-system
@@ -43,8 +43,8 @@ story_location: "{project-root}/_bmad-output/implementation-artifacts"
 
 development_status:
   # Epic 1 — Renderer asset hygiene (Gate G-2 prerequisite consumer)
-  epic-1: backlog
-  1-1-remove-dead-weight-renderer-assets-and-record-the-saving: backlog
+  epic-1: in-progress
+  1-1-remove-dead-weight-renderer-assets-and-record-the-saving: ready-for-dev
   epic-1-retrospective: optional
 
   # Epic 2 — LICENSES.md generator + per-folder metadata (FR-02, expanded scope)
@@ -56,8 +56,8 @@ development_status:
   epic-2-retrospective: optional
 
   # Epic 3 — Test-fixture integrity gate (FR-03)
-  epic-3: backlog
-  3-1-implement-tests-assets-integrity-check-manifest-wire-into-npm-test: backlog
+  epic-3: in-progress
+  3-1-implement-tests-assets-integrity-check-manifest-wire-into-npm-test: ready-for-dev
   3-2-document-the-fixture-drift-re-derivation-procedure-in-docs-development-guide-md: backlog
   epic-3-retrospective: optional
 
@@ -73,7 +73,7 @@ development_status:
   epic-5-retrospective: optional
 
   # Epic 6 — Anti-pattern preservation rails (FR-06, IR Pre-condition #7 mitigation)
-  epic-6: backlog
-  6-1-add-github-pull-request-template-md-anchored-on-project-context-md-16: backlog
+  epic-6: in-progress
+  6-1-add-github-pull-request-template-md-anchored-on-project-context-md-16: ready-for-dev
   6-2-document-the-cite-the-16-item-number-reviewer-workflow-in-docs-development-guide-md: backlog
   epic-6-retrospective: optional
