@@ -1,0 +1,35 @@
+# LICENSE.yml — tests/assets/
+#
+# Per-folder vendored-asset metadata for FR-02 / ADR-008 (deepnest-next).
+# Schema: top-level array of entry maps, one per third-party / vendored item.
+# Required fields: path, name, license (SPDX ID), copyright, upstream_url.
+# Optional fields: notes.
+#
+# `path` is relative to this LICENSE.yml's folder (i.e. relative to tests/assets/).
+# Story 2.2's `scripts/build-licenses.mjs` parses this shape and regenerates
+# `LICENSES.md`. Story 2.3 wires the determinism check into `npm test`.
+# Line endings: LF only.
+#
+# Per Epic 3 architectural constraint (d), this LICENSE.yml is the canonical
+# provenance surface for tests/assets/; if Story 3.2 later adds a per-folder
+# README, that README cross-references this file rather than duplicating
+# attribution.
+#
+# Both files are derived SVG specimens used as E2E test fixtures (sole consumer:
+# tests/index.spec.ts). Renaming or re-encoding either file is forbidden by
+# Story 2.1 AC-02.1.6 / FR-03 (Story 3.1's manifest gate enforces fixture
+# integrity).
+
+- path: henny-penny.svg
+  name: Henny Penny (derived SVG specimen)
+  license: OFL-1.1
+  copyright: "Copyright (c) 2011 Brownfox (Sasha Tsarev), with Reserved Font Name \"Henny Penny\""
+  upstream_url: https://fonts.google.com/specimen/Henny+Penny
+  notes: "SIL Open Font License 1.1. Derived SVG specimen used as E2E test fixture (single <path>, 36 closed sub-paths). DO NOT rename or re-encode — fixture-integrity is covered by Story 3.1's manifest gate (FR-03)."
+
+- path: mrs-saint-delafield.svg
+  name: Mrs Saint Delafield (derived SVG specimen)
+  license: OFL-1.1
+  copyright: "Copyright (c) 2011 Astigmatic (Brian J. Bonislawsky), with Reserved Font Name \"Mrs Saint Delafield\""
+  upstream_url: https://fonts.google.com/specimen/Mrs+Saint+Delafield
+  notes: "SIL Open Font License 1.1. Derived SVG specimen used as E2E test fixture (single <path>, 44 closed sub-paths). DO NOT rename or re-encode — fixture-integrity is covered by Story 3.1's manifest gate (FR-03)."

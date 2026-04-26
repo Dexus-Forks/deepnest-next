@@ -1,0 +1,116 @@
+# LICENSE.yml — main/util/
+#
+# Per-folder vendored-asset metadata for FR-02 / ADR-008 (deepnest-next).
+# Schema: top-level array of entry maps, one per third-party / vendored item.
+# Required fields: path, name, license (SPDX ID), copyright, upstream_url.
+# Optional fields: notes.
+#
+# `path` is relative to this LICENSE.yml's folder (i.e. relative to main/util/).
+# Story 2.2's `scripts/build-licenses.mjs` parses this shape and regenerates
+# `LICENSES.md`. Story 2.3 wires the determinism check into `npm test`.
+# Line endings: LF only (ADR-008 generator is Linux-only-CI).
+# Vendored utilities here are listed in project-context.md §16.5 (do NOT modify
+# their source); _unused/ entries are preserved per project-context §17 (ADR-007
+# §revertibility).
+
+- path: clipper.js
+  name: Clipper Library (JavaScript port)
+  license: BSL-1.0
+  copyright: "Copyright 2010-2014 Angus Johnson; JavaScript port by Timo (2016); bundles JSBN BigInteger by Tom Wu (2005-2009)"
+  upstream_url: https://sourceforge.net/projects/jsclipper/
+  notes: "Boost Software License — full attribution preserved in source header. Vendored utility (project-context.md §16.5 — do not modify)."
+
+- path: geometryutil.js
+  name: SVGnest geometryutil
+  license: MIT
+  copyright: "Copyright 2015 Jack Qiao"
+  upstream_url: https://github.com/Jack000/SVGnest
+  notes: "General-purpose polygon/Bezier helpers ported from svgnest upstream. Catalogued per AC-02.1.1 (predates the deepnest-next fork; treated as vendored for provenance even though authored by the same maintainer who wrote /main)."
+
+- path: HullPolygon.ts
+  name: d3-polygon (TS adaptation)
+  license: ISC
+  copyright: "Copyright 2010-2016 Mike Bostock"
+  upstream_url: https://github.com/d3/d3-polygon
+  notes: "TS-typed class-style adaptation of d3-polygon v1.0.2; upstream attribution preserved in source header (line 1). License confirmed via upstream LICENSE file."
+
+- path: interact.js
+  name: interact.js
+  license: MIT
+  copyright: "Copyright (c) 2012-2015 Taye Adeyemi"
+  upstream_url: https://interactjs.io/
+  notes: "v1.2.6. Vendored utility (project-context.md §16.5)."
+
+- path: parallel.js
+  name: parallel.js
+  license: MIT
+  copyright: "Copyright (c) 2014 Adam Savitzky and parallel.js contributors"
+  upstream_url: https://github.com/parallel-js/parallel.js
+  notes: "Source header lacks attribution; license verified via upstream package.json (license: MIT). Vendored utility (project-context.md §16.5)."
+
+- path: pathsegpolyfill.js
+  name: SVGPathSeg API polyfill (progers/pathseg)
+  license: BSD-3-Clause
+  copyright: "Copyright 2014 The Chromium Authors. All rights reserved."
+  upstream_url: https://github.com/progers/pathseg
+  notes: "Upstream package.json field reads \"Chromium's License\" (BSD-3-Clause-style Chromium boilerplate); SPDX-encoded as BSD-3-Clause. Vendored utility (project-context.md §16.5)."
+
+- path: ractive.js
+  name: Ractive.js
+  license: MIT
+  copyright: "Copyright (c) 2012-2016 Rich Harris and Ractive.js contributors"
+  upstream_url: https://ractivejs.org/
+  notes: "v0.8.1 (commit fd141daa, 2016-10-20). Vendored utility (project-context.md §16.5)."
+
+- path: simplify.js
+  name: Simplify.js
+  license: BSD-2-Clause
+  copyright: "Copyright (c) 2013 Vladimir Agafonkin; modified by Jack Qiao (svgnest fork)"
+  upstream_url: https://github.com/mourner/simplify-js
+  notes: "Polyline simplification. Header attributes upstream + svgnest modification. Vendored utility (project-context.md §16.5)."
+
+- path: svgpanzoom.js
+  name: svg-pan-zoom
+  license: BSD-2-Clause
+  copyright: "Copyright (c) 2009-2017 Andrea Leofreddi and svg-pan-zoom contributors"
+  upstream_url: https://github.com/bumbu/svg-pan-zoom
+  notes: "v3.6.2 minified bundle. License confirmed via upstream package.json. Vendored utility (project-context.md §16.5)."
+
+# --- _unused/ — preserved per ADR-007 §revertibility (project-context.md §17). ---
+# Do NOT import from _unused/ (project-context.md §16.6); do NOT edit the source files
+# themselves (Story 2.1 AC-02.1.8). Catalogued here for supply-chain auditability only.
+
+- path: _unused/clippernode.js
+  name: Clipper Library (Node.js variant)
+  license: BSL-1.0
+  copyright: "Copyright 2010-2014 Angus Johnson; JavaScript port by Timo (2016)"
+  upstream_url: https://sourceforge.net/projects/jsclipper/
+  notes: "Sibling of clipper.js targeting Node.js. Vendored utility — no live import; preserved per ADR-007 §revertibility."
+
+- path: _unused/filesaver.js
+  name: FileSaver.js
+  license: MIT
+  copyright: "Copyright (c) 2015 Eli Grey"
+  upstream_url: https://github.com/eligrey/FileSaver.js
+  notes: "v1.1.20151003. Vendored utility — no live import; preserved per ADR-007 §revertibility."
+
+- path: _unused/hull.js
+  name: ConvexHullGrahamScan (graham_scan_js)
+  license: MIT
+  copyright: "Copyright (c) 2014 Brian Barnett"
+  upstream_url: https://github.com/brian3kb/graham_scan_js
+  notes: "Graham's Scan Convex Hull, v1.0.4. License confirmed via upstream package.json. Vendored utility — no live import; preserved per ADR-007 §revertibility."
+
+- path: _unused/json.js
+  name: json2.js (Douglas Crockford)
+  license: LicenseRef-PublicDomain
+  copyright: "Public Domain (Douglas Crockford). NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK."
+  upstream_url: https://github.com/douglascrockford/JSON-js
+  notes: "Source header in this vendored copy is stripped; identity confirmed by structural fingerprint match against upstream json2.js. Public Domain is not in the SPDX licenses list, so encoded as `LicenseRef-PublicDomain` per SPDX 2.3 §10.1. Vendored utility — no live import; preserved per ADR-007 §revertibility."
+
+- path: _unused/placementworker.js
+  name: SVGnest placement worker
+  license: MIT
+  copyright: "Copyright 2015 Jack Qiao"
+  upstream_url: https://github.com/Jack000/SVGnest
+  notes: "Web-Worker placement loop derived from svgnest upstream (filename + structural fingerprint match). Source header omits attribution; sourced via upstream pedigree. Vendored utility — no live import; preserved per ADR-007 §revertibility."
