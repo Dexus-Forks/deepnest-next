@@ -12,15 +12,6 @@ on:
         description: 'Number of consecutive runs to capture (CA §8 calls for 5)'
         required: false
         default: '5'
-  # Temporary: this branch (DEE-52) cannot use workflow_dispatch via API because
-  # the workflow file is not yet on the default branch. The push trigger fires
-  # the one-time capture on this branch only and will be removed before the PR
-  # opens. workflow_dispatch is the canonical trigger going forward.
-  push:
-    branches:
-      - DEE-52-nfr-01-baseline-capture-sprint-start-gate-for-dee-44-mvp-epics
-    paths:
-      - '.github/workflows/nfr01-baseline.yml'
 
 permissions:
   contents: write
