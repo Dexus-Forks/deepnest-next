@@ -9,7 +9,7 @@ Per the Murat release-gate formula:
 ```
 PASS    = trace(P0+P1) complete ∧ nfr_assess no-P0-violation ∧ test_review >= 80
 CONCERN = trace complete ∧ nfr_assess mitigated ∧ test_review >= 60
-FAIL    = sonst
+FAIL    = otherwise
 ```
 
 All three feeders are green:
