@@ -1,0 +1,68 @@
+{
+  "schema_version": "0.1.0",
+  "evaluated_at": "2026-04-26T00:00:00Z",
+  "repo": "deepnest-next",
+  "target": {
+    "type": "story",
+    "id": "2.2",
+    "label": "Story 2.2 — Implement scripts/build-licenses.mjs generator + Sage Round-1 architectural addendum",
+    "slug": "2-2-implement-scripts-build-licenses-mjs-generator-script",
+    "merge_sha": "74a795fd49c92ccdfebac0f5514266d13f5c940f",
+    "pr_url": "https://github.com/Dexus-Forks/deepnest-next/pull/23"
+  },
+  "collection_status": "COLLECTED",
+  "gate_basis": "priority_thresholds",
+  "gate_status": "PASS",
+  "rationale": "P0 coverage 100% (7/7) ✅ — AC-02.2.1 (script Node-stable + zero-dep, 298 LOC, imports limited to node:fs/node:path/node:url; no entry under package.json deps/devDeps/optionalDeps); AC-02.2.2 (npm run licenses:build regenerates LICENSES.md byte-for-byte deterministic — Murat re-ran 2× post-merge at 74a795f: sha256 5283222621d52f826794a4b0a94d03983425719ba651d948609d16864cdbad42 stable across both runs and matches the committed file); AC-02.2.3 (npm run licenses:check returns 0 on clean tree; mutate-restore cycle returns exit 1 with unified-diff stderr naming the differing line + ADR-008 §5 docs pointer; restore returns exit 0 with sha256 stable); AC-02.2.4 (regenerated LICENSES.md is byte-identical to the committed file at 74a795f — zero diff after 2× regen; 30 markdown table lines = header + sep + 28 data rows match Story 2.1 baseline structure modulo §2.6/§2.7 deltas); AC-02.2.5 (passthrough route (a) selected — main/LICENSE.yml ships with 5 first-party entries: /main, /main/svgparser.js, /main/deepnest.js, minkowski.cc minkowski.h, /polygon — all flagged first_party: true; rows 1–5 of regenerated LICENSES.md first-party block match expected order; legal-compliance non-negotiable for Boost-licensed @deepnest/calculate-nfp shipped under unpacked node_modules satisfied); AC-02.2.6 (SPDX normalisation across License column — grep -cE 'Boost|GPLv3' LICENSES.md returns 0; BSL-1.0 ×2 + GPL-3.0-only ×1 land at expected first-party rows 3/4/5 + at the third-party clipper.js + _unused/clippernode.js rows; cross-verified against SPDX 2.3 §10.1); AC-02.2.11 (npm test green at two independent SHAs — PR run 24961417841 on f40843f Playwright step 17000 ms ∈ NFR-01 ±20% band [13397, 20096] ms; push-to-main run 24961493231 on 74a795f Playwright step 17000 ms ∈ band; scripts.test chain unchanged in this story per AC-02.2.3 so wall-clock change is near-zero against Story 2.1's d66b8d5 push at 16000 ms — confirms Story 2.3/A4 will be the moment to re-anchor the rolling mean). P1 coverage 100% (4/4) ✅ — AC-02.2.7 (latolatinfonts.css first_party: true flag in main/font/LICENSE.yml; row moves to first-party block position 6; third-party shrinks 23→22; total 28 rows preserved); AC-02.2.8 (option α — architecture.md §5 ADR-008 step 1 amended with 'Schema reference' subsection at line 240; 4× LICENSE.yml headers reduced to ≤ 4 lines preserving per-file context + 'Line endings: LF only.' line); AC-02.2.12 (§16 anti-patterns 16/16 hold — Sage Round-1 deterministic re-greps confirm; no new window globals, no IPC channel, no @ts-ignore, no main/util/_unused/ source edits, no --no-verify in commit history); AC-02.2.13 (file-set scope = exactly 11 named files in the AC-02.2.13 allow-list; git diff --stat at 74a795f matches; package-lock.json unchanged confirming zero-dep). P3 coverage 100% (2/2) ✅ — AC-02.2.9 (PR description documents option β with deferred implementation; scripts/check-test-fixtures.mjs + tests/assets/.fixture-manifest.json untouched in PR #23 diff; manifest re-derivation in round-2 fixup is documented in story DAR as deliberate fixture edit cycle 2016→1340 bytes); AC-02.2.10 (sprint-status.yaml flipped backlog→ready-for-dev in CS commit; ready-for-dev→done flip + last_updated refresh land in PR #24 closer at 8ff4f5c — closer is OPEN at trace time; flip is non-blocking for Story 2.2 deliverable). Round-1 Review-Board (Sage / DEE-93) APPROVED severity.max = P2 — 4× P2 (ADR-008 wording widening + parser/drift test-harness gap) + 6× P3 (cosmetic + docs polish), all resolution-routed: 5 of 7 ADR-related items bundled into a single ADR-008 amendment for Story 2.3 / A4; parser test harness (P2-04) folds into A4 spec since A4 wires licenses:check into scripts.test; wall-clock CI guard (P3-06) handed off to Murat for Story 2.3 with proposed 750 ms threshold (12× margin under §3.3 1 s ceiling). Story 2.1 Round-1 deferred follow-ups (P2-01 + P3-01 + P3-02 + P3-03) all visibly closed in PR #23 diff — verified by Murat post-merge at 74a795f. NFR-01 binding evidence captured at TWO independent SHAs (PR f40843f = 17000 ms; push-to-main 74a795f = 17000 ms) — both ∈ [13397, 20096] ms band. Generator wall-clock <1 s budget (architecture.md §3.3) verified locally 5× (median ~178 ms on workspace VM; Sage pre-flight ~64 ms on faster cell — both 5–14× under budget). All 16 §16 anti-patterns audited green. Closer PR #24 sprint-status flip (8ff4f5c) is open at trace time; Murat's verdict notes this without blocking on it (closer is mechanical sprint-status hygiene, not a Story 2.2 deliverable surface).",
+  "p0_status": "MET",
+  "p1_status": "MET",
+  "overall_status": "MET",
+  "critical_open": 0,
+  "carry_forward": [
+    {
+      "id": "ADR-008-amendment-bundle",
+      "priority": "P2",
+      "owner": "Story 2.3 / A4 author (TBD) via Sage Round-1 follow-up bundle",
+      "action": "Single ADR-008 amendment commit folding 5 wording-alignment items: (1) state canonical rendering rule — first-party block precedes third-party; first-party order = LICENSE_YML_FILES walk-order + YAML insertion; third-party order = ASCII byte sort by Unit (Sage P2-01); (2) state explicitly that LICENSE_YML_FILES IS the configured-roots list — intentional narrowing for review-surface clarity (Sage P2-02); (3) update §Consequences/Risk row with closed-set drift-gate caveat — new roots require deliberate two-file PR (Sage P2-03); (4) replace fragile '§271 out-of-tree clause' line-anchor with subsection-title cross-reference (Sage P3-01); (5) widen 'no runtime deps beyond fs/path' to 'Node stdlib only — no transitive deps; no experimental APIs' (Sage P3-02). Story 2.3's natural moment since A4 wires the gate."
+    },
+    {
+      "id": "story-2-3-parser-drift-test-harness",
+      "priority": "P2",
+      "owner": "Story 2.3 / A4 author (TBD) — Lydia Finding 1 / Sage P2-04",
+      "action": "Add a smoke harness — either tests/build-licenses.spec.ts (Playwright) or scripts/build-licenses.test.mjs (node:test) — that exercises the 5 failSchema(...) branches (value-line outside any entry; expected continuation/new-entry; unterminated double-quoted string; missing/non-string required field; unknown field; non-boolean first_party) plus the --check drift path (temp-file mutate-restore). Recommendation: pull failSchema/failIO behind an injected onFail(code, msg) callback so cases run in-process without spawning a child per case. A4 wires licenses:check into scripts.test, so the gate's behavioural contract is the natural test-set consumer."
+    },
+    {
+      "id": "story-2-3-wall-clock-ci-guard",
+      "priority": "P3",
+      "owner": "Murat (TEA) on Story 2.3 — Hermes Finding 1 / Sage P3-06",
+      "action": "Add CI wall-clock regression guard once licenses:check is wired into scripts.test. Proposed threshold: 750 ms wall on the canonical CI cell — 250 ms cushion under architecture.md §3.3's 1 s ceiling; ~12× margin to absorb future row growth + CI variance + node-process startup. Capture chosen threshold in Story 2.3 Dev Agent Record. Local benchmark today: ~63 ms (Sage pre-flight) / median ~178 ms (Murat workspace VM) — both well inside budget; entry set sized at 5+14+7+2 = 28 rows with ~500-entry headroom before the 1 s ceiling."
+    },
+    {
+      "id": "story-2-3-or-2-4-cosmetic-polish",
+      "priority": "P3",
+      "owner": "Story 2.3 / A4 PR or separate small Story 2.4 docs pass",
+      "action": "Three optional polish items: (a) drift-diff truncation honesty — emitDriftDiff currently silently breaks past 20 captured lines; format 'First N of M differing line(s):' with '(…M-N more truncated)' hint when truncated (Lydia P3-03); (b) renderTable allocation pattern — for-of accumulation saves one allocation vs spread+map+join idiom (Lydia P3-04, optional; same idiom in scripts/check-test-fixtures.mjs for consistency); (c) --help / -h exit code — currently EXIT_USAGE = 3, non-idiomatic; add explicit branch exiting EXIT_OK = 0 in both scripts (Lydia P3-05, project-wide nudge)."
+    },
+    {
+      "id": "closer-pr-24-sprint-status-flip",
+      "priority": "P3",
+      "owner": "Amelia (DS) — closer PR #24 (open at trace time)",
+      "action": "Closer PR #24 (DEE-92-closer-sage-report-2-2 → main) lands sprint-status.yaml flip ready-for-dev → done + last_updated refresh + Sage Round-1 consolidated report at projects/deepnest-next/reviews/2-2-implement-scripts-build-licenses-mjs-generator-script-round-1.md. AC-02.2.10's done-flip portion completes when #24 merges. This trace records the post-merge state of Story 2.2's deliverable surface (74a795f); the closer is mechanical sprint-status hygiene + report-add and does not change the deliverable. Murat's PASS verdict stands independently of the closer's merge timing."
+    }
+  ],
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability/2-2-implement-scripts-build-licenses-mjs-generator-script-trace.md",
+    "trace_matrix_path": "_bmad-output/test-artifacts/traceability/2-2-implement-scripts-build-licenses-mjs-generator-script-trace.matrix.json",
+    "e2e_trace_summary_path": "_bmad-output/test-artifacts/traceability/2-2-implement-scripts-build-licenses-mjs-generator-script-e2e-trace-summary.json",
+    "ci_run_url_pr": "https://github.com/Dexus-Forks/deepnest-next/actions/runs/24961417841",
+    "ci_run_url_push_main": "https://github.com/Dexus-Forks/deepnest-next/actions/runs/24961493231",
+    "story_file": "_bmad-output/implementation-artifacts/2-2-implement-scripts-build-licenses-mjs-generator-script.md",
+    "predecessor_trace": "_bmad-output/test-artifacts/traceability/2-1-bootstrap-per-folder-license-yml-metadata-regenerate-licenses-md-data-hygiene-fixes-included-trace.md",
+    "board_report": {
+      "type": "in-repo",
+      "status": "pending-merge",
+      "path": "projects/deepnest-next/reviews/2-2-implement-scripts-build-licenses-mjs-generator-script-round-1.md",
+      "description": "Sage Round-1 consolidated Review-Board report (DEE-93): APPROVED, severity.max = P2; 4×P2 + 6×P3, all resolution-routed. Lands in closer PR #24 (open at trace time)."
+    }
+  }
+}

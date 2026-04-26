@@ -1,0 +1,126 @@
+{
+  "schema_version": "0.1.0",
+  "snapshot_at": "2026-04-26T00:00:00Z",
+  "repo": "deepnest-next",
+  "collection_mode": "contract_static",
+  "collection_status": "COLLECTED",
+  "inventory_basis": "acceptance_criteria",
+  "gate_basis": "priority_thresholds",
+  "source_sha": "74a795fd49c92ccdfebac0f5514266d13f5c940f",
+  "target": {
+    "type": "story",
+    "id": "2.2",
+    "label": "Story 2.2 — Implement scripts/build-licenses.mjs generator + Sage Round-1 architectural addendum",
+    "slug": "2-2-implement-scripts-build-licenses-mjs-generator-script",
+    "pr_url": "https://github.com/Dexus-Forks/deepnest-next/pull/23"
+  },
+  "decision_mode": "deterministic",
+  "evaluator": "Murat (TEA)",
+  "confidence": "high",
+  "oracle": {
+    "resolution_mode": "formal_requirements",
+    "confidence": "high",
+    "sources": [
+      "_bmad-output/implementation-artifacts/2-2-implement-scripts-build-licenses-mjs-generator-script.md (AC-02.2.1..AC-02.2.13)",
+      "_bmad-output/planning-artifacts/prd.md §FR-02 (AC-02.1..AC-02.4)",
+      "_bmad-output/planning-artifacts/architecture.md §3.1 + §4 + §5 ADR-008 (post-Story-2.2 amendment incl. 'Schema reference' subsection)",
+      "_bmad-output/planning-artifacts/nfr01-baseline.json (rolling_mean_ms 16746.6, ±20% [13397, 20096] ms)",
+      "_bmad-output/project-context.md §16 (16-item anti-pattern list)",
+      "Sage Round-1 closer report (lands in PR #24): projects/deepnest-next/reviews/2-2-implement-scripts-build-licenses-mjs-generator-script-round-1.md"
+    ],
+    "external_pointer_status": "not_used",
+    "synthetic": false
+  },
+  "coverage": {
+    "inventory": { "covered": 13, "total": 13, "pct": 100 },
+    "priority_breakdown": {
+      "P0": { "total": 7, "covered": 7, "pct": 100 },
+      "P1": { "total": 4, "covered": 4, "pct": 100 },
+      "P2": { "total": 0, "covered": 0, "pct": null },
+      "P3": { "total": 2, "covered": 2, "pct": 100 }
+    },
+    "by_level": {
+      "e2e": { "tests": 1, "criteria_covered": 1 },
+      "api": { "tests": 0, "criteria_covered": 0 },
+      "component": { "tests": 0, "criteria_covered": 0 },
+      "unit": { "tests": 0, "criteria_covered": 0 },
+      "other": {
+        "tests": 27,
+        "criteria_covered": 12,
+        "note": "doc-verification + runtime-verification: (a) 2× post-merge regen-byte-equivalence runs (sha256 stable, matches committed file); (b) clean-tree licenses:check exit-0; (c) mutate-restore licenses:check exit-1 with unified-diff stderr; (d) 5× cold-process generator wall-clock samples (median ~178 ms, all <1 s budget); (e) git-diff/git-show structural verifications across the 11 touched files; (f) Sage Round-1 deterministic pre-flight checklist (15 checks all PASS); (g) §16 anti-pattern hot-greps; (h) CI step-wall-clock at 2 SHAs (PR f40843f + push-to-main 74a795f). Generator-script story per story-file Tasks/Subtasks 11.4: 'npm run licenses:check locally — must exit 0' is the canonical structural check; the actual scripts.test wire-in is Story 2.3 (A4)."
+      }
+    }
+  },
+  "tests": {
+    "files": 5,
+    "cases": 28,
+    "skipped_cases": 0,
+    "fixme_cases": 0,
+    "pending_cases": 0
+  },
+  "risk_summary": {
+    "critical_open": 0,
+    "high_open": 0,
+    "medium_open": 0,
+    "low_open": 0,
+    "carry_forward": 5
+  },
+  "heuristics": {
+    "endpoint_gaps": 0,
+    "auth_negative_path_status": "not_applicable",
+    "error_path_status": "covered_via_mutate_restore_cycle",
+    "ui_journey_status": "not_applicable",
+    "ui_state_status": "not_applicable"
+  },
+  "blockers": [],
+  "recommendations": [
+    {
+      "priority": "MEDIUM",
+      "action": "Story 2.3 / A4 scope-add — fold Sage Round-1 P2-04 (parser/drift test harness) into A4 spec; A4 is the natural moment since it wires licenses:check into scripts.test. Recommend onFail(code, msg) injection so cases run in-process via node:test or Playwright without per-case child-process spawn.",
+      "requirements": ["AC-02.2.2", "AC-02.2.3"]
+    },
+    {
+      "priority": "MEDIUM",
+      "action": "ADR-008 amendment bundle (single commit) folding 5 wording-alignment items: canonical rendering rule (Sage P2-01); LICENSE_YML_FILES = configured-roots list (Sage P2-02); closed-set drift-gate caveat in §Risk (Sage P2-03); §271 line-anchor → subsection-title cross-reference (Sage P3-01); 'no runtime deps beyond fs/path' → 'Node stdlib only' (Sage P3-02). Story 2.3's natural moment.",
+      "requirements": ["AC-02.2.5", "AC-02.2.8"]
+    },
+    {
+      "priority": "LOW",
+      "action": "Wall-clock CI guard on licenses:check once Story 2.3 wires the gate (Hermes Finding 1 / Sage P3-06). Proposed threshold 750 ms wall on canonical CI cell (12× margin under §3.3 1 s ceiling). Owner: Murat (TEA) on Story 2.3.",
+      "requirements": ["AC-02.2.3"]
+    },
+    {
+      "priority": "LOW",
+      "action": "Optional cosmetic polish in Story 2.3 / A4 PR or Story 2.4 docs pass: drift-diff truncation honesty (Lydia P3-03), renderTable allocation pattern (Lydia P3-04), --help / -h exit code (Lydia P3-05).",
+      "requirements": ["AC-02.2.3"]
+    },
+    {
+      "priority": "LOW",
+      "action": "Closer PR #24 (DEE-92-closer-sage-report-2-2 → main) is OPEN at trace time. When merged it lands sprint-status flip ready-for-dev → done + last_updated refresh + Sage Round-1 consolidated report. AC-02.2.10's done-flip portion completes on closer merge; trace verdict stands independently.",
+      "requirements": ["AC-02.2.10"]
+    }
+  ],
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability/2-2-implement-scripts-build-licenses-mjs-generator-script-trace.md",
+    "trace_matrix_path": "_bmad-output/test-artifacts/traceability/2-2-implement-scripts-build-licenses-mjs-generator-script-trace.matrix.json",
+    "gate_decision_path": "_bmad-output/test-artifacts/traceability/2-2-implement-scripts-build-licenses-mjs-generator-script-gate-decision.json",
+    "trace_report_url": "",
+    "artifact_url": "",
+    "journey_evidence_url": "https://github.com/Dexus-Forks/deepnest-next/actions/runs/24961493231",
+    "journey_evidence_url_pr": "https://github.com/Dexus-Forks/deepnest-next/actions/runs/24961417841",
+    "journey_evidence_url_push_main": "https://github.com/Dexus-Forks/deepnest-next/actions/runs/24961493231"
+  },
+  "gate_status": "PASS",
+  "gate_criteria": {
+    "p0_coverage_required": "100%",
+    "p0_coverage_actual": "100%",
+    "p0_status": "MET",
+    "p1_coverage_target": "90%",
+    "p1_coverage_minimum": "80%",
+    "p1_coverage_actual": "100%",
+    "p1_status": "MET",
+    "overall_coverage_minimum": "80%",
+    "overall_coverage_actual": "100%",
+    "overall_status": "MET"
+  }
+}
