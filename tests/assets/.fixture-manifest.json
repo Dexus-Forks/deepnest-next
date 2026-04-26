@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "captured_at": "2026-04-26T17:30:00.000Z",
+  "captured_at": "2026-04-26T16:24:53.931Z",
   "literals": {
     "importsnav_count": 2,
     "placements_total": 54,
@@ -9,8 +9,8 @@
   "files": [
     {
       "path": "tests/assets/LICENSE.yml",
-      "size": 2016,
-      "sha256": "2f56bb040c68b88c8bbfd4a95dc8cd3dde28a26c1cafd563a1f57b4b7a39bd84"
+      "size": 1340,
+      "sha256": "7d17b55564dff212a38c0d311d70fcf7bd05849887ce315aa756bcda93b4b891"
     },
     {
       "path": "tests/assets/henny-penny.svg",

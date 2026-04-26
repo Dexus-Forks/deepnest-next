@@ -18,6 +18,8 @@
     "test": "npm run test:fixtures:check && playwright test",
     "test:fixtures:check": "node scripts/check-test-fixtures.mjs",
     "test:fixtures:update": "node scripts/check-test-fixtures.mjs --update",
+    "licenses:build": "node scripts/build-licenses.mjs",
+    "licenses:check": "node scripts/build-licenses.mjs --check",
     "build": "tsc && electron-builder install-app-deps",
     "clean": "rmdir /s /q build dist >nul 2>&1|echo . >nul",
     "clean-all": "rmdir /s /q build dist node_modules bin >nul 2>&1|echo . >nul",

@@ -1,0 +1,43 @@
+# LICENSE.yml — main/ (first-party + in-installer-but-out-of-tree passthrough)
+# Schema: see _bmad-output/planning-artifacts/architecture.md §5 ADR-008 step 1 "Schema reference" (this file's `path:` is the LITERAL Unit-column value).
+# Line endings: LF only.
+
+- path: /main
+  name: deepnest-next /main (first-party)
+  license: MIT
+  copyright: "Copyright (c) 2015 Jack Qiao"
+  upstream_url: https://github.com/Dexus-Forks/deepnest-next
+  first_party: true
+  notes: "Aggregate first-party block representing /main as a unit; SVGnest-derived core retained under MIT per Jack Qiao's original."
+
+- path: /main/svgparser.js
+  name: deepnest-next svgparser
+  license: MIT
+  copyright: "Copyright (c) 2015 Jack Qiao (svgnest origin)"
+  upstream_url: https://github.com/Dexus-Forks/deepnest-next
+  first_party: true
+  notes: "First-party SVG parser entry point under /main; SVGnest origin preserved."
+
+- path: /main/deepnest.js
+  name: deepnest-next deepnest core
+  license: GPL-3.0-only
+  copyright: "Copyright (c) 2018 Daniel Sagor and Deepnest contributors (deepnest.io); fork of SVGnest by Jack Qiao"
+  upstream_url: https://github.com/Dexus-Forks/deepnest-next
+  first_party: true
+  notes: "GPL-3.0-only is the SPDX form of GPLv3 (per SPDX 2.3 §10.1; matches Story 2.1 Task 2.3 line 92's recommendation). Resolves Sage Round-1 P3-01 first-party SPDX normalisation."
+
+- path: minkowski.cc, minkowski.h
+  name: "@deepnest/calculate-nfp Minkowski C/C++ source (in-installer, out-of-tree)"
+  license: BSL-1.0
+  copyright: "Copyright 2010 Intel Corporation</br>Copyright 2015 Jack Qiao"
+  upstream_url: https://github.com/Dexus-Forks/calculate-nfp
+  first_party: true
+  notes: "Boost Software License 1.0 (SPDX-canonical: BSL-1.0). Ships inside the Electron installer via node_modules/@deepnest/calculate-nfp/ per package.json build.files: ['**/*'] no-asar. Boost requires the copyright + license to appear in all copies — non-negotiable attribution row."
+
+- path: /polygon
+  name: "@deepnest/calculate-nfp /polygon module (in-installer, out-of-tree)"
+  license: BSL-1.0
+  copyright: "Copyright 2018 Glen Joseph Fernandes"
+  upstream_url: https://github.com/Dexus-Forks/calculate-nfp
+  first_party: true
+  notes: "Boost Software License 1.0 (SPDX-canonical: BSL-1.0). Ships inside the Electron installer via node_modules/@deepnest/calculate-nfp/. Companion to minkowski.cc, minkowski.h."

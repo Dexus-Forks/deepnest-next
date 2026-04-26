@@ -236,6 +236,20 @@ CP raised a third question explicitly for CA: should the expanded FR-02 land as 
 **Generator + per-folder metadata + CI gate.** Concretely:
 
 1. Add per-folder metadata files (e.g. `main/util/LICENSE.yml`, `main/font/LICENSE.yml`, `tests/assets/LICENSE.yml`) describing each third-party item: `path`, `name`, `license` (SPDX-style), `copyright`, `upstream_url`, optional `notes`.
+
+   **Schema reference (canonical, amended by Story 2.2 / DEE-92 — resolves Sage Round-1 P3-03).** Each `LICENSE.yml` is a top-level YAML array of entry maps. Per-entry fields:
+
+   | Field | Required? | Type | Meaning |
+   |---|---|---|---|
+   | `path` | required | string | In per-folder files (`main/util/`, `main/font/`, `tests/assets/`): folder-relative path; the generator derives Unit = `/<containing folder>/<path>`. In the root `main/LICENSE.yml` first-party-passthrough file: literal Unit-column value (e.g. `/main`, `minkowski.cc, minkowski.h`, `/polygon`) — special-cased by the generator because some passthrough rows refer to in-installer-but-out-of-tree paths under `node_modules/@deepnest/calculate-nfp/`. |
+   | `name` | required | string | Human-readable component name (used for provenance; not rendered in `LICENSES.md`). |
+   | `license` | required | string | **SPDX-canonical** identifier (e.g. `MIT`, `BSL-1.0`, `GPL-3.0-only`, `OFL-1.1`, `BSD-2-Clause`, `BSD-3-Clause`, `ISC`, `LicenseRef-PublicDomain`). Resolves Sage Round-1 P3-01 first-party SPDX normalisation; matches SPDX 2.3 §10.1. |
+   | `copyright` | required | string | Verbatim copyright line(s) for the License + Copyright cell of `LICENSES.md`. |
+   | `upstream_url` | required | string | Provenance URL (not rendered; audit-only). |
+   | `notes` | optional | string | Free-text provenance / audit context (not rendered; audit-only). |
+   | `first_party` | optional | boolean | When `true`, the entry is rendered into the **first-party block** at the top of the `LICENSES.md` table regardless of source folder. Resolves Sage Round-1 P3-02 (`latolatinfonts.css` placement). Default: `false`. |
+
+   The §271 out-of-tree clause stands: `@deepnest/svg-preprocessor` (out-of-tree, NOT shipped in the installer beyond its own `LICENSE` file) is not catalogued. `@deepnest/calculate-nfp` is the explicit exception (out-of-tree but **shipped** under `node_modules/` per `build.files: ['**/*']` no-asar; Boost legal-compliance requires attribution); it is catalogued via `main/LICENSE.yml` as the named passthrough mechanism.
 2. Add `scripts/build-licenses.mjs` (Node, no runtime deps beyond `fs` / `path`) that walks the configured roots (`main/util/`, `main/font/`, `tests/assets/`, plus any other root the metadata declares), reads each `LICENSE.yml`, and emits a canonical, deterministically-ordered `LICENSES.md` (header preserved verbatim, body sorted by `path`).
 3. Wire `npm run licenses:build` (regenerates) and `npm run licenses:check` (regenerates to a temp string, diffs against committed). Add `licenses:check` to the `npm test` chain (or a pre-test hook) so CI fails when the committed file is stale.
 4. Bootstrap commit lands the metadata files **and** the regenerated `LICENSES.md` as the new canonical source. Existing five data-hygiene issues from VP §Open Q2 table 3 are resolved as part of the bootstrap (path corrections, `?` resolutions, stale entry removed).

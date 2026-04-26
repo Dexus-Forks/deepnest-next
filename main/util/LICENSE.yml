@@ -1,24 +1,13 @@
 # LICENSE.yml — main/util/
-#
-# Per-folder vendored-asset metadata for FR-02 / ADR-008 (deepnest-next).
-# Schema: top-level array of entry maps, one per third-party / vendored item.
-# Required fields: path, name, license (SPDX ID), copyright, upstream_url.
-# Optional fields: notes.
-#
-# `path` is relative to this LICENSE.yml's folder (i.e. relative to main/util/).
-# Story 2.2's `scripts/build-licenses.mjs` parses this shape and regenerates
-# `LICENSES.md`. Story 2.3 wires the determinism check into `npm test`.
-# Line endings: LF only (ADR-008 generator is Linux-only-CI).
-# Vendored utilities here are listed in project-context.md §16.5 (do NOT modify
-# their source); _unused/ entries are preserved per project-context §17 (ADR-007
-# §revertibility).
+# Schema: see _bmad-output/planning-artifacts/architecture.md §5 ADR-008 step 1 "Schema reference".
+# Line endings: LF only.
 
 - path: clipper.js
   name: Clipper Library (JavaScript port)
   license: BSL-1.0
-  copyright: "Copyright 2010-2014 Angus Johnson; JavaScript port by Timo (2016); bundles JSBN BigInteger by Tom Wu (2005-2009)"
+  copyright: "Copyright 2010-2014 Angus Johnson"
   upstream_url: https://sourceforge.net/projects/jsclipper/
-  notes: "Boost Software License — full attribution preserved in source header. Vendored utility (project-context.md §16.5 — do not modify)."
+  notes: "Boost Software License — full attribution preserved in source header (also: JavaScript port by Timo (2016); bundles JSBN BigInteger by Tom Wu (2005-2009)). Vendored utility (project-context.md §16.5 — do not modify)."
 
 - path: geometryutil.js
   name: SVGnest geometryutil
@@ -51,9 +40,9 @@
 - path: pathsegpolyfill.js
   name: SVGPathSeg API polyfill (progers/pathseg)
   license: BSD-3-Clause
-  copyright: "Copyright 2014 The Chromium Authors. All rights reserved."
+  copyright: "Copyright 2014 The Chromium Authors"
   upstream_url: https://github.com/progers/pathseg
-  notes: "Upstream package.json field reads \"Chromium's License\" (BSD-3-Clause-style Chromium boilerplate); SPDX-encoded as BSD-3-Clause. Vendored utility (project-context.md §16.5)."
+  notes: "Upstream package.json field reads \"Chromium's License\" (BSD-3-Clause-style Chromium boilerplate, header reads \"All rights reserved\"); SPDX-encoded as BSD-3-Clause. Vendored utility (project-context.md §16.5)."
 
 - path: ractive.js
   name: Ractive.js
@@ -65,9 +54,9 @@
 - path: simplify.js
   name: Simplify.js
   license: BSD-2-Clause
-  copyright: "Copyright (c) 2013 Vladimir Agafonkin; modified by Jack Qiao (svgnest fork)"
+  copyright: "Copyright (c) 2013 Vladimir Agafonkin (modified by Jack Qiao)"
   upstream_url: https://github.com/mourner/simplify-js
-  notes: "Polyline simplification. Header attributes upstream + svgnest modification. Vendored utility (project-context.md §16.5)."
+  notes: "Polyline simplification. Header attributes upstream + svgnest modification (svgnest fork). Vendored utility (project-context.md §16.5)."
 
 - path: svgpanzoom.js
   name: svg-pan-zoom
@@ -83,9 +72,9 @@
 - path: _unused/clippernode.js
   name: Clipper Library (Node.js variant)
   license: BSL-1.0
-  copyright: "Copyright 2010-2014 Angus Johnson; JavaScript port by Timo (2016)"
+  copyright: "Copyright 2010-2014 Angus Johnson"
   upstream_url: https://sourceforge.net/projects/jsclipper/
-  notes: "Sibling of clipper.js targeting Node.js. Vendored utility — no live import; preserved per ADR-007 §revertibility."
+  notes: "Sibling of clipper.js targeting Node.js. JavaScript port by Timo (2016) per upstream attribution. Vendored utility — no live import; preserved per ADR-007 §revertibility."
 
 - path: _unused/filesaver.js
   name: FileSaver.js
@@ -104,9 +93,9 @@
 - path: _unused/json.js
   name: json2.js (Douglas Crockford)
   license: LicenseRef-PublicDomain
-  copyright: "Public Domain (Douglas Crockford). NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK."
+  copyright: "Public Domain (Douglas Crockford)"
   upstream_url: https://github.com/douglascrockford/JSON-js
-  notes: "Source header in this vendored copy is stripped; identity confirmed by structural fingerprint match against upstream json2.js. Public Domain is not in the SPDX licenses list, so encoded as `LicenseRef-PublicDomain` per SPDX 2.3 §10.1. Vendored utility — no live import; preserved per ADR-007 §revertibility."
+  notes: "Source header in this vendored copy is stripped (upstream header reads \"NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.\"); identity confirmed by structural fingerprint match against upstream json2.js. Public Domain is not in the SPDX licenses list, so encoded as `LicenseRef-PublicDomain` per SPDX 2.3 §10.1. Vendored utility — no live import; preserved per ADR-007 §revertibility."
 
 - path: _unused/placementworker.js
   name: SVGnest placement worker
