@@ -275,6 +275,7 @@ Electron Main Process  (main.js)
 14. **Do NOT** assume the Windows `clean` / `clean-all` scripts work on Linux/macOS — they use `rmdir /s /q`. Use `rm -rf` manually.
 15. **Do NOT** remove `**/*.js` from the ESLint global ignore without a per-file migration plan.
 16. **Do NOT** add a new spinner glyph; reuse `spin.svg`.
+17. **Do NOT** force-push a closer PR with a no-op diff after `main` has advanced past its base — close the local branch as superseded instead (see §19).
 
 ## 17. Brownfield caveats (what AI agents repeatedly trip on)
 
@@ -308,7 +309,7 @@ These are **not blockers** for the GPC → CP → VP → CA → CE chain, but do
 1. `git fetch origin main` — refresh the merge base.
 2. `git rebase origin/main` — replay the closer commits on the latest main.
 3. Resolve conflicts:
-   - **Substantive conflict** (real merge of work): resolve in-place, re-run the verification command from the workflow's `instructions.md`, then continue the rebase.
+   - **Substantive conflict** (real merge of work): resolve in-place, re-run the verification commands implied by the dispatching story's TASK / acceptance criteria (e.g. `npm test`, `bmad-testarch-trace` re-derive), then continue the rebase.
    - **Add/add on the same artefact path** (e.g. another wake already merged the same trace bundle): if the rebase reveals that the canonical artefact already landed in `main`, **close the local branch as superseded — do NOT force-push a no-op PR**. Document the supersession in the dispatching issue's comment thread with the merged PR number.
 
 ### Superseded-close branch (when the rebase reveals redundant work)
@@ -366,4 +367,4 @@ The Phase-5 SOP set is indexed at `_bmad-output/bmad-phase-5-index.md` (see Refe
 - Update when the technology stack, IPC contract, or composition pattern changes — those three sections are highest-value.
 - Re-derive when DEE-44's downstream chain (CP / VP / CA / CE) lands material new constraints.
 
-_Last updated: 2026-04-26 (Murat, DEE-106 — added §19 Phase-5 SOP for TEA closer PR pre-flight; Sage docs review)._
+_Last updated: 2026-04-26 (Murat, DEE-106 — added §19 Phase-5 SOP for TEA closer PR pre-flight + §16 #17 force-push veto; Sage Round-1 docs review folded)._

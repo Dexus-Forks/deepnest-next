@@ -29,7 +29,7 @@ These are not standalone SOPs but they shape how the active SOPs above behave:
 1. Draft the SOP as a new section in `_bmad-output/project-context.md` (or as a sibling `_bmad-output/bmad-phase-5-<slug>.md` if it is too large to inline).
 2. Add a row to the Active SOPs table above with the doc anchor, owner, and source issue.
 3. Open the closer PR following SOP #1 (the pre-flight rebase).
-4. Sage reviews wording consistency against the rest of Phase-5 / Phase-4 / Phase-6 docs.
+4. Sage reviews wording consistency against sibling anchors in `_bmad-output/project-context.md` (today: §15 Common workflows, §16 Anti-patterns, §17 Brownfield caveats). Phase-4 / Phase-6 sibling docs are not yet present on `main` — add to the review-anchor list once they land.
 
 ## Phase-5 artefact locations (reference)
 
