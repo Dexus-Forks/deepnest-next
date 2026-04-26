@@ -1,0 +1,68 @@
+{
+  "schema_version": "0.1.0",
+  "evaluated_at": "2026-04-26T00:00:00Z",
+  "repo": "deepnest-next",
+  "target": {
+    "type": "story",
+    "id": "2.1",
+    "label": "Story 2.1 — Bootstrap per-folder LICENSE.yml + regenerate LICENSES.md (data-hygiene fixes included)",
+    "slug": "2-1-bootstrap-per-folder-license-yml-metadata-regenerate-licenses-md-data-hygiene-fixes-included",
+    "merge_sha": "d66b8d52eefd161fe3959fc38e6c0c8d4d0f9796",
+    "pr_url": "https://github.com/Dexus-Forks/deepnest-next/pull/19",
+    "post_fix_sha": "cf831f272f586691acfb891654992ce7316c5818"
+  },
+  "collection_status": "COLLECTED",
+  "gate_basis": "priority_thresholds",
+  "gate_status": "PASS",
+  "rationale": "P0 coverage 100% (6/6) ✅ — AC-02.1.1/2/3 (per-folder LICENSE.yml × 3 = 14+7+2 entries), AC-02.5 (5/5 data-hygiene fixes), AC-02.1.5 (28-row LICENSES.md regression target), AC-02.1.7 (NFR-01 wall-clock band confirmed twice). P1 coverage 100% (3/3) ✅ — AC-02.1.4 considered-and-skipped list, AC-02.1.6 zero executable-surface diff, AC-02.1.8 §16 16/16 PASS. P3 coverage 100% (1/1) ✅ — AC-02.1.9 generator-script deferral foreclosed. Round-1 Review-Board (Sage / DEE-85) APPROVED with severity.max = P2; the single P2 (Vitra architectural-tension on AC-02.1.5 ↔ ADR-008 §271 in-installer-but-out-of-tree first-party row handling) is non-blocking and already carried forward into Story 2.2 spec amendment (DEE-90). Three P3 nudges (deduped SPDX-normalisation, latolatinfonts.css placement, schema canonicalisation) all bundled into DEE-90. NFR-01 binding evidence: PR run 24960094498 (cf831f2) Playwright step 18000 ms ∈ [13397, 20096] ms; push-to-main run 24960135893 (d66b8d5) Playwright step 16000 ms ∈ band — second independent confirmation. Story 3.1 fixture-integrity gate (npm run test:fixtures:check) green after cf831f2 manifest re-derivation. All 16 §16 anti-patterns audited green (PR self-table 16/16 cross-checked by Sage). Story is pure-metadata (zero executable surface diff per Sage pre-flight); the actual licenses:check determinism gate that exercises regeneration ships in Story 2.3 (Stream-A4 — issue not yet filed; will follow Story 2.2 / DEE-90) — this story is the input for that gate.",
+  "p0_status": "MET",
+  "p1_status": "MET",
+  "overall_status": "MET",
+  "critical_open": 0,
+  "carry_forward": [
+    {
+      "id": "DEE-90-arch-passthrough",
+      "priority": "P2",
+      "owner": "Mary (Business Analyst) / Winston (Architect) via DEE-90",
+      "action": "Codify generator handling for in-installer-but-out-of-tree first-party rows (Boost-licensed @deepnest/calculate-nfp ships under node_modules/ in the unpacked Electron installer). Decide one of: (a) main/LICENSE.yml flagging in-installer-but-out-of-tree rows for emission; (b) hardcode 5 first-party rows in Story 2.2 generator with documentation; (c) amend ADR-008 §271 to distinguish 'out-of-tree and not shipped' vs 'out-of-tree but shipped'. Output: ADR-008 §5 amendment + Story 2.2 spec update."
+    },
+    {
+      "id": "DEE-90-spdx-normalisation",
+      "priority": "P3",
+      "owner": "Story 2.2 author (Amelia) via DEE-90",
+      "action": "Bundle SPDX normalisation into Story 2.2 generator: GPLv3 → GPL-3.0-only and Boost → BSL-1.0 across the first-party block, in the same motion as the passthrough mechanism."
+    },
+    {
+      "id": "DEE-90-css-placement",
+      "priority": "P3",
+      "owner": "Story 2.2 author (Amelia) via DEE-90",
+      "action": "Add first_party: true (or audited_only: true) flag to LICENSE.yml schema; Story 2.2 generator uses it to place latolatinfonts.css row in the first-party block."
+    },
+    {
+      "id": "DEE-90-schema-canonicalisation",
+      "priority": "P3",
+      "owner": "Mary (Business Analyst) via DEE-90",
+      "action": "Consolidate the per-folder LICENSE.yml schema spec into a single source (ADR-008 amendment or docs/license-yml-schema.md) and reduce per-file LICENSE.yml headers to a one-line reference."
+    },
+    {
+      "id": "DEE-90-fixture-manifest-scope",
+      "priority": "P3",
+      "owner": "Story 2.2 author (Amelia) via DEE-90",
+      "action": "Decide explicit allow-list of fixture file extensions vs full-directory walk for tests/assets/.fixture-manifest.json (Story 2.1 ↔ Story 3.1 interaction surfaced in cf831f2 commit body). Prevents future LICENSE.yml-class adds from triggering the fixture-integrity gate."
+    }
+  ],
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability/2-1-bootstrap-per-folder-license-yml-metadata-regenerate-licenses-md-data-hygiene-fixes-included-trace.md",
+    "trace_matrix_path": "_bmad-output/test-artifacts/traceability/2-1-bootstrap-per-folder-license-yml-metadata-regenerate-licenses-md-data-hygiene-fixes-included-trace.matrix.json",
+    "e2e_trace_summary_path": "_bmad-output/test-artifacts/traceability/2-1-bootstrap-per-folder-license-yml-metadata-regenerate-licenses-md-data-hygiene-fixes-included-e2e-trace-summary.json",
+    "ci_run_url_postfix_pr": "https://github.com/Dexus-Forks/deepnest-next/actions/runs/24960094498",
+    "ci_run_url_push_main": "https://github.com/Dexus-Forks/deepnest-next/actions/runs/24960135893",
+    "story_file": "_bmad-output/implementation-artifacts/2-1-bootstrap-per-folder-license-yml-metadata-regenerate-licenses-md-data-hygiene-fixes-included.md",
+    "board_report": {
+      "type": "in-repo",
+      "status": "available",
+      "path": "projects/deepnest-next/reviews/2-1-bootstrap-per-folder-license-yml-metadata-regenerate-licenses-md-round-1.md",
+      "description": "Sage Round-1 consolidated Review-Board report (DEE-85): APPROVED, severity.max = P2"
+    }
+  }
+}
