@@ -43,8 +43,13 @@ Tick each item as **NOT violated**. If any item is violated, describe the carve-
 
 > **Reviewer rule (reaffirmed):** if either box below is unchecked, request changes / block merge. No carve-outs — applies to feature PRs, BMad / planning-artifact auto-merge PRs, and TEA Phase-5 closer PRs alike.
 
-- [ ] Copilot review present and APPROVED (`gh pr view <n> --json reviews,reviewDecision` → `reviewDecision == "APPROVED"`)
-- [ ] All Copilot comment threads resolved (per `validate → fix → reply → resolve` workflow)
+- [ ] Copilot review by `copilot-pull-request-reviewer` present and **latest review state is APPROVED** — verify with the explicit author filter (PR-level `reviewDecision` is NOT Copilot-attributable until DEE-114 lands):
+  ```
+  gh pr view <n> --json reviews \
+    --jq '[.reviews[] | select(.author.login == "copilot-pull-request-reviewer")] | last | .state == "APPROVED"'
+  ```
+  Once DEE-114 branch protection makes Copilot review required, `reviewDecision == "APPROVED"` becomes a sufficient proxy.
+- [ ] All Copilot comment threads resolved (per `validate → fix → reply → resolve` workflow). INVALID/DEFER threads only resolved on reviewer ack, 24 h SLA from the reply with no counter-response, or a linked DEFER follow-up issue id (resolving comment names the basis).
 
 ## Touched files
 
