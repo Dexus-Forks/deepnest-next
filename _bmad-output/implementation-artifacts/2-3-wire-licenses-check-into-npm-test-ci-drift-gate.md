@@ -490,4 +490,4 @@ To be filled by Amelia (Dev) at DS time. Expected shape:
 
 | Date | Change | Author |
 |---|---|---|
-| 2026-04-26 | Story created (`bmad-create-story`, [DEE-122](/DEE/issues/DEE-122) — CS follow-up to [DEE-98](/DEE/issues/DEE-98) Bundle 2). Bundle 2 (P2-04 + P3-06) folded as mandatory ACs (#3, #4); Bundle 3 (P3-03/04/05 + Copilot inline #3 + #4 / P3-07) folded as polish ACs (#6, #7, #8, #9) per DEE-98 DoD; AC-02.3.8 (`renderTable` allocation polish) flagged as the one ACa eligible for waiver. Status: ready-for-dev. | John (PM, BMad) |
+| 2026-04-26 | Story created (`bmad-create-story`, [DEE-122](/DEE/issues/DEE-122) — CS follow-up to [DEE-98](/DEE/issues/DEE-98) Bundle 2). Bundle 2 (P2-04 + P3-06) folded as mandatory ACs (#3, #4); Bundle 3 (P3-03/04/05 + Copilot inline #3 + #4 / P3-07) folded as polish ACs (#6, #7, #8, #9) per DEE-98 DoD; AC-02.3.8 (`renderTable` allocation polish) flagged as the one AC eligible for waiver. Status: ready-for-dev. | John (PM, BMad) |
