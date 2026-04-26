@@ -43,13 +43,14 @@ Tick each item as **NOT violated**. If any item is violated, describe the carve-
 
 > **Reviewer rule (reaffirmed):** if either box below is unchecked, request changes / block merge. No carve-outs — applies to feature PRs, BMad / planning-artifact auto-merge PRs, and TEA Phase-5 closer PRs alike.
 
-- [ ] Copilot review by `copilot-pull-request-reviewer` present and **latest review state is APPROVED** — verify with the explicit author filter (PR-level `reviewDecision` is NOT Copilot-attributable until DEE-114 lands):
+- [ ] Copilot review by `copilot-pull-request-reviewer` present **on the latest substantive commit** — verify the latest Copilot review's commit oid covers the head of your branch (post-fixes). **Review state is NOT checked** — `copilot-pull-request-reviewer` returns `COMMENTED` even when satisfied (per `_bmad-output/project-context.md` §15 "Observed Copilot bot behaviour"; DEE-115 dogfood):
   ```
-  gh pr view <n> --json reviews \
-    --jq '[.reviews[] | select(.author.login == "copilot-pull-request-reviewer")] | last | .state? == "APPROVED"'
+  gh pr view <n> --json reviews,headRefOid \
+    --jq '{head: .headRefOid, latestCopilotCommit: ([.reviews[] | select(.author.login == "copilot-pull-request-reviewer")] | last | .commit.oid)}'
   ```
-  Once DEE-114 branch protection makes Copilot review required, `reviewDecision == "APPROVED"` becomes a sufficient proxy.
-- [ ] All Copilot comment threads resolved (per `validate → fix → reply → resolve` workflow). INVALID/DEFER threads only resolved on reviewer ack, 24 h SLA from the reply with no counter-response, or a linked DEFER follow-up issue id (resolving comment names the basis).
+  If `latestCopilotCommit` is older than the last fix push, post `@copilot review` and wait for a fresh review before merging. Once DEE-114 branch protection makes Copilot review required + conversation-resolution mandatory, this check can be replaced by `reviewDecision == "APPROVED"` (server-enforced).
+- [ ] All Copilot comment threads resolved — including any Copilot "Potential fix for pull request finding" auto-push commits (per `validate → fix → reply → resolve` workflow). INVALID/DEFER threads only resolved on reviewer ack, 24 h SLA from the reply with no counter-response, or a linked DEFER follow-up issue id (resolving comment names the basis).
+- [ ] Quiet window: no new Copilot comment, review, or auto-push commit in the last 10 min (guards against merging mid-stream while Copilot is still posting follow-up findings).
 
 ## Touched files
 
