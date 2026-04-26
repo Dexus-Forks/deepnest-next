@@ -17,11 +17,9 @@ a settings reset.
 [update-branch-protection]: https://docs.github.com/rest/branches/branch-protection#update-branch-protection
 [get-branch-protection]: https://docs.github.com/rest/branches/branch-protection#get-branch-protection
 
-Tracking issues: [DEE-105](https://github.com/Dexus-Forks/deepnest-next/issues)
-(parent: DEE-102) for the up-to-date / merge-readiness gate, and
-[DEE-114](https://github.com/Dexus-Forks/deepnest-next/issues) (parent:
-[DEE-113](https://github.com/Dexus-Forks/deepnest-next/issues)) for the
-Copilot review wait gate.
+Tracking issues live in the Paperclip control plane, not GitHub Issues:
+DEE-105 (parent: DEE-102) for the up-to-date / merge-readiness gate, and
+DEE-114 (parent: DEE-113) for the Copilot review wait gate.
 
 ## Why
 
@@ -67,7 +65,7 @@ gh api -X PATCH repos/Dexus-Forks/deepnest-next \
 
 ## Copilot review wait gate
 
-CEO policy on [DEE-113](https://github.com/Dexus-Forks/deepnest-next/issues):
+CEO policy on DEE-113 (Paperclip):
 
 > Every PR — including TEA closer PRs and BMad/planning artifact PRs —
 > must wait for the Copilot review to post before any merge action.
@@ -156,9 +154,9 @@ machinery waits for **all** required status checks (including
 
 Auto-merge therefore cannot bypass the Copilot wait. CEO standard #3
 ("auto-merge only after every Copilot thread is resolved") is enforced
-via agent-side SOP — see the sibling Wes child issue
-[DEE-115](https://github.com/Dexus-Forks/deepnest-next/issues), which
-amends `_bmad-output/project-context.md` §15/§19 and the PR template.
+via agent-side SOP — see the sibling Wes child issue DEE-115
+(Paperclip), which amends `_bmad-output/project-context.md` §15/§19 and
+the PR template.
 
 ### What stays out of scope for this gate
 
