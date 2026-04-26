@@ -431,7 +431,7 @@ test_review score      : 88 ≥ 80   ✅
 
 ### Observations (Low — not blockers)
 
-- **L1 — Spec-format-failure message wording (Task 2.3).** Task 2.3 wording asks for the exit-2 message to "name the line range searched". My implementation prints `Searched the entire file.` plus the regex match flags + expected pattern shapes. Functionally diagnostic (tells the developer exactly which regex failed and what shape to grep for), but not a numeric `lines 1..N` range. **Why this is Low:** the AC's stated purpose is "so a future spec-format change is immediately diagnosable" — that purpose is satisfied. **Follow-up:** a future iteration could print `lines 1..${src.split('\n').length}` for explicit numeric form. Not blocking for this PR. *Resolved in DEE-69 round 2 — the message now prints `Searched lines 1..N.`*
+- **L1 (historical) — Spec-format-failure message wording (Task 2.3).** Task 2.3 wording asks for the exit-2 message to "name the line range searched". My round-1 implementation printed `Searched the entire file.` plus the regex match flags + expected pattern shapes. Functionally diagnostic (told the developer exactly which regex failed and what shape to grep for), but not a numeric `lines 1..N` range. **Why this was Low:** the AC's stated purpose is "so a future spec-format change is immediately diagnosable" — that purpose was satisfied. **Follow-up:** a future iteration could print `lines 1..${src.split('\n').length}` for explicit numeric form. Was not blocking for this PR. *Resolved in DEE-69 round 2 — the message now prints `Searched lines 1..N.`*
 
 ### PASS rationale
 
@@ -465,7 +465,7 @@ All 10 ACs verified against the actual committed diff state (not author intent).
 
 ### Scope-cap escalation note
 
-Final script diff: **+58 / -6** (~52 net new lines), exceeding CTO's ≤ 25-line scope cap. Cause: the brief asks for new error paths to "mirror the existing `failSpecFormat` shape" (13 lines per helper) — three new helpers cannot fit a 25-line cap and still satisfy the labelled-diagnostics contract. The implementation has been compressed (helpers trimmed to 7–9 lines apiece, exit-code table reduced to a single comment line) but the floor is structural, not stylistic. Escalated to CTO on DEE-69 before pushing the PR; awaiting acknowledgement before opening the PR.
+Final script diff: **+58 / -6** (~52 net new lines), exceeding CTO's ≤ 25-line scope cap. Cause: the brief asks for new error paths to "mirror the existing `failSpecFormat` shape" (13 lines per helper) — three new helpers cannot fit a 25-line cap and still satisfy the labelled-diagnostics contract. The implementation has been compressed (helpers trimmed to 7–9 lines apiece, exit-code table reduced to a single comment line) but the floor is structural, not stylistic. Escalated to CTO on DEE-69 before pushing the PR; CTO acknowledgement [33bf38f7](/DEE/issues/DEE-69#comment-33bf38f7-fff2-4a64-bdd8-a732d59c94a6) recorded and PR [#15](https://github.com/Dexus-Forks/deepnest-next/pull/15) opened/merged.
 
 ### PASS rationale
 

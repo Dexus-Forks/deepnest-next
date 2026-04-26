@@ -182,7 +182,7 @@ function diffManifest(expected, observed) {
 function failSpecFormat(literals) {
   const rel = path.relative(REPO_ROOT, SPEC_PATH);
   process.stderr.write(
-    `[test:fixtures:check] FAIL — could not extract spec literals from ${rel}.\n` +
+    `[test:fixtures] FAIL — could not extract spec literals from ${rel}.\n` +
       `  importsnav regex matched: ${literals.navMatch}\n` +
       `  placements regex matched: ${literals.placeMatch}\n` +
       `  Searched lines 1..${literals.lineCount}. Expected patterns:\n` +
@@ -196,8 +196,8 @@ function failSpecFormat(literals) {
 function failSpecMissing() {
   const rel = path.relative(REPO_ROOT, SPEC_PATH);
   process.stderr.write(
-    `[test:fixtures:check] FAIL — spec file not found at ${rel}.\n` +
-      `  Restore tests/index.spec.ts before \`npm run test:fixtures:check\`. See ${DOCS_POINTER}.\n`,
+    `[test:fixtures] FAIL — spec file not found at ${rel}.\n` +
+      `  Restore tests/index.spec.ts before rerunning fixtures (\`npm run test:fixtures:check\` or \`npm run test:fixtures:update\`). See ${DOCS_POINTER}.\n`,
   );
   process.exit(EXIT_SPEC_FORMAT);
 }
@@ -218,7 +218,7 @@ function failSymlink(relPath, abs) {
   let target = "<unresolved>";
   try { target = readlinkSync(abs); } catch { /* keep placeholder */ }
   process.stderr.write(
-    `[test:fixtures:check] FAIL — symbolic link rejected at ${relPath} -> ${target}.\n` +
+    `[test:fixtures] FAIL — symbolic link rejected at ${relPath} -> ${target}.\n` +
       `  Symlinks could impersonate fixtures from outside tests/assets/; replace with a regular file.\n` +
       `  See ${DOCS_POINTER}.\n`,
   );
