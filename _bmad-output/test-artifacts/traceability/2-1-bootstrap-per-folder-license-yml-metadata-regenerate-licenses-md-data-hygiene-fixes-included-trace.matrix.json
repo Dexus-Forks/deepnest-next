@@ -1,0 +1,441 @@
+{
+  "phase": "PHASE_1_COMPLETE",
+  "generated_at": "2026-04-26T00:00:00Z",
+  "workflow": "bmad-testarch-trace",
+  "trace_target": {
+    "type": "story",
+    "id": "2.1",
+    "slug": "2-1-bootstrap-per-folder-license-yml-metadata-regenerate-licenses-md-data-hygiene-fixes-included",
+    "label": "Story 2.1 — Bootstrap per-folder LICENSE.yml + regenerate LICENSES.md (data-hygiene fixes included)",
+    "merge_sha": "d66b8d52eefd161fe3959fc38e6c0c8d4d0f9796",
+    "pr_url": "https://github.com/Dexus-Forks/deepnest-next/pull/19",
+    "post_fix_sha": "cf831f272f586691acfb891654992ce7316c5818"
+  },
+  "collection_mode": "contract_static",
+  "collection_status": "COLLECTED",
+  "allow_gate": true,
+  "coverage_basis": "acceptance_criteria",
+  "summary_confidence": "high",
+  "oracle": {
+    "resolution_mode": "formal_requirements",
+    "confidence": "high",
+    "sources": [
+      "_bmad-output/implementation-artifacts/2-1-bootstrap-per-folder-license-yml-metadata-regenerate-licenses-md-data-hygiene-fixes-included.md (AC-02.1.1..AC-02.1.9 + AC-02.5)",
+      "_bmad-output/planning-artifacts/prd.md §FR-02 (AC-02.1..AC-02.4)",
+      "_bmad-output/planning-artifacts/prd-validation-report.md §Open Q2 Table 3 (5 data-hygiene issues)",
+      "_bmad-output/planning-artifacts/architecture.md §3.1 (FR-02 row) + §4 (FR-02 constraints) + §5 ADR-008",
+      "_bmad-output/planning-artifacts/nfr01-baseline.json (rolling_mean_ms 16746.6, ±20% → [13397, 20096] ms)",
+      "_bmad-output/project-context.md §16 (anti-pattern audit map, 16 items)"
+    ],
+    "external_pointer_status": "not_used",
+    "synthetic": false
+  },
+  "requirements": [
+    {
+      "id": "AC-02.1.1",
+      "title": "main/util/LICENSE.yml enumerates every vendored library under main/util/ (live + _unused/)",
+      "priority": "P0",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "verify-util-license-yml-entry-count",
+          "level": "doc-verification",
+          "file": "main/util/LICENSE.yml",
+          "line": 0,
+          "title": "git show d66b8d5:main/util/LICENSE.yml parses as YAML; 14 entries total (9 live: HullPolygon.ts, clipper.js, geometryutil.js, interact.js, parallel.js, pathsegpolyfill.js, ractive.js, simplify.js, svgpanzoom.js + 5 _unused/: clippernode.js, filesaver.js, hull.js, json.js, placementworker.js)"
+        },
+        {
+          "id": "verify-util-license-yml-spdx-ids",
+          "level": "doc-verification",
+          "file": "main/util/LICENSE.yml",
+          "line": 0,
+          "title": "All 14 entries carry valid SPDX license IDs (BSL-1.0, MIT, ISC, BSD-2-Clause, BSD-3-Clause, LicenseRef-PublicDomain) — Sage Round-1 pre-flight verified vs SPDX 2.3 §10.1"
+        },
+        {
+          "id": "verify-util-folder-snapshot-matches-audit",
+          "level": "doc-verification",
+          "file": "main/util/, main/util/_unused/",
+          "line": 0,
+          "title": "ls main/util/ at d66b8d5 returns the 14 audited files plus 6 first-party *.ts (domparser, eval, matrix, point, vector) — Sage cross-checked PR body's vendored-vs-first-party adjudication block"
+        }
+      ]
+    },
+    {
+      "id": "AC-02.1.2",
+      "title": "main/font/LICENSE.yml enumerates post-Story-1.1 live Lato webfont kit (6 woff/woff2 + 1 css)",
+      "priority": "P0",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "verify-font-license-yml-entry-count",
+          "level": "doc-verification",
+          "file": "main/font/LICENSE.yml",
+          "line": 0,
+          "title": "git show d66b8d5:main/font/LICENSE.yml parses as YAML; 7 entries (LatoLatin-{Bold,Light,Regular}.{woff,woff2} × 6 + latolatinfonts.css × 1) — all SIL OFL-1.1 attribution to Łukasz Dziedzic / tyPoland Sp. z o.o."
+        },
+        {
+          "id": "verify-font-license-yml-no-deadweight",
+          "level": "doc-verification",
+          "file": "main/font/LICENSE.yml",
+          "line": 0,
+          "title": "Zero entries for any file removed in Story 1.1 (BoldItalic kit, lato-{hai,lig}-* demo kit, *.eot/*.ttf for live weights, stylesheet.css, specimen_files/, generator_config.txt) — cross-check vs docs/asset-inventory.md §6 Status:removed"
+        }
+      ]
+    },
+    {
+      "id": "AC-02.1.3",
+      "title": "tests/assets/LICENSE.yml enumerates every fixture SVG with provenance",
+      "priority": "P0",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "verify-tests-assets-license-yml-entry-count",
+          "level": "doc-verification",
+          "file": "tests/assets/LICENSE.yml",
+          "line": 0,
+          "title": "git show d66b8d5:tests/assets/LICENSE.yml parses as YAML; 2 entries (henny-penny.svg → Brownfox/Sasha Tsarev OFL-1.1; mrs-saint-delafield.svg → Astigmatic/Brian J. Bonislawsky OFL-1.1)"
+        }
+      ]
+    },
+    {
+      "id": "AC-02.1.4",
+      "title": "Empty / not-applicable folders explicitly handled (no LICENSE.yml + 'considered-and-skipped' list in PR body)",
+      "priority": "P1",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "verify-pr-body-skipped-list",
+          "level": "doc-verification",
+          "file": "PR #19 description",
+          "line": 0,
+          "title": "PR #19 description includes 'considered and skipped' list with one-line reason per folder (main/img/, main/ui/, tests/) — Sage Round-1 confirmed audit completeness verifiable from PR alone"
+        },
+        {
+          "id": "verify-no-stray-license-yml",
+          "level": "doc-verification",
+          "file": "tree at d66b8d5",
+          "line": 0,
+          "title": "git ls-tree d66b8d5 -- '**/LICENSE.yml' returns exactly the 3 expected paths (main/util, main/font, tests/assets); no LICENSE.yml under main/img/, main/ui/, tests/ at story-time"
+        }
+      ]
+    },
+    {
+      "id": "AC-02.5",
+      "title": "Five VP-found data-hygiene fixes resolved in bootstrap LICENSES.md",
+      "priority": "P0",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "verify-ac025a-typo-and-path",
+          "level": "doc-verification",
+          "file": "LICENSES.md",
+          "line": 0,
+          "title": "(a) /main/uitil/filesaver.js → /main/util/_unused/filesaver.js — typo fixed AND path corrected to _unused/ subdirectory"
+        },
+        {
+          "id": "verify-ac025b-clipper-extension",
+          "level": "doc-verification",
+          "file": "LICENSES.md",
+          "line": 0,
+          "title": "(b) /main/util/clipper → /main/util/clipper.js — extension added to match live file"
+        },
+        {
+          "id": "verify-ac025c-clippernode-path",
+          "level": "doc-verification",
+          "file": "LICENSES.md",
+          "line": 0,
+          "title": "(c) /main/util/clippernode.js → /main/util/_unused/clippernode.js — path corrected to _unused/ subdirectory"
+        },
+        {
+          "id": "verify-ac025d-svgnest-removed",
+          "level": "doc-verification",
+          "file": "LICENSES.md",
+          "line": 0,
+          "title": "(d) /main/svgnest.js row removed; ls main/svgnest.js confirms file does not exist in tree at d66b8d5"
+        },
+        {
+          "id": "verify-ac025e-no-question-placeholders",
+          "level": "doc-verification",
+          "file": "LICENSES.md",
+          "line": 0,
+          "title": "(e) Three '?' copyright placeholders replaced with concrete attributions: svgparser.js → 'Copyright (c) 2015 Jack Qiao (svgnest origin)'; deepnest.js → 'Copyright (c) 2018 Daniel Sagor and Deepnest contributors (deepnest.io); fork of SVGnest by Jack Qiao'; svgnest.js placeholder dropped via (d). grep -n '?' LICENSES.md returns no row-level matches."
+        }
+      ]
+    },
+    {
+      "id": "AC-02.1.5",
+      "title": "Bootstrap LICENSES.md matches convention (Story 2.2's byte-for-byte regression target)",
+      "priority": "P0",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "verify-licenses-md-header-preserved",
+          "level": "doc-verification",
+          "file": "LICENSES.md",
+          "line": 1,
+          "title": "Top-of-file header sentence ('This software contains different units with different licenses, copyrights and authors.') preserved verbatim"
+        },
+        {
+          "id": "verify-licenses-md-table-shape",
+          "level": "doc-verification",
+          "file": "LICENSES.md",
+          "line": 3,
+          "title": "Existing markdown table shape '| Unit | License | Copyright |' preserved (column-rename-only nit: trailing space normalisation)"
+        },
+        {
+          "id": "verify-licenses-md-row-count-and-grouping",
+          "level": "doc-verification",
+          "file": "LICENSES.md",
+          "line": 0,
+          "title": "28 data rows total = 5 first-party (/main, /main/svgparser.js, /main/deepnest.js, minkowski.cc/h, /polygon) grouped first + 23 third-party rows alphabetical by Unit path — matches PR body claim and Sage pre-flight ASCII-sort verification (_ < a < {letters}; HullPolygon.ts before _unused/...)"
+        },
+        {
+          "id": "verify-licenses-md-line-endings",
+          "level": "doc-verification",
+          "file": "LICENSES.md",
+          "line": 0,
+          "title": "LF-only (32 LF, 0 CRLF), single trailing newline — Sage pre-flight 'tail -c 5 | od -c' confirms"
+        },
+        {
+          "id": "verify-licenses-md-yaml-md-coherence",
+          "level": "doc-verification",
+          "file": "LICENSES.md, main/{util,font}/LICENSE.yml, tests/assets/LICENSE.yml",
+          "line": 0,
+          "title": "Every entry across the 3 LICENSE.yml files (14 + 7 + 2 = 23) appears exactly once as a row in LICENSES.md (third-party block), modulo the 5 first-party rows preserved verbatim — Story 2.2 generator's regression target"
+        }
+      ]
+    },
+    {
+      "id": "AC-02.1.6",
+      "title": "No fixture/asset file renamed or re-encoded as side-effect (FR-03 invariant guard)",
+      "priority": "P1",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "verify-zero-executable-surface-diff",
+          "level": "doc-verification",
+          "file": "main/util/, main/util/_unused/, tests/assets/, main/font/fonts/",
+          "line": 0,
+          "title": "git diff a51f5e6..d66b8d5 -- 'main/util/*.{js,ts}' main/util/_unused/ 'tests/assets/*.svg' main/font/fonts/ eslint.config.mjs package.json tsconfig.json '.github/**' returns empty (Sage Round-1 pre-flight + Murat re-verified)"
+        },
+        {
+          "id": "verify-fixture-svgs-byte-identical",
+          "level": "doc-verification",
+          "file": "tests/assets/henny-penny.svg, tests/assets/mrs-saint-delafield.svg",
+          "line": 0,
+          "title": "Both fixture SVGs byte-identical at d66b8d5 vs a51f5e6 (Sage pre-flight 'git diff -- *.svg' empty; cf831f2 commit body explicitly preserves spec literals importsnav_count=2 + placements_total/max=54/54)"
+        },
+        {
+          "id": "verify-fixture-manifest-rederivation-allowed-class",
+          "level": "doc-verification",
+          "file": "tests/assets/.fixture-manifest.json",
+          "line": 0,
+          "title": "cf831f2 re-derived .fixture-manifest.json (manifest metadata, same class as LICENSE.yml — not *.svg/*.woff/*.css/*.js/*.ts; AC-02.1.6 prohibition does not apply per commit-body justification). Both fixture SVG sha256s in the manifest are unchanged — only the new tests/assets/LICENSE.yml entry is added."
+        }
+      ]
+    },
+    {
+      "id": "AC-02.1.7",
+      "title": "npm test green on PR within NFR-01 ±20% wall-clock band",
+      "priority": "P0",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "tests/index.spec.ts:Nest",
+          "level": "e2e",
+          "file": "tests/index.spec.ts",
+          "line": 17,
+          "title": "Playwright Electron Nest spec: Config → Import → Sheet → Nest → Export. Spec unchanged in this story (pure-metadata diff)."
+        },
+        {
+          "id": "verify-nfr01-postfix-pr-run",
+          "level": "doc-verification",
+          "file": "_bmad-output/planning-artifacts/nfr01-baseline.json",
+          "line": 0,
+          "title": "CI run 24960094498 (PR #19, post-fix HEAD cf831f2): 'Run Playwright tests' step 2026-04-26T15:23:42Z → 15:24:00Z = 18000 ms ∈ NFR-01 ±20% band [13397, 20096] ms; Δ = +1253.4 ms (within tolerance, change is package-size-positive metadata-only)"
+        },
+        {
+          "id": "verify-nfr01-merge-commit-run",
+          "level": "doc-verification",
+          "file": "_bmad-output/planning-artifacts/nfr01-baseline.json",
+          "line": 0,
+          "title": "CI run 24960135893 (push-to-main, d66b8d5 squash-merged): 'Run Playwright tests' step 2026-04-26T15:25:36Z → 15:25:52Z = 16000 ms ∈ NFR-01 ±20% band [13397, 20096] ms; Δ = -746.6 ms — second independent confirmation"
+        },
+        {
+          "id": "verify-fixture-integrity-gate-green",
+          "level": "doc-verification",
+          "file": "tests/assets/.fixture-manifest.json",
+          "line": 0,
+          "title": "Story 3.1 fixture-integrity gate (npm run test:fixtures:check) green after cf831f2 manifest re-derivation — confirmed by run 24960094498 'success' overall conclusion (fixture gate is part of the same job)"
+        }
+      ]
+    },
+    {
+      "id": "AC-02.1.8",
+      "title": "project-context.md §16 anti-patterns hold (NFR-03 enforcement, 16/16)",
+      "priority": "P1",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "verify-anti-pattern-pr-self-table",
+          "level": "doc-verification",
+          "file": "PR #19 description",
+          "line": 0,
+          "title": "PR #19 description carries the §16 audit grid (16/16 self-claim) per AC-02.1.8 + .github/pull_request_template.md spine"
+        },
+        {
+          "id": "verify-anti-pattern-sage-cross-check",
+          "level": "doc-verification",
+          "file": "projects/deepnest-next/reviews/2-1-bootstrap-per-folder-license-yml-metadata-regenerate-licenses-md-round-1.md",
+          "line": 0,
+          "title": "Sage independently re-ran §16 hot greps against the diff: §16.1 (no new window global), §16.2/3 (no IPC channels added), §16.5 (zero diff to main/util/*.js/ts), §16.6 (no imports from _unused/), §16.8 (no @ts-ignore), §16.9 (no --no-verify), §16.10 (no svg drop/re-encode), §16.15 (eslint.config.mjs untouched). 16/16 PR self-claim confirmed."
+        },
+        {
+          "id": "verify-no-no-verify-in-history",
+          "level": "doc-verification",
+          "file": "git log",
+          "line": 0,
+          "title": "git log --pretty=fuller c8ec6cd cf831f2 d66b8d5 shows no [skipped] markers and no --no-verify (§16.9 hold)"
+        }
+      ]
+    },
+    {
+      "id": "AC-02.1.9",
+      "title": "Generator-script delivery foreclosed; PR forecloses scope creep (deferred to Story 2.2)",
+      "priority": "P3",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "verify-no-generator-script-shipped",
+          "level": "doc-verification",
+          "file": "scripts/, helper_scripts/",
+          "line": 0,
+          "title": "git diff --name-only a51f5e6..d66b8d5 -- scripts/ helper_scripts/ returns empty — generator script scope-creep foreclosed (Sage Round-1 pre-flight confirmed)"
+        },
+        {
+          "id": "verify-pr-description-explicit-deferral",
+          "level": "doc-verification",
+          "file": "PR #19 description",
+          "line": 0,
+          "title": "PR #19 description includes the explicit deferral statement per AC-02.1.9 ('The bootstrap LICENSES.md is the regression target Story 2.2's scripts/build-licenses.mjs will reproduce byte-for-byte. No script is shipped in this PR.')"
+        }
+      ]
+    }
+  ],
+  "coverage_statistics": {
+    "total_requirements": 10,
+    "fully_covered": 10,
+    "partially_covered": 0,
+    "uncovered": 0,
+    "overall_coverage_percentage": 100,
+    "priority_breakdown": {
+      "P0": { "total": 6, "covered": 6, "percentage": 100 },
+      "P1": { "total": 3, "covered": 3, "percentage": 100 },
+      "P2": { "total": 0, "covered": 0, "percentage": null },
+      "P3": { "total": 1, "covered": 1, "percentage": 100 }
+    }
+  },
+  "gap_analysis": {
+    "critical_gaps": [],
+    "high_gaps": [],
+    "medium_gaps": [],
+    "low_gaps": [],
+    "partial_coverage_items": [],
+    "unit_only_items": []
+  },
+  "coverage_heuristics": {
+    "endpoint_gaps": [],
+    "auth_negative_path_gaps": [],
+    "happy_path_only_gaps": [],
+    "ui_journey_gaps": [],
+    "ui_state_gaps": [],
+    "counts": {
+      "endpoints_without_tests": 0,
+      "auth_missing_negative_paths": 0,
+      "happy_path_only_criteria": 0,
+      "ui_journeys_without_e2e": 0,
+      "ui_states_missing_coverage": 0
+    }
+  },
+  "test_inventory": {
+    "summary": {
+      "files": 4,
+      "cases": 23,
+      "skipped_cases": 0,
+      "fixme_cases": 0,
+      "pending_cases": 0,
+      "by_level": {
+        "e2e": { "tests": 1, "criteria_covered": 1 },
+        "api": { "tests": 0, "criteria_covered": 0 },
+        "component": { "tests": 0, "criteria_covered": 0 },
+        "unit": { "tests": 0, "criteria_covered": 0 },
+        "other": {
+          "tests": 22,
+          "criteria_covered": 9,
+          "note": "doc-verification (git diff/show, YAML parse, file-content, ASCII sort, line-ending) + Round-1 Board §16 audit + CI step wall-clock + Sage pre-flight checklist (15 deterministic checks)"
+        }
+      }
+    },
+    "tests": [
+      { "id": "verify-util-license-yml-entry-count", "level": "doc-verification", "file": "main/util/LICENSE.yml", "title": "14 entries (9 live + 5 _unused/)", "status": "active" },
+      { "id": "verify-util-license-yml-spdx-ids", "level": "doc-verification", "file": "main/util/LICENSE.yml", "title": "all SPDX 2.3 valid", "status": "active" },
+      { "id": "verify-util-folder-snapshot-matches-audit", "level": "doc-verification", "file": "main/util/", "title": "vendored-vs-first-party adjudication holds", "status": "active" },
+      { "id": "verify-font-license-yml-entry-count", "level": "doc-verification", "file": "main/font/LICENSE.yml", "title": "7 entries OFL-1.1", "status": "active" },
+      { "id": "verify-font-license-yml-no-deadweight", "level": "doc-verification", "file": "main/font/LICENSE.yml", "title": "no Story-1.1-removed entries", "status": "active" },
+      { "id": "verify-tests-assets-license-yml-entry-count", "level": "doc-verification", "file": "tests/assets/LICENSE.yml", "title": "2 entries OFL-1.1", "status": "active" },
+      { "id": "verify-pr-body-skipped-list", "level": "doc-verification", "file": "PR #19 description", "title": "considered-and-skipped list", "status": "active" },
+      { "id": "verify-no-stray-license-yml", "level": "doc-verification", "file": "tree at d66b8d5", "title": "exactly 3 LICENSE.yml paths", "status": "active" },
+      { "id": "verify-ac025a-typo-and-path", "level": "doc-verification", "file": "LICENSES.md", "title": "uitil typo + _unused/ path", "status": "active" },
+      { "id": "verify-ac025b-clipper-extension", "level": "doc-verification", "file": "LICENSES.md", "title": ".js extension added", "status": "active" },
+      { "id": "verify-ac025c-clippernode-path", "level": "doc-verification", "file": "LICENSES.md", "title": "_unused/ path", "status": "active" },
+      { "id": "verify-ac025d-svgnest-removed", "level": "doc-verification", "file": "LICENSES.md", "title": "row removed; file gone", "status": "active" },
+      { "id": "verify-ac025e-no-question-placeholders", "level": "doc-verification", "file": "LICENSES.md", "title": "concrete attribution everywhere", "status": "active" },
+      { "id": "verify-licenses-md-header-preserved", "level": "doc-verification", "file": "LICENSES.md", "title": "header sentence verbatim", "status": "active" },
+      { "id": "verify-licenses-md-table-shape", "level": "doc-verification", "file": "LICENSES.md", "title": "Unit/License/Copyright shape", "status": "active" },
+      { "id": "verify-licenses-md-row-count-and-grouping", "level": "doc-verification", "file": "LICENSES.md", "title": "5 first-party + 23 third-party = 28 rows alphabetical", "status": "active" },
+      { "id": "verify-licenses-md-line-endings", "level": "doc-verification", "file": "LICENSES.md", "title": "LF-only single trailing newline", "status": "active" },
+      { "id": "verify-licenses-md-yaml-md-coherence", "level": "doc-verification", "file": "LICENSES.md + LICENSE.yml × 3", "title": "23 third-party rows match YAML entries 1:1", "status": "active" },
+      { "id": "verify-zero-executable-surface-diff", "level": "doc-verification", "file": "main/util/, main/font/fonts/, tests/assets/*.svg, .github/, package.json, tsconfig.json", "title": "git diff returns empty", "status": "active" },
+      { "id": "verify-fixture-svgs-byte-identical", "level": "doc-verification", "file": "tests/assets/*.svg", "title": "both byte-identical pre/post merge", "status": "active" },
+      { "id": "verify-fixture-manifest-rederivation-allowed-class", "level": "doc-verification", "file": "tests/assets/.fixture-manifest.json", "title": "metadata class, AC-02.1.6 prohibition n/a", "status": "active" },
+      { "id": "tests/index.spec.ts:Nest", "level": "e2e", "file": "tests/index.spec.ts", "title": "Playwright Electron Nest E2E", "status": "active" },
+      { "id": "verify-nfr01-postfix-pr-run", "level": "doc-verification", "file": "GitHub Actions run 24960094498", "title": "cf831f2 = 18000 ms ∈ band", "status": "active" },
+      { "id": "verify-nfr01-merge-commit-run", "level": "doc-verification", "file": "GitHub Actions run 24960135893", "title": "d66b8d5 = 16000 ms ∈ band", "status": "active" },
+      { "id": "verify-fixture-integrity-gate-green", "level": "doc-verification", "file": "tests/assets/.fixture-manifest.json", "title": "fixtures:check green post manifest re-derive", "status": "active" },
+      { "id": "verify-anti-pattern-pr-self-table", "level": "doc-verification", "file": "PR #19 description", "title": "16/16 §16 grid", "status": "active" },
+      { "id": "verify-anti-pattern-sage-cross-check", "level": "doc-verification", "file": "Round-1 Board report", "title": "Sage independent re-grep, all 16 pass", "status": "active" },
+      { "id": "verify-no-no-verify-in-history", "level": "doc-verification", "file": "git log c8ec6cd..d66b8d5", "title": "no --no-verify markers", "status": "active" },
+      { "id": "verify-no-generator-script-shipped", "level": "doc-verification", "file": "scripts/, helper_scripts/", "title": "zero diff", "status": "active" },
+      { "id": "verify-pr-description-explicit-deferral", "level": "doc-verification", "file": "PR #19 description", "title": "AC-02.1.9 deferral statement present", "status": "active" }
+    ],
+    "blockers": []
+  },
+  "blockers": [],
+  "recommendations": [
+    {
+      "priority": "LOW",
+      "action": "Carry-forward to Story 2.2 spec (DEE-90): codify generator handling for in-installer-but-out-of-tree first-party rows (resolves Sage Round-1 P2-01 architectural tension between AC-02.1.5 and ADR-008 §271). DEE-90 already created.",
+      "requirements": ["AC-02.1.5"]
+    },
+    {
+      "priority": "LOW",
+      "action": "Carry-forward to Story 2.2 spec (DEE-90): SPDX normalisation pass — Boost → BSL-1.0, GPLv3 → GPL-3.0-only — bundle with the passthrough decision (deduped Vitra Finding 2 + Lydia Finding 1, P3-01)",
+      "requirements": []
+    },
+    {
+      "priority": "LOW",
+      "action": "Carry-forward to Story 2.2 spec (DEE-90): latolatinfonts.css row placement — adopt schema flag (first_party: true) so the generator emits the row in the first-party block (Lydia Finding 2, P3-02)",
+      "requirements": []
+    },
+    {
+      "priority": "LOW",
+      "action": "Carry-forward to Story 2.2 spec (DEE-90): consolidate the per-folder LICENSE.yml schema spec to a single source (ADR-008 amendment or docs/license-yml-schema.md) and reduce per-file headers to a one-line reference (Vitra Finding 3, P3-03)",
+      "requirements": []
+    },
+    {
+      "priority": "LOW",
+      "action": "Carry-forward to Story 2.2 spec (DEE-90): scope decision on tests/assets/.fixture-manifest.json — explicit allow-list of fixture file extensions vs full-directory walk (Story 2.1 ↔ Story 3.1 interaction surfaced in cf831f2 commit body)",
+      "requirements": ["AC-02.1.6"]
+    }
+  ]
+}
