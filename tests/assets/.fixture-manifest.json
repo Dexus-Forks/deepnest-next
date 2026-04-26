@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "captured_at": "2026-04-26T11:43:34.587Z",
+  "literals": {
+    "importsnav_count": 2,
+    "placements_total": 54,
+    "placements_max": 54
+  },
+  "files": [
+    {
+      "path": "tests/assets/henny-penny.svg",
+      "size": 70200,
+      "sha256": "cd2c1a9f41142a009abf9b53705b6351cb6d802abc6a53e67afcb8cd2cbcc850"
+    },
+    {
+      "path": "tests/assets/mrs-saint-delafield.svg",
+      "size": 26281,
+      "sha256": "92435c37f13e697dc878a1adfad4dbda40f1f802d3338cf4d89e4b2354c4739d"
+    }
+  ]
+}
