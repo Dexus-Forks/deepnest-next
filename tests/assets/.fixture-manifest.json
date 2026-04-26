@@ -1,12 +1,17 @@
 {
   "schema_version": 1,
-  "captured_at": "2026-04-26T11:43:34.587Z",
+  "captured_at": "2026-04-26T17:30:00.000Z",
   "literals": {
     "importsnav_count": 2,
     "placements_total": 54,
     "placements_max": 54
   },
   "files": [
+    {
+      "path": "tests/assets/LICENSE.yml",
+      "size": 2016,
+      "sha256": "2f56bb040c68b88c8bbfd4a95dc8cd3dde28a26c1cafd563a1f57b4b7a39bd84"
+    },
     {
       "path": "tests/assets/henny-penny.svg",
       "size": 70200,
