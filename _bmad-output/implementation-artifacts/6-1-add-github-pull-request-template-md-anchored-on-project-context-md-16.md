@@ -295,3 +295,33 @@ Amelia (Dev) — Claude Opus 4.7 (`claude-opus-4-7`) via `bmad-dev-story` on 202
 - `_bmad-output/implementation-artifacts/6-1-add-github-pull-request-template-md-anchored-on-project-context-md-16.md` — Dev Agent Record + Status flip from `ready-for-dev` → `ready-for-review`; tasks/subtasks ticked.
 
 **Deleted:** none.
+
+### Round-1 Board Review — non-blocking recommendations (transcribed 2026-04-26)
+
+**Verdict:** **APPROVED** by Review-Leader Sage on [DEE-58](/DEE/issues/DEE-58) at 2026-04-26T12:02 (run id `7041393f-8345-4cca-853b-3eb546cb3ebe`). `severity.max = P2` across all four perspectives; no P0/P1 from any reviewer; standard rule applies (P2 = should-fix, not a merge gate). Source: consolidated report at `projects/deepnest-next/reviews/6-1-add-github-pull-request-template-md-anchored-on-project-context-md-16-round-1.md` (out-of-band, not committed).
+
+**Coverage:**
+
+| Perspective | Reviewer | Outcome |
+|---|---|---|
+| security | Aegis ([DEE-59](/DEE/issues/DEE-59)) | `findings: []`, `confidence: 0.9` |
+| architecture | Vitra ([DEE-60](/DEE/issues/DEE-60)) | `findings: []`, `adr.suggestions: []`, `confidence: high` |
+| performance | Hermes ([DEE-61](/DEE/issues/DEE-61)) | `findings: []`, `confidence: high` |
+| code-quality | Lydia ([DEE-62](/DEE/issues/DEE-62)) | 1× P2 + 3× P3, `confidence: high` |
+| accessibility | Iris (conditional) | not dispatched — `event.story.touchesUI = false` |
+
+⚠️ Coverage warning (non-blocking): `model-diversity: low` — all four dispatched minions self-reported the same `claude_local` / `claude-opus-4-7` adapter+model. Per Review-Leader playbook §5, this is a **warning, not a verdict blocker**.
+
+**Findings — disposition for this story:**
+
+- **P2-01 (Lydia / code-quality)** — `.github/pull_request_template.md:52` Test-evidence section hardcodes the NFR-01 baseline literals (`rolling_mean_ms = 16746.6`, `±20% = 13397..20096 ms`). `nfr01-baseline.json` is a rolling mean and will be re-baselined under NFR-08; embedded literals will silently drift. **Disposition:** **carried forward to Story 6.2 / NFR-08 docs-freshness loop** (template-side fix — replace literals with directive "compute the ±20% window from `nfr01-baseline.json` at PR time"). Sage's recommendation is remediation (a). Not a merge gate; not applied in this story per "free to merge" verdict.
+
+- **P3-01 (Lydia / code-quality)** — `.github/pull_request_template.md:30` §16.8 wording drift: template drops "to silence strict-mode errors" qualifier from the GPC source-of-truth (`_bmad-output/project-context.md:268`). **Disposition:** **carried forward to Story 6.2** (reviewer-convention scope owns the wording-fidelity decision: restore the qualifier verbatim, or document the broader template stance).
+
+- **P3-02 (Lydia / code-quality)** — `.github/pull_request_template.md:25` §16.3 wording drift: template adds "new" qualifier vs. GPC verbatim (`_bmad-output/project-context.md:263`). **Disposition:** **carried forward to Story 6.2** (same reviewer-convention scope as P3-01).
+
+- **P3-03 (Lydia / code-quality)** — `_bmad-output/project-context.md:261` — **GPC-side, not PR-side.** Pre-flagged carve-out per the issue brief: GPC §16.1 says "four" but `index.d.ts` and project-context.md §7 enumerate **five**; the PR template (line 23) names five (architecturally correct). **Disposition:** **GPC fix carried forward to Story 6.2 / NFR-08 docs-freshness loop** (update GPC §16.1 to "five" with verbatim `index.d.ts` ordering). **No template change required.**
+
+**Cross-perspective endorsements (all four reviewers):** single-file deliverable; architecture overlay §4 FR-06 constraints (a)/(b)/(c) all hold; §16 mapping fidelity 1:1 (template lines 23–38 ↔ GPC lines 261–276); ADR-005 anchoring on `index.d.ts`; security boundary unchanged; NFR-01 wall-clock unaffected; independent revertibility honoured; **IR Pre-condition #7 closes on merge** (CONCERNS → PASS as predicted by `_bmad-output/planning-artifacts/implementation-readiness-report.md`).
+
+**Configuration follow-up (process-side, not PR-side):** local-board flagged that Sage's Board-dispatch children were created without an explicit `executionWorkspaceSettings.workspaceStrategy.baseRef`, so Paperclip auto-defaulted to `baseRef: "main"`. The round-1 children landed in the implementation worktree by lookup-coincidence (matching `branchTemplate`); Sage produced file:line evidence per minion that the verdict IS grounded in `849fc55`, so the verdict stands. Memorialised in Amelia's memory (`feedback_board_dispatch_explicit_baseref.md`) and in Sage's playbook for round 2 dispatches: every child-issue POST must explicitly pin `baseRef` to the implementation branch/SHA (or use `inheritExecutionWorkspaceFromIssueId`). Reference: `bf647853` board comment on [DEE-58](/DEE/issues/DEE-58).
