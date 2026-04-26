@@ -1,0 +1,343 @@
+{
+  "phase": "PHASE_1_COMPLETE",
+  "generated_at": "2026-04-26T00:00:00Z",
+  "workflow": "bmad-testarch-trace",
+  "trace_target": {
+    "type": "story",
+    "id": "1.1",
+    "slug": "1-1-remove-dead-weight-renderer-assets-and-record-the-saving",
+    "label": "Story 1.1 — Remove dead-weight renderer assets and record the saving",
+    "merge_sha": "8c3afa8f02c8cb74c1056691172f5b858ec8df0e",
+    "pr_url": "https://github.com/Dexus-Forks/deepnest-next/pull/8"
+  },
+  "collection_mode": "contract_static",
+  "collection_status": "COLLECTED",
+  "allow_gate": true,
+  "coverage_basis": "acceptance_criteria",
+  "summary_confidence": "high",
+  "oracle": {
+    "resolution_mode": "formal_requirements",
+    "confidence": "high",
+    "sources": [
+      "_bmad-output/implementation-artifacts/1-1-remove-dead-weight-renderer-assets-and-record-the-saving.md (AC-01.1..AC-01.9)",
+      "_bmad-output/planning-artifacts/prd.md §FR-01 (AC-01.1..AC-01.5) + §NFR-01 + §NFR-03",
+      "_bmad-output/planning-artifacts/architecture.md §3.1 (FR-01 row) + §4 (FR-01 a/b/c/d)",
+      "_bmad-output/planning-artifacts/nfr01-baseline.json (rolling_mean_ms 16746.6, ±20% → [13397, 20096] ms)"
+    ],
+    "external_pointer_status": "not_used",
+    "synthetic": false
+  },
+  "requirements": [
+    {
+      "id": "AC-01.1",
+      "title": "Five unused icons removed from main/img/",
+      "priority": "P0",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "verify-img-deletions-stat",
+          "level": "doc-verification",
+          "file": "main/img/",
+          "line": 0,
+          "title": "git show 8c3afa8 --stat -- main/img/ shows exactly five deletions (auth0logo, background, logo, progress, stop), zero additions"
+        },
+        {
+          "id": "verify-img-postdelete-grep-zero",
+          "level": "doc-verification",
+          "file": "main/, tests/",
+          "line": 0,
+          "title": "Post-delete grep for icon basenames returns zero hits in main/ and tests/ (Story Tasks 1.1, 3.2, 4.4)"
+        }
+      ]
+    },
+    {
+      "id": "AC-01.2",
+      "title": "Lato dead-weight kit removed from main/font/ (P1+P3+P4 — 25 files)",
+      "priority": "P0",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "verify-font-deletions-stat",
+          "level": "doc-verification",
+          "file": "main/font/",
+          "line": 0,
+          "title": "git show 8c3afa8 --stat -- main/font/ shows 25 deletions (LatoLatin-BoldItalic.* P1, LatoLatin-{Bold,Regular,Light}.{eot,ttf} P4, lato-{hai,lig}-* P3, demo-pages, stylesheet.css, generator_config.txt, specimen_files/)"
+        },
+        {
+          "id": "verify-font-postdelete-grep-zero",
+          "level": "doc-verification",
+          "file": "main/, tests/",
+          "line": 0,
+          "title": "Post-delete grep for Lato dead-weight basenames returns zero hits in main/ and tests/ (Story Tasks 1.2, 4.4)"
+        }
+      ]
+    },
+    {
+      "id": "AC-01.3",
+      "title": "No live binding broken — post-delete grep audit + latolatinfonts.css URL resolution",
+      "priority": "P1",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "verify-grep-zero-hits-main-tests",
+          "level": "doc-verification",
+          "file": "main/, tests/",
+          "line": 0,
+          "title": "Post-delete grep for every removed basename returns zero hits across main/ and tests/"
+        },
+        {
+          "id": "verify-style-css-bindings-intact",
+          "level": "doc-verification",
+          "file": "main/style.css",
+          "line": 29,
+          "title": "main/style.css:29 (LatoLatinWeb) and :72 (LatoLatinWebLight) family bindings unchanged post-merge"
+        },
+        {
+          "id": "verify-latolatinfonts-css-resolves",
+          "level": "doc-verification",
+          "file": "main/font/latolatinfonts.css",
+          "line": 1,
+          "title": "Post-merge latolatinfonts.css declares only woff2/woff src URLs across three @font-face blocks; all six referenced files (fonts/LatoLatin-{Bold,Regular,Light}.{woff2,woff}) extant in tree at 8c3afa8"
+        },
+        {
+          "id": "verify-notification-window-no-lato-link",
+          "level": "doc-verification",
+          "file": "main/notification.html",
+          "line": 40,
+          "title": "main/notification.html:40 declares font-family: Arial, sans-serif; no <link> to latolatinfonts.css; project-context §3 line 70 corroborates"
+        }
+      ]
+    },
+    {
+      "id": "AC-01.4",
+      "title": "docs/asset-inventory.md records measured installer-size delta within [1.57, 2.27] MB band",
+      "priority": "P0",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "verify-asset-inventory-measured-delta",
+          "level": "doc-verification",
+          "file": "docs/asset-inventory.md",
+          "line": 0,
+          "title": "§6 records pre/post du -sb counts (67504/2166705 → 35007/349883 bytes), Δ = 1849319 bytes ≈ 1.85 MB across 30 files; within AC band [1.57, 2.27] MB"
+        },
+        {
+          "id": "verify-section-coverage",
+          "level": "doc-verification",
+          "file": "docs/asset-inventory.md",
+          "line": 0,
+          "title": "§1, §2, §3.1, §3.2, §5, §6, §8, §9 all updated per Story Task 6.1"
+        }
+      ]
+    },
+    {
+      "id": "AC-01.5",
+      "title": "Stale doc references purged from spec-listed files",
+      "priority": "P1",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "verify-doc-cleanup-spec-listed",
+          "level": "doc-verification",
+          "file": "docs/source-tree-analysis.md, docs/component-inventory.md, docs/deep-dive/g/main__img.md, docs/deep-dive/g/README.md, docs/asset-inventory.md",
+          "line": 0,
+          "title": "Five spec-listed doc files updated per Story Task 6.2..6.5"
+        },
+        {
+          "id": "verify-doc-cleanup-scope-extension",
+          "level": "doc-verification",
+          "file": "docs/deep-dive/g/main__font.md",
+          "line": 0,
+          "title": "Authoritative per-file webfont table updated (Story Task 6.6 scope extension; preserves deep-dive table shape)"
+        },
+        {
+          "id": "verify-grep-zero-stale-refs",
+          "level": "doc-verification",
+          "file": "docs/",
+          "line": 0,
+          "title": "Post-merge grep for removed basenames in docs/ returns only annotated 'removed in Story 1.1, DEE-55' / 'historical record' hits"
+        }
+      ]
+    },
+    {
+      "id": "AC-01.6",
+      "title": "tests/index.spec.ts not modified (overlay §4 FR-01 (c) invariant)",
+      "priority": "P1",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "verify-spec-untouched",
+          "level": "doc-verification",
+          "file": "tests/",
+          "line": 0,
+          "title": "git show 8c3afa8 --stat -- tests/ returns nothing; merge does not touch any tests/ path"
+        },
+        {
+          "id": "verify-spec-literals-unchanged",
+          "level": "doc-verification",
+          "file": "tests/index.spec.ts",
+          "line": 132,
+          "title": "Spec literals (#importsnav li toHaveCount(2) at L132; nestinfo h1 nth(1) toHaveText(\"54/54\") at L184-186) preserved verbatim"
+        }
+      ]
+    },
+    {
+      "id": "AC-01.7",
+      "title": "npm test regression-free vs NFR-01 baseline",
+      "priority": "P0",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "tests/index.spec.ts:Nest",
+          "level": "e2e",
+          "file": "tests/index.spec.ts",
+          "line": 17,
+          "title": "Playwright Electron Nest spec: Config → Import → Sheet → Nest → Export"
+        },
+        {
+          "id": "verify-nfr01-tolerance-band",
+          "level": "doc-verification",
+          "file": "_bmad-output/planning-artifacts/nfr01-baseline.json",
+          "line": 0,
+          "title": "CI run 24956110881 = 15500 ms within NFR-01 ±20% band [13397, 20096] ms; Δ = -1246.6 ms (noise within tolerance, not a perf claim)"
+        }
+      ]
+    },
+    {
+      "id": "AC-01.8",
+      "title": "Notification-window typography intact (trivially satisfied — corrected premise)",
+      "priority": "P3",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "verify-notification-html-arial",
+          "level": "doc-verification",
+          "file": "main/notification.html",
+          "line": 40,
+          "title": "main/notification.html:40 declares font-family: Arial, sans-serif; no <link> to latolatinfonts.css; project-context §3 line 70 confirms no shared CSS — no Lato binding to break"
+        }
+      ]
+    },
+    {
+      "id": "AC-01.9",
+      "title": "project-context.md §16 anti-patterns hold (NFR-03 enforcement)",
+      "priority": "P1",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "verify-anti-pattern-audit-grid",
+          "level": "doc-verification",
+          "file": "_bmad-output/implementation-artifacts/1-1-remove-dead-weight-renderer-assets-and-record-the-saving.md",
+          "line": 240,
+          "title": "Story Dev Notes §Anti-pattern audit map enumerates §16.1..§16.16 with per-item git-diff verification; 16/16 pass"
+        },
+        {
+          "id": "verify-board-audit-approved",
+          "level": "doc-verification",
+          "file": "projects/deepnest-next/reviews/1-1-remove-dead-weight-renderer-assets-and-record-the-saving-round-1.md",
+          "line": 0,
+          "title": "Round-1 Review-Board (Sage / DEE-68) verdict APPROVED; severity.max = P2 (1 non-blocking, Vitra ADR-missing) + 6 P3 informational; per-perspective sub-issues DEE-71..DEE-75"
+        },
+        {
+          "id": "verify-pr-template-active",
+          "level": "doc-verification",
+          "file": ".github/pull_request_template.md",
+          "line": 0,
+          "title": "Story 6.1 PR template (merged at ccdd214) provides 16-checkbox §16 spine; Story 1.1 was first to exercise it"
+        }
+      ]
+    }
+  ],
+  "coverage_statistics": {
+    "total_requirements": 9,
+    "fully_covered": 9,
+    "partially_covered": 0,
+    "uncovered": 0,
+    "overall_coverage_percentage": 100,
+    "priority_breakdown": {
+      "P0": { "total": 4, "covered": 4, "percentage": 100 },
+      "P1": { "total": 4, "covered": 4, "percentage": 100 },
+      "P2": { "total": 0, "covered": 0, "percentage": 100 },
+      "P3": { "total": 1, "covered": 1, "percentage": 100 }
+    }
+  },
+  "gap_analysis": {
+    "critical_gaps": [],
+    "high_gaps": [],
+    "medium_gaps": [],
+    "low_gaps": [],
+    "partial_coverage_items": [],
+    "unit_only_items": []
+  },
+  "coverage_heuristics": {
+    "endpoint_gaps": [],
+    "auth_negative_path_gaps": [],
+    "happy_path_only_gaps": [],
+    "ui_journey_gaps": [],
+    "ui_state_gaps": [],
+    "counts": {
+      "endpoints_without_tests": 0,
+      "auth_missing_negative_paths": 0,
+      "happy_path_only_criteria": 0,
+      "ui_journeys_without_e2e": 0,
+      "ui_states_missing_coverage": 0
+    }
+  },
+  "test_inventory": {
+    "summary": {
+      "files": 4,
+      "cases": 15,
+      "skipped_cases": 0,
+      "fixme_cases": 0,
+      "pending_cases": 0,
+      "by_level": {
+        "e2e": { "tests": 1, "criteria_covered": 1 },
+        "api": { "tests": 0, "criteria_covered": 0 },
+        "component": { "tests": 0, "criteria_covered": 0 },
+        "unit": { "tests": 0, "criteria_covered": 0 },
+        "other": {
+          "tests": 14,
+          "criteria_covered": 8,
+          "note": "doc-verification (git diff / grep / file-content) + Round-1 Board §16 audit"
+        }
+      }
+    },
+    "tests": [
+      { "id": "verify-img-deletions-stat", "level": "doc-verification", "file": "main/img/", "title": "git show --stat 5 deletions", "status": "active" },
+      { "id": "verify-img-postdelete-grep-zero", "level": "doc-verification", "file": "main/, tests/", "title": "post-delete icon grep zero hits", "status": "active" },
+      { "id": "verify-font-deletions-stat", "level": "doc-verification", "file": "main/font/", "title": "git show --stat 25 deletions", "status": "active" },
+      { "id": "verify-font-postdelete-grep-zero", "level": "doc-verification", "file": "main/, tests/", "title": "post-delete font grep zero hits", "status": "active" },
+      { "id": "verify-grep-zero-hits-main-tests", "level": "doc-verification", "file": "main/, tests/", "title": "AC-01.3 combined grep audit", "status": "active" },
+      { "id": "verify-style-css-bindings-intact", "level": "doc-verification", "file": "main/style.css", "title": "L29/L72 family bindings", "status": "active" },
+      { "id": "verify-latolatinfonts-css-resolves", "level": "doc-verification", "file": "main/font/latolatinfonts.css", "title": "post-edit src URLs all resolve", "status": "active" },
+      { "id": "verify-notification-window-no-lato-link", "level": "doc-verification", "file": "main/notification.html", "title": "L40 Arial only; no Lato <link>", "status": "active" },
+      { "id": "verify-asset-inventory-measured-delta", "level": "doc-verification", "file": "docs/asset-inventory.md", "title": "§6 measured 1.85 MB delta", "status": "active" },
+      { "id": "verify-section-coverage", "level": "doc-verification", "file": "docs/asset-inventory.md", "title": "§1..§9 updates per Task 6.1", "status": "active" },
+      { "id": "verify-doc-cleanup-spec-listed", "level": "doc-verification", "file": "docs/", "title": "5 spec-listed doc files updated", "status": "active" },
+      { "id": "verify-doc-cleanup-scope-extension", "level": "doc-verification", "file": "docs/deep-dive/g/main__font.md", "title": "table-shape consistency edit", "status": "active" },
+      { "id": "verify-grep-zero-stale-refs", "level": "doc-verification", "file": "docs/", "title": "no un-annotated stale refs", "status": "active" },
+      { "id": "verify-spec-untouched", "level": "doc-verification", "file": "tests/", "title": "git diff --stat tests/ empty", "status": "active" },
+      { "id": "verify-spec-literals-unchanged", "level": "doc-verification", "file": "tests/index.spec.ts", "title": "L132 + L184-186 literals preserved", "status": "active" },
+      { "id": "tests/index.spec.ts:Nest", "level": "e2e", "file": "tests/index.spec.ts", "title": "Playwright Electron Nest E2E", "status": "active" },
+      { "id": "verify-nfr01-tolerance-band", "level": "doc-verification", "file": "_bmad-output/planning-artifacts/nfr01-baseline.json", "title": "15500 ms within [13397, 20096] ms", "status": "active" },
+      { "id": "verify-notification-html-arial", "level": "doc-verification", "file": "main/notification.html", "title": "L40 Arial only", "status": "active" },
+      { "id": "verify-anti-pattern-audit-grid", "level": "doc-verification", "file": "story file §Anti-pattern audit map", "title": "16/16 §16 pass grid", "status": "active" },
+      { "id": "verify-board-audit-approved", "level": "doc-verification", "file": "Round-1 Board report (out-of-band)", "title": "Sage APPROVED, severity.max = P2", "status": "active" },
+      { "id": "verify-pr-template-active", "level": "doc-verification", "file": ".github/pull_request_template.md", "title": "16-checkbox spine live since ccdd214", "status": "active" }
+    ],
+    "blockers": []
+  },
+  "blockers": [],
+  "recommendations": [
+    {
+      "priority": "LOW",
+      "action": "Carry-forward TEA-backlog item #1: Playwright runtime assertion that LatoLatinWeb / LatoLatinWebLight @font-face URLs resolve",
+      "requirements": ["AC-01.3", "AC-01.8"]
+    },
+    {
+      "priority": "LOW",
+      "action": "Board follow-up #1 (governance): project-context.md §9 invariant 'Webfonts ship woff2 + woff only' + optional ADR-010; routed to John (PM) / Vitra; outside TEA scope",
+      "requirements": []
+    }
+  ]
+}

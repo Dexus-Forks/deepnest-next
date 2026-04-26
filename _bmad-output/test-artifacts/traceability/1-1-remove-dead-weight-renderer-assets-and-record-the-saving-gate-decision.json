@@ -1,0 +1,43 @@
+{
+  "schema_version": "0.1.0",
+  "evaluated_at": "2026-04-26T00:00:00Z",
+  "repo": "deepnest-next",
+  "target": {
+    "type": "story",
+    "id": "1.1",
+    "label": "Story 1.1 — Remove dead-weight renderer assets and record the saving",
+    "slug": "1-1-remove-dead-weight-renderer-assets-and-record-the-saving",
+    "merge_sha": "8c3afa8f02c8cb74c1056691172f5b858ec8df0e",
+    "pr_url": "https://github.com/Dexus-Forks/deepnest-next/pull/8"
+  },
+  "collection_status": "COLLECTED",
+  "gate_basis": "priority_thresholds",
+  "gate_status": "PASS",
+  "rationale": "P0 coverage 100% (4/4) ✅, P1 coverage 100% (4/4) ✅, P3 coverage 100% (1/1) ✅, overall coverage 100% (9/9) ✅. Round-1 Review-Board (Sage / DEE-68) APPROVED with severity.max = P2 (1 non-blocking, Vitra ADR-missing) and 6 P3 informational; no P0/P1. CI run 24956110881 = 15500 ms within NFR-01 ±20% tolerance band [13397, 20096] ms (Δ noise within tolerance, change is package-size-positive 1.85 MB / 30 files removed, not load-time-positive). All 16 §16 anti-patterns audited green by Round-1 Board (16/16 pass). Single carry-forward (Playwright runtime font-URL-resolution assertion, Hermes P3 / Sage routing) is forward-looking hardening; not a backfill against any AC of this merge.",
+  "p0_status": "MET",
+  "p1_status": "MET",
+  "overall_status": "MET",
+  "critical_open": 0,
+  "carry_forward": [
+    {
+      "id": "TEA-1",
+      "priority": "P3",
+      "owner": "Murat (TEA)",
+      "action": "Add Playwright runtime assertion (e.g., document.fonts.check('1em LatoLatinWeb')) in tests/index.spec.ts Nest spec to harden against future asset-touching regressions; sequence via next bmad-testarch-automate cycle"
+    },
+    {
+      "id": "BD-1",
+      "priority": "P3",
+      "owner": "John (PM) / Vitra",
+      "action": "_bmad-output/project-context.md §9 invariant 'Webfonts ship woff2 + woff only' + optional ADR-010; outside TEA scope, recorded for traceability"
+    }
+  ],
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability/1-1-remove-dead-weight-renderer-assets-and-record-the-saving-trace.md",
+    "trace_matrix_path": "_bmad-output/test-artifacts/traceability/1-1-remove-dead-weight-renderer-assets-and-record-the-saving-trace.matrix.json",
+    "e2e_trace_summary_path": "_bmad-output/test-artifacts/traceability/1-1-remove-dead-weight-renderer-assets-and-record-the-saving-e2e-trace-summary.json",
+    "ci_run_url": "https://github.com/Dexus-Forks/deepnest-next/actions/runs/24956110881",
+    "story_file": "_bmad-output/implementation-artifacts/1-1-remove-dead-weight-renderer-assets-and-record-the-saving.md",
+    "board_report_path": "projects/deepnest-next/reviews/1-1-remove-dead-weight-renderer-assets-and-record-the-saving-round-1.md (out-of-band)"
+  }
+}
