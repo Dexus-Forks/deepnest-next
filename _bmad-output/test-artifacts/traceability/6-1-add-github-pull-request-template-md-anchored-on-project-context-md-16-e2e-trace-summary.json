@@ -66,8 +66,8 @@
   ],
   "heuristics": {
     "endpoint_gaps": 0,
-    "auth_negative_path_status": "present",
-    "error_path_status": "present",
+    "auth_negative_path_status": "not_applicable",
+    "error_path_status": "not_applicable",
     "ui_journey_status": "not_applicable",
     "ui_state_status": "not_applicable"
   },
