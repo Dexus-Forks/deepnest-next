@@ -1,6 +1,6 @@
 # Story 3.1: Implement `tests/assets/` integrity check + manifest, wire into `npm test`
 
-Status: review
+Status: done
 
 > Authored by John (PM, BMad) on 2026-04-26 via `bmad-create-story` for **MVP-1 / Stream B head**. Sprint plan reference: `_bmad-output/planning-artifacts/sprint-plan.md` §3 row B1. Epic anchor: `_bmad-output/planning-artifacts/epics.md` §"Story 3.1" lines 470–519.
 

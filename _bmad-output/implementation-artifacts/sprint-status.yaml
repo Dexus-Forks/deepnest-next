@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-26
-last_updated: 2026-04-26 (DEE-56 / bmad-dev-story — 3.1 review-ready)
+last_updated: 2026-04-26 (DEE-56 / bmad-dev-story — Story 3.1 merged via PR #7; Board APPROVED DEE-63; status → done)
 project: deepnest-next
 project_key: NOKEY
 tracking_system: file-system
@@ -57,7 +57,7 @@ development_status:
 
   # Epic 3 — Test-fixture integrity gate (FR-03)
   epic-3: in-progress
-  3-1-implement-tests-assets-integrity-check-manifest-wire-into-npm-test: review
+  3-1-implement-tests-assets-integrity-check-manifest-wire-into-npm-test: done
   3-2-document-the-fixture-drift-re-derivation-procedure-in-docs-development-guide-md: backlog
   epic-3-retrospective: optional
 
