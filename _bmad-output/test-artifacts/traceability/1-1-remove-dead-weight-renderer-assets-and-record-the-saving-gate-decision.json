@@ -38,6 +38,11 @@
     "e2e_trace_summary_path": "_bmad-output/test-artifacts/traceability/1-1-remove-dead-weight-renderer-assets-and-record-the-saving-e2e-trace-summary.json",
     "ci_run_url": "https://github.com/Dexus-Forks/deepnest-next/actions/runs/24956110881",
     "story_file": "_bmad-output/implementation-artifacts/1-1-remove-dead-weight-renderer-assets-and-record-the-saving.md",
-    "board_report_path": "projects/deepnest-next/reviews/1-1-remove-dead-weight-renderer-assets-and-record-the-saving-round-1.md (out-of-band)"
+    "board_report": {
+      "type": "out-of-band-evidence",
+      "status": "unavailable-in-repo",
+      "reference": "projects/deepnest-next/reviews/1-1-remove-dead-weight-renderer-assets-and-record-the-saving-round-1.md",
+      "description": "Round-1 review board report recorded out-of-band for traceability"
+    }
   }
 }
