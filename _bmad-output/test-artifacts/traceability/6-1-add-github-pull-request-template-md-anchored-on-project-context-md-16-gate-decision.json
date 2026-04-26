@@ -1,0 +1,26 @@
+{
+  "schema_version": "0.1.0",
+  "evaluated_at": "2026-04-26T00:00:00Z",
+  "repo": "deepnest-next",
+  "target": {
+    "type": "story",
+    "id": "6.1",
+    "label": "Story 6.1 — .github/pull_request_template.md anchored on project-context.md §16",
+    "slug": "6-1-add-github-pull-request-template-md-anchored-on-project-context-md-16",
+    "merge_sha": "ccdd214c800b17ca068535e6a831d48404aced71",
+    "pr_url": "https://github.com/Dexus-Forks/deepnest-next/pull/6"
+  },
+  "collection_status": "COLLECTED",
+  "gate_basis": "priority_thresholds",
+  "gate_status": "PASS",
+  "rationale": "P0 coverage 100% (4/4) ✅, P1 coverage 100% (4/4) ✅, overall coverage 100% (11/11) ✅. Round-1 Board (DEE-58) APPROVED with severity.max = P2 and no P0/P1. PR #6 CI matrix 4/4 SUCCESS (20.x/22.x × ubuntu-22.04/windows-2022). IR Pre-condition #7 transitions CONCERNS → PASS on merge of ccdd214c800b17ca068535e6a831d48404aced71. Carry-overs P2-01 / P3-01 / P3-02 / P3-03 routed to Story 6.2 / NFR-08 (non-blocking).",
+  "p0_status": "MET",
+  "p1_status": "MET",
+  "overall_status": "MET",
+  "critical_open": 0,
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability/6-1-add-github-pull-request-template-md-anchored-on-project-context-md-16-trace.md",
+    "trace_matrix_path": "_bmad-output/test-artifacts/traceability/6-1-add-github-pull-request-template-md-anchored-on-project-context-md-16-trace.matrix.json",
+    "e2e_trace_summary_path": "_bmad-output/test-artifacts/traceability/6-1-add-github-pull-request-template-md-anchored-on-project-context-md-16-e2e-trace-summary.json"
+  }
+}

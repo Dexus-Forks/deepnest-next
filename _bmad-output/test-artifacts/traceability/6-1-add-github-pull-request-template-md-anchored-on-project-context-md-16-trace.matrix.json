@@ -1,0 +1,296 @@
+{
+  "phase": "PHASE_1_COMPLETE",
+  "generated_at": "2026-04-26T00:00:00Z",
+  "workflow": "bmad-testarch-trace",
+  "trace_target": {
+    "type": "story",
+    "id": "6.1",
+    "slug": "6-1-add-github-pull-request-template-md-anchored-on-project-context-md-16",
+    "label": "Story 6.1 — .github/pull_request_template.md anchored on project-context.md §16",
+    "merge_sha": "ccdd214c800b17ca068535e6a831d48404aced71",
+    "pr_url": "https://github.com/Dexus-Forks/deepnest-next/pull/6"
+  },
+  "collection_mode": "contract_static",
+  "collection_status": "COLLECTED",
+  "allow_gate": true,
+  "coverage_basis": "acceptance_criteria",
+  "summary_confidence": "high",
+  "oracle": {
+    "resolution_mode": "formal_requirements",
+    "confidence": "high",
+    "sources": [
+      "_bmad-output/implementation-artifacts/6-1-add-github-pull-request-template-md-anchored-on-project-context-md-16.md",
+      "_bmad-output/planning-artifacts/prd.md §FR-06 + §NFR-03",
+      "_bmad-output/planning-artifacts/architecture.md §3.1 + §4 (FR-06 a/b/c) + §9 row #7",
+      "_bmad-output/planning-artifacts/implementation-readiness-report.md §Pre-condition #7"
+    ],
+    "external_pointer_status": "not_used",
+    "synthetic": false
+  },
+  "requirements": [
+    {
+      "id": "AC-06.1",
+      "title": "File created at the canonical path .github/pull_request_template.md",
+      "priority": "P0",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "verify-canonical-path-exists",
+          "level": "doc-verification",
+          "file": ".github/pull_request_template.md",
+          "line": 1,
+          "title": "git show ccdd214:.github/pull_request_template.md returns 59 lines"
+        }
+      ]
+    },
+    {
+      "id": "AC-06.2",
+      "title": "§16 anti-pattern list is the spine (16 individual checkboxes)",
+      "priority": "P0",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "verify-16-checkboxes-shape-a",
+          "level": "doc-verification",
+          "file": ".github/pull_request_template.md",
+          "line": 23,
+          "title": "16 of 16 checkboxes present at template lines 23..38"
+        }
+      ]
+    },
+    {
+      "id": "AC-06.3",
+      "title": "Pre-flight read reminder is present, above the checklist",
+      "priority": "P1",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "verify-preflight-position",
+          "level": "doc-verification",
+          "file": ".github/pull_request_template.md",
+          "line": 9,
+          "title": "Pre-flight reads heading at line 9; checklist starts at line 21"
+        }
+      ]
+    },
+    {
+      "id": "AC-06.4",
+      "title": "Touched files section is present",
+      "priority": "P1",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "verify-touched-files-section",
+          "level": "doc-verification",
+          "file": ".github/pull_request_template.md",
+          "line": 42,
+          "title": "Touched files heading at line 42 with diff-stat guidance"
+        }
+      ]
+    },
+    {
+      "id": "AC-06.5",
+      "title": "Test evidence section is present",
+      "priority": "P1",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "verify-test-evidence-section",
+          "level": "doc-verification",
+          "file": ".github/pull_request_template.md",
+          "line": 46,
+          "title": "Test evidence heading at line 46 with NFR-01 + NFR-02 + drift-gate placeholders"
+        }
+      ]
+    },
+    {
+      "id": "AC-06.6",
+      "title": "Merge-block reviewer rule is documented at the top of the template",
+      "priority": "P0",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "verify-merge-block-callout",
+          "level": "doc-verification",
+          "file": ".github/pull_request_template.md",
+          "line": 7,
+          "title": "Reviewer rule callout at line 7 (NFR-03 zero-ticked-as-violated)"
+        }
+      ]
+    },
+    {
+      "id": "AC-06.7",
+      "title": "All six PRD §FR-06 ACs verifiable from the PR view via the 16-item template superset",
+      "priority": "P0",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "verify-fr06-subsumed-by-template",
+          "level": "doc-verification",
+          "file": "_bmad-output/planning-artifacts/architecture.md",
+          "line": 102,
+          "title": "PRD AC-06.1..AC-06.6 each map 1:1 to a template §16.X checkbox; Round-1 Board (Vitra) endorsed"
+        }
+      ]
+    },
+    {
+      "id": "AC-06.8",
+      "title": "§16 references resolve to current GPC heading (1:1 alignment, 16 of 16)",
+      "priority": "P1",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "verify-section-anchor-resolves",
+          "level": "doc-verification",
+          "file": "_bmad-output/project-context.md",
+          "line": 259,
+          "title": "grep -n '## 16. Critical anti-patterns' returns single hit at line 259"
+        },
+        {
+          "id": "verify-16-of-16-1to1",
+          "level": "doc-verification",
+          "file": "_bmad-output/project-context.md",
+          "line": 261,
+          "title": "16 GPC items at lines 261..276 align 1:1 with template lines 23..38"
+        }
+      ]
+    },
+    {
+      "id": "AC-06.9",
+      "title": "Reviewer cite-the-§16-item-number affordance present (label prefix §16.X)",
+      "priority": "P2",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "verify-label-prefix-pattern",
+          "level": "doc-verification",
+          "file": ".github/pull_request_template.md",
+          "line": 23,
+          "title": "All 16 checkboxes match ^- \\[ \\] §16\\.\\d+ — pattern"
+        }
+      ]
+    },
+    {
+      "id": "AC-06.10",
+      "title": "project-context.md §16 anti-patterns hold for this PR (self-attestation)",
+      "priority": "P2",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "verify-self-attestation",
+          "level": "doc-verification",
+          "file": "git show --stat ccdd214",
+          "line": null,
+          "title": "Diff is .github/ + story file only — vacuously satisfies §16.1..§16.16"
+        }
+      ]
+    },
+    {
+      "id": "AC-06.11",
+      "title": "npm test regression-free (lint-staged glob unchanged, husky hook unchanged, CI matrix all green)",
+      "priority": "P2",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "verify-ci-matrix-green",
+          "level": "ci",
+          "file": "PR #6",
+          "line": null,
+          "title": "All four CI matrix cells SUCCESS (20.x/22.x × ubuntu-22.04/windows-2022)"
+        },
+        {
+          "id": "verify-lintstaged-glob-unchanged",
+          "level": "doc-verification",
+          "file": "package.json",
+          "line": null,
+          "title": "lint-staged glob remains **/*.{ts,html,css,scss,less,json} — Markdown excluded by design"
+        },
+        {
+          "id": "verify-husky-hook-unchanged",
+          "level": "doc-verification",
+          "file": ".husky/pre-commit",
+          "line": null,
+          "title": "Pre-commit hook script is unchanged"
+        },
+        {
+          "id": "verify-nfr01-wallclock-via-canonical-cell",
+          "level": "ci",
+          "file": "PR #6 CI on ccdd214",
+          "line": null,
+          "title": "Per Task 5.2 fallback, NFR-01 wall-clock owned by canonical CI cell — all four matrix cells SUCCESS"
+        }
+      ]
+    }
+  ],
+  "coverage_statistics": {
+    "total_requirements": 11,
+    "fully_covered": 11,
+    "partially_covered": 0,
+    "uncovered": 0,
+    "overall_coverage_percentage": 100,
+    "priority_breakdown": {
+      "P0": { "total": 4, "covered": 4, "percentage": 100 },
+      "P1": { "total": 4, "covered": 4, "percentage": 100 },
+      "P2": { "total": 3, "covered": 3, "percentage": 100 },
+      "P3": { "total": 0, "covered": 0, "percentage": 100 }
+    }
+  },
+  "gap_analysis": {
+    "critical_gaps": [],
+    "high_gaps": [],
+    "medium_gaps": [],
+    "low_gaps": [],
+    "partial_coverage_items": [],
+    "unit_only_items": [],
+    "carry_overs_non_gate": [
+      { "id": "P2-01", "priority": "P2", "title": "template:52 NFR-01 baseline literals will silently drift", "target_story": "6.2", "target_nfr": "NFR-08" },
+      { "id": "P3-01", "priority": "P3", "title": "template:30 §16.8 wording drift", "target_story": "6.2" },
+      { "id": "P3-02", "priority": "P3", "title": "template:25 §16.3 wording drift", "target_story": "6.2" },
+      { "id": "P3-03", "priority": "P3", "title": "GPC §16.1 four/five drift (GPC-side, not template-side)", "target_story": "6.2", "target_nfr": "NFR-08" }
+    ]
+  },
+  "coverage_heuristics": {
+    "endpoint_gaps": [],
+    "auth_negative_path_gaps": [],
+    "happy_path_only_gaps": [],
+    "ui_journey_gaps": [],
+    "ui_state_gaps": [],
+    "counts": {
+      "endpoints_without_tests": 0,
+      "auth_missing_negative_paths": 0,
+      "happy_path_only_criteria": 0,
+      "ui_journeys_without_e2e": 0,
+      "ui_states_missing_coverage": 0
+    }
+  },
+  "test_inventory": {
+    "summary": {
+      "files": 4,
+      "cases": 14,
+      "skipped_cases": 0,
+      "fixme_cases": 0,
+      "pending_cases": 0,
+      "by_level": {
+        "e2e": { "tests": 0, "criteria_covered": 0 },
+        "api": { "tests": 0, "criteria_covered": 0 },
+        "component": { "tests": 0, "criteria_covered": 0 },
+        "unit": { "tests": 0, "criteria_covered": 0 },
+        "other": { "tests": 14, "criteria_covered": 11, "note": "doc-verification + CI matrix evidence (no automated test added by this story per architecture overlay §4 FR-06 (b))" }
+      }
+    },
+    "blockers": []
+  },
+  "blockers": [],
+  "recommendations": [
+    {
+      "priority": "MEDIUM",
+      "action": "Address Round-1 Board carry-overs in Story 6.2: template-side fixes (P2-01, P3-01, P3-02) + GPC-side fix (P3-03)",
+      "requirements": ["AC-06.5", "AC-06.8"]
+    },
+    {
+      "priority": "LOW",
+      "action": "Run /bmad:tea:test-review at next release-gate to assess overall test quality",
+      "requirements": []
+    }
+  ]
+}
