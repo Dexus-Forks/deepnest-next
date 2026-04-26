@@ -42,7 +42,7 @@ so that **the FR-06 / NFR-03 gate is measurable from the PR view alone, with zer
 
 10. **AC-06.10 — `project-context.md` §16 anti-patterns hold for *this* PR.** No new global on `window`, no new IPC channel, no new `// @ts-ignore`, no `--no-verify` commits, no edits to vendored utilities, no edits to `main/util/_unused/`. *This story is template-only (no code surface), so the audit is largely vacuous — but the implementing dev still applies the audit to themselves as the first user of the new template.*
 
-11. **AC-06.11 — `npm test` regression-free.** The pre-commit hook (`husky` → `lint-staged` → `prettier --write && eslint --fix && playwright test`) runs end-to-end on the dev's commit. **Note:** this story adds **only** `.github/pull_request_template.md` (and possibly a tiny `lint-staged` adjustment if Markdown is not already covered — see Task 3.2). The Playwright spec is not exercised by a `.github/` change; the hook still runs it (per project-context.md §11 — full Playwright on every commit). Wall-clock stays within ±20 % of `nfr01-baseline.json` `rolling_mean_ms = 16746.6 ms`.
+11. **AC-06.11 — `npm test` regression-free.** The pre-commit hook (`husky` → `lint-staged` → `prettier --write && eslint --fix && playwright test`) runs end-to-end on the dev's commit. **Note:** this story adds **only** `.github/pull_request_template.md`. The Playwright spec is not exercised by a `.github/` change; the hook still runs it (per project-context.md §11 — full Playwright on every commit). The lint-staged glob does not include `.md` (Task 3 explains why this is intentional and forbids broadening it in this story). Wall-clock stays within ±20 % of `nfr01-baseline.json` `rolling_mean_ms = 16746.6 ms`.
 
 ---
 
@@ -55,7 +55,7 @@ so that **the FR-06 / NFR-03 gate is measurable from the PR view alone, with zer
 - [ ] **Task 2 — Author the PR template (AC: #2, #3, #4, #5, #6, #7, #9)**
   - [ ] 2.1 Create `.github/pull_request_template.md`. Use the **recommended template skeleton** below verbatim (or a close variant the dev justifies in the PR description).
   - [ ] 2.2 Embed all 16 §16 items as labelled checkboxes (shape (a) per AC-06.2). Each label format: `§16.X — <single-line summary>`. Map (canonical, taken from `_bmad-output/project-context.md` §16):
-    - `§16.1 — Do not add new globals on \`window\` (only the four declared in \`index.d.ts\` are sanctioned — ADR-005).`
+    - `§16.1 — Do not add new globals on \`window\` (only the canonical set declared in \`index.d.ts\` is sanctioned: \`config\`, \`DeepNest\`, \`SvgParser\`, \`nest\`, \`loginWindow\` — ADR-005). Note: project-context.md §16.1 currently says "four" but \`index.d.ts\` and project-context.md §7 enumerate five — match the index.d.ts list verbatim and flag the §16.1 wording for an NFR-08 follow-up.`
     - `§16.2 — Do not call \`ipcRenderer.invoke('read-config'\|'write-config')\` outside \`config.service.ts\`.`
     - `§16.3 — Do not register \`background-*\` IPC handlers outside \`nesting.service.ts\`.`
     - `§16.4 — Do not add a new UI framework (Ractive stays on the existing two views).`
@@ -136,7 +136,7 @@ Before opening this PR I have read:
 
 Tick each item as **NOT violated**. If any item is violated, ✅ describe the carve-out below the checklist or **do not request review**.
 
-- [ ] §16.1 — No new globals on `window` (only the four declared in `index.d.ts` — ADR-005)
+- [ ] §16.1 — No new globals on `window` (only the canonical set declared in `index.d.ts`: `config`, `DeepNest`, `SvgParser`, `nest`, `loginWindow` — ADR-005)
 - [ ] §16.2 — No `ipcRenderer.invoke('read-config'|'write-config')` outside `config.service.ts`
 - [ ] §16.3 — No new `background-*` IPC handlers outside `nesting.service.ts`
 - [ ] §16.4 — No new UI framework (Ractive stays on the existing two views)

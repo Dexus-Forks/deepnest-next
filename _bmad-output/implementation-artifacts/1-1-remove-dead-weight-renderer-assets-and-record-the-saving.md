@@ -218,8 +218,14 @@ If the local environment can run `npm run dist` (Windows) or `npx electron-build
 The notification window is created on demand by `notification-service.js` after the 30-min poll discovers an unseen notification (per `_bmad-output/project-context.md` §3 + §14). To force-trigger locally:
 
 ```bash
-# Option A — clear the seen-notifications cache and start the app:
-rm -f $(npx electron --userData)/seen-notifications.json   # path varies by OS
+# Option A — clear the seen-notifications cache from the per-OS userData directory, then start the app:
+#   userData path is `app.getPath('userData')` (see notification-service.js + docs/deployment-guide.md):
+#     macOS:   ~/Library/Application\ Support/deepnest/seen-notifications.json
+#     Linux:   ~/.config/deepnest/seen-notifications.json
+#     Windows: %APPDATA%\deepnest\seen-notifications.json
+#   Or print the resolved path from the running app via the devtools console:
+#     require('electron').remote.app.getPath('userData')
+rm -f "<resolved-userData-path>/seen-notifications.json"
 npm run start
 
 # Option B — open the window file directly via devtools console (after npm run start):

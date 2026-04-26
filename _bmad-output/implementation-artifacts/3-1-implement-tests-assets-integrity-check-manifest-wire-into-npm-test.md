@@ -85,7 +85,11 @@ so that **a contributor re-encoding `tests/assets/foo.svg` to fix a path issue c
     Re-derive the manifest after a deliberate fixture edit by following:
       docs/development-guide.md §"Re-deriving the test-fixture literals
       after a `tests/assets/` change" (added by Story 3.2).
-    Fast path: `npm run test:fixtures:update && git add tests/assets/.fixture-manifest.json tests/index.spec.ts`.
+    Fast path: `npm run test:fixtures:update && git add tests/assets/.fixture-manifest.json`.
+    If the spec literals in `tests/index.spec.ts` truly need to change (legitimate
+      placement-count or import-nav-count drift), update and stage that file in a
+      separate edit — `--update` mode regenerates the manifest by reading the
+      current spec literals; it does NOT rewrite the spec (AC-03.8).
     ```
   - [ ] 2.5 Performance budget. AC-03.6 caps the check at < 1 s on a developer laptop. Use `fs.readdirSync(... , { recursive: true })` + `fs.statSync` + `crypto.createHash('sha256').update(buffer).digest('hex')`. Avoid spawning subprocesses. **Time it 5× locally and record the p95** for the PR description.
 
