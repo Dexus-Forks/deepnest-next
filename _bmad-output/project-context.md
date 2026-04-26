@@ -276,7 +276,7 @@ Electron Main Process  (main.js)
    - **Copilot-authored APPROVED review.** Use an explicit author filter — the PR-level `reviewDecision` rollup is NOT Copilot-attributable on its own (it can be APPROVED via a human review and is `""` when no required reviewer set is configured). Until DEE-114 branch protection lands a Copilot-required rule, the canonical check is:
      ```
      gh pr view <n> --json reviews \
-       --jq '[.reviews[] | select(.author.login == "copilot-pull-request-reviewer")] | last | .state == "APPROVED"'
+       --jq '[.reviews[] | select(.author.login == "copilot-pull-request-reviewer")] | last | .state? == "APPROVED"'
      ```
      This returns `true` only when the **latest** review by `copilot-pull-request-reviewer` has `state == "APPROVED"`. Once DEE-114 lands and `reviewDecision` becomes Copilot-required, `reviewDecision == "APPROVED"` becomes a sufficient proxy and this filter can be relaxed.
    - **Every Copilot review thread is resolved** (per step 4 — including the explicit basis for any INVALID/DEFER resolutions).
