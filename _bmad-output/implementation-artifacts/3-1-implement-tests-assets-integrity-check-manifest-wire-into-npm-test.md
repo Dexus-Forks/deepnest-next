@@ -340,6 +340,44 @@ Amelia (Dev) — `bmad-dev-story` — Claude Opus 4.7 (`claude-opus-4-7`) — 20
 |---|---|---|
 | 2026-04-26 | Amelia (Dev) | DS step (DEE-56) — implemented Story 3.1: zero-dep `scripts/check-test-fixtures.mjs` + seed `.fixture-manifest.json` + `package.json` wire-in (interim shape, Story 2.3 pending). Status → review. |
 | 2026-04-26 | Amelia (Self-Review) | CR round 1 — **PASS** with one **Low** observation. Handoff to Review Board (Sage). |
+| 2026-04-26 | Murat (TEA) | DEE-70 post-merge — `bmad-tea-trace` matrix + NFR-01 CI confirmation. Gate **PASS** (88/100). Status `review` → `done`. NFR-01 +9.41 % vs. baseline (WITHIN tolerance). NFR-05 satisfied. Artefacts: `_bmad-output/quality-artifacts/3-1-trace-matrix.md`, `…/3-1-gate-decision.md`, `…/3-1-nfr01-ci-evidence.md`. |
+
+---
+
+## TEA Trace + Gate (Murat) — 2026-04-26 (DEE-70 post-merge)
+
+**Skill:** `bmad-tea-trace--743f222236` (TR — Requirements Tracing) + `bmad-tea-nfr-assess--3c7b26bc62` (NR — NFR Assessment).
+**Verdict:** **PASS** (88/100).
+**CI evidence:** `playwright.yml` run **24956426721** on `main@73daa8a4` — `xvfb-run npm test` wall-clock = 18 323 ms vs. baseline 16 746.6 ms (+9.41 %, WITHIN ±20 % tolerance window [13 397.3, 20 095.9] ms).
+
+### Coverage
+
+- **P0 ACs** (AC-03.1, AC-03.4, AC-03.5): **3/3 traced** — chain shape literal in `package.json:18` + manifest committed at `tests/assets/.fixture-manifest.json` + post-merge CI run green (`1 passed (16.7s)`).
+- **P1 ACs** (AC-03.2, AC-03.3, AC-03.7, AC-03.8, AC-03.9, AC-03.10): **6/6 traced** — STATIC `git diff` invariants, SCRIPT red+green transcripts, CI run wall-clock, §16 anti-pattern audit (16/16 clean).
+- **P2 ACs** (AC-03.6): **1/1 traced** — dev-laptop p95 = 76 ms; CI `test:fixtures:check` ≈ 107 ms; both under the < 1 s budget.
+- **NFR couplings:** NFR-01 + NFR-05 both **SATISFIED**.
+- **Anti-pattern §16:** 16/16 audited, **0 violations**.
+
+### Gate calculation
+
+```
+trace(P0+P1) complete  : 9/9       ✅
+nfr_assess no-P0       : NFR-01 +9.41 %, NFR-05 enforced ✅
+test_review score      : 88 ≥ 80   ✅
+→ verdict = PASS
+```
+
+### Artefacts
+
+- `_bmad-output/quality-artifacts/3-1-trace-matrix.md` — AC ↔ code ↔ test traceability (full table).
+- `_bmad-output/quality-artifacts/3-1-gate-decision.md` — gate calculation + scoring rubric.
+- `_bmad-output/quality-artifacts/3-1-nfr01-ci-evidence.md` — full NFR-01 wall-clock breakdown with methodological notes.
+
+### Follow-ups (non-blocking)
+
+- **F-1 (Low):** re-baseline NFR-01 on the pinned `ubuntu-22.04 / node-22.x` cell post runner-image migration to `ubuntu-24.04`. Current tolerance still holds; this is a noise-floor refresh.
+- **F-3 (Low):** L1 wording-only observation from self-review (spec-format-failure message — no explicit numeric line range). Wording-only; functional purpose satisfied.
+- Story 3.1.x (`9169a2c3-25de-4535-9658-c442876543fc`) operability hardening already exists in parallel — independent of this gate.
 
 ---
 
