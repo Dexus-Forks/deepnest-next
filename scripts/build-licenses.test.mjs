@@ -20,7 +20,12 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, chmodSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import * as path from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
+
+// Resolve the directory containing this test file. Use `fileURLToPath` (not
+// `new URL(import.meta.url).pathname`) — the latter is not a safe filesystem path on
+// Windows and can be percent-encoded on paths with spaces (Copilot inline #3 on PR #36).
+const TEST_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 import {
   EXIT_DRIFT,
@@ -259,7 +264,7 @@ test("loadEntries: I/O error → EXIT_IO", async () => {
   // <repo>/scripts; we copy build-licenses.mjs into the temp scripts/ dir so its
   // SCRIPT_DIR/REPO_ROOT resolution picks up the (empty-of-LICENSE.yml) tmp REPO_ROOT.
   const { copyFileSync } = await import("node:fs");
-  const thisDir = path.dirname(new URL(import.meta.url).pathname);
+  const thisDir = TEST_DIR;
   copyFileSync(path.join(thisDir, "build-licenses.mjs"), path.join(scriptDir, "build-licenses.mjs"));
   const r = spawnSync(process.execPath, [path.join(scriptDir, "build-licenses.mjs"), "--check"], {
     encoding: "utf8",
@@ -283,7 +288,7 @@ test(
     // so writing LICENSES.md fails with EACCES.
     const scriptDir = path.join(tmp, "scripts");
     mk(scriptDir, { recursive: true });
-    const thisDir = path.dirname(new URL(import.meta.url).pathname);
+    const thisDir = TEST_DIR;
     copyFileSync(
       path.join(thisDir, "build-licenses.mjs"),
       path.join(scriptDir, "build-licenses.mjs"),
@@ -319,7 +324,7 @@ test("modeCheck: LICENSES.md missing → EXIT_DRIFT", async () => {
   const tmp = mkdtempSync(path.join(tmpdir(), "build-licenses-missing-"));
   const scriptDir = path.join(tmp, "scripts");
   mk(scriptDir, { recursive: true });
-  const thisDir = path.dirname(new URL(import.meta.url).pathname);
+  const thisDir = TEST_DIR;
   copyFileSync(path.join(thisDir, "build-licenses.mjs"), path.join(scriptDir, "build-licenses.mjs"));
   const validEntry = `- path: stub\n  name: stub\n  license: MIT\n  copyright: (c)\n  upstream_url: https://example.org\n`;
   const passthroughEntry = `- path: /stub\n  name: stub\n  license: MIT\n  copyright: (c)\n  upstream_url: https://example.org\n`;
@@ -347,7 +352,7 @@ test("modeCheck: content drift → EXIT_DRIFT", async () => {
   const tmp = mkdtempSync(path.join(tmpdir(), "build-licenses-drift-"));
   const scriptDir = path.join(tmp, "scripts");
   mk(scriptDir, { recursive: true });
-  const thisDir = path.dirname(new URL(import.meta.url).pathname);
+  const thisDir = TEST_DIR;
   copyFileSync(path.join(thisDir, "build-licenses.mjs"), path.join(scriptDir, "build-licenses.mjs"));
   const validEntry = `- path: stub\n  name: stub\n  license: MIT\n  copyright: (c)\n  upstream_url: https://example.org\n`;
   const passthroughEntry = `- path: /stub\n  name: stub\n  license: MIT\n  copyright: (c)\n  upstream_url: https://example.org\n`;
@@ -388,7 +393,7 @@ test("modeCheck: truncation honesty → 'First 20 of 25 differing line(s) (…5 
   const tmp = mkdtempSync(path.join(tmpdir(), "build-licenses-trunc-"));
   const scriptDir = path.join(tmp, "scripts");
   mk(scriptDir, { recursive: true });
-  const thisDir = path.dirname(new URL(import.meta.url).pathname);
+  const thisDir = TEST_DIR;
   copyFileSync(path.join(thisDir, "build-licenses.mjs"), path.join(scriptDir, "build-licenses.mjs"));
   // Build a large LICENSE.yml stack so the regenerated LICENSES.md spans > 25 rows.
   // 25 distinct entries spread across the per-folder files.
@@ -434,7 +439,7 @@ test("modeCheck: truncation honesty → 'First 20 of 25 differing line(s) (…5 
 // --help / -h exit-0 (Story 2.3 / P3-05).
 test("dispatcher: --help → exit 0 with usage on stdout", async () => {
   const { spawnSync } = await import("node:child_process");
-  const thisDir = path.dirname(new URL(import.meta.url).pathname);
+  const thisDir = TEST_DIR;
   const r = spawnSync(
     process.execPath,
     [path.join(thisDir, "build-licenses.mjs"), "--help"],
@@ -446,7 +451,7 @@ test("dispatcher: --help → exit 0 with usage on stdout", async () => {
 
 test("dispatcher: -h → exit 0 with usage on stdout", async () => {
   const { spawnSync } = await import("node:child_process");
-  const thisDir = path.dirname(new URL(import.meta.url).pathname);
+  const thisDir = TEST_DIR;
   const r = spawnSync(
     process.execPath,
     [path.join(thisDir, "build-licenses.mjs"), "-h"],
@@ -459,7 +464,7 @@ test("dispatcher: -h → exit 0 with usage on stdout", async () => {
 // Unrecognised flag → EXIT_USAGE (regression guard for the --help branch).
 test("dispatcher: unrecognised flag → EXIT_USAGE", async () => {
   const { spawnSync } = await import("node:child_process");
-  const thisDir = path.dirname(new URL(import.meta.url).pathname);
+  const thisDir = TEST_DIR;
   const r = spawnSync(
     process.execPath,
     [path.join(thisDir, "build-licenses.mjs"), "--bogus"],
@@ -477,7 +482,7 @@ test("dispatcher: --check failure prefix is [licenses:check] (not [licenses:buil
   const tmp = mkdtempSync(path.join(tmpdir(), "build-licenses-modepfx-"));
   const scriptDir = path.join(tmp, "scripts");
   mk(scriptDir, { recursive: true });
-  const thisDir = path.dirname(new URL(import.meta.url).pathname);
+  const thisDir = TEST_DIR;
   copyFileSync(path.join(thisDir, "build-licenses.mjs"), path.join(scriptDir, "build-licenses.mjs"));
   const validEntry = `- path: stub\n  name: stub\n  license: MIT\n  copyright: (c)\n  upstream_url: https://example.org\n`;
   const passthroughEntry = `- path: /stub\n  name: stub\n  license: MIT\n  copyright: (c)\n  upstream_url: https://example.org\n`;

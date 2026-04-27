@@ -54,6 +54,19 @@ const startNs = process.hrtime.bigint();
 const r = spawnSync(process.execPath, [TARGET, "--check"], { stdio: "inherit" });
 const ms = Number(process.hrtime.bigint() - startNs) / 1e6;
 
+// Spawn-failure path (Copilot inline #1 on PR #36): if the spawn itself fails (e.g.
+// missing target script, OS-level spawn error) `r.error` is set and `r.status === null`.
+// `r.signal` is set when the child exits via signal (e.g. SIGKILL on timeout). Neither
+// case must be allowed to fall through to `process.exit(r.status)` — `process.exit(null)`
+// resolves to exit 0 and would falsely pass the gate.
+if (r.error || r.signal) {
+  const reason = r.error ? `spawn error: ${r.error.message}` : `terminated by signal ${r.signal}`;
+  process.stderr.write(
+    `[licenses:check:budget] FAIL — gate process did not exit cleanly (${reason}; wall-clock ${ms.toFixed(0)} ms before failure)\n`,
+  );
+  process.exit(EXIT_BUDGET);
+}
+
 if (r.status !== 0) {
   process.stderr.write(
     `[licenses:check:budget] note — wall-clock ${ms.toFixed(0)} ms (gate exited ${r.status}; budget check skipped)\n`,

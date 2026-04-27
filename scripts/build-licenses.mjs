@@ -422,8 +422,16 @@ export function dispatchCli(argv) {
 // Entry-point guard (Story 2.3 / AC-02.3.3 module-shape constraint). The dispatcher
 // only runs when this file is invoked as a Node entry point; importing the module from
 // the test harness MUST NOT trigger CLI behaviour.
+//
+// `process.argv[1]` is commonly a relative path (`node scripts/build-licenses.mjs`) or
+// can be missing (`node -e '…'` flows have `argv[1] === undefined`). `pathToFileURL`
+// requires an absolute path on input or it throws on Windows / on relative inputs that
+// fail its internal validation (Copilot inline #2 on PR #36). Resolve to an absolute
+// path first and treat the missing-argv case as "not main".
 export function isMain() {
-  return import.meta.url === pathToFileURL(process.argv[1] ?? "").href;
+  const entry = process.argv[1];
+  if (!entry) return false;
+  return import.meta.url === pathToFileURL(path.resolve(entry)).href;
 }
 
 if (isMain()) {
