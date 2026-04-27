@@ -22,70 +22,93 @@
 //   node scripts/check-licenses-budget.mjs           — run + check budget
 //   node scripts/check-licenses-budget.mjs --help    — print usage + exit 0
 //   node scripts/check-licenses-budget.mjs -h        — print usage + exit 0
+//
+// Module shape (Story 2.3 Round-1 follow-up / DEE-140): exports `THRESHOLD_MS` and
+// `EXIT_BUDGET` for in-process sanity checks; the CLI dispatch is wrapped in an
+// `isMain()` guard (mirrors build-licenses.mjs:431) so importing this module from
+// the test harness does NOT spawn the gate.
 
 import { spawnSync } from "node:child_process";
 import * as path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const TARGET = path.join(SCRIPT_DIR, "build-licenses.mjs");
 
-const THRESHOLD_MS = 750;
-const EXIT_BUDGET = 3;
+export const THRESHOLD_MS = 750;
+export const EXIT_BUDGET = 3;
 
-const argv = process.argv.slice(2);
-if (argv.includes("--help") || argv.includes("-h")) {
-  process.stdout.write(
+function emitUsage(stream) {
+  stream.write(
     `usage: node scripts/check-licenses-budget.mjs\n` +
       `  Spawns \`node scripts/build-licenses.mjs --check\`, fails if wall-clock > ${THRESHOLD_MS} ms.\n` +
       `  Story 2.3 (DEE-124 / P3-06 / Hermes F1). See scripts/check-licenses-budget.mjs header.\n`,
   );
+}
+
+export function runGate(argv) {
+  if (argv.includes("--help") || argv.includes("-h")) {
+    emitUsage(process.stdout);
+    process.exit(0);
+  }
+  if (argv.length > 0) {
+    process.stderr.write(
+      `[licenses:check:budget] FAIL — unrecognised arg(s): ${JSON.stringify(argv)}\n` +
+        `  usage: node scripts/check-licenses-budget.mjs [--help|-h]\n`,
+    );
+    process.exit(EXIT_BUDGET);
+  }
+
+  const startNs = process.hrtime.bigint();
+  const r = spawnSync(process.execPath, [TARGET, "--check"], { stdio: "inherit" });
+  const ms = Number(process.hrtime.bigint() - startNs) / 1e6;
+
+  // Spawn-failure path (Copilot inline #1 on PR #36): if the spawn itself fails (e.g.
+  // missing target script, OS-level spawn error) `r.error` is set and `r.status === null`.
+  // `r.signal` is set when the child exits via signal (e.g. SIGKILL on timeout). Neither
+  // case must be allowed to fall through to `process.exit(r.status)` — `process.exit(null)`
+  // resolves to exit 0 and would falsely pass the gate.
+  if (r.error || r.signal) {
+    const reason = r.error ? `spawn error: ${r.error.message}` : `terminated by signal ${r.signal}`;
+    process.stderr.write(
+      `[licenses:check:budget] FAIL — gate process did not exit cleanly (${reason}; wall-clock ${ms.toFixed(0)} ms before failure)\n`,
+    );
+    process.exit(EXIT_BUDGET);
+  }
+
+  if (r.status !== 0) {
+    process.stderr.write(
+      `[licenses:check:budget] note — wall-clock ${ms.toFixed(0)} ms (gate exited ${r.status}; budget check skipped)\n`,
+    );
+    process.exit(r.status);
+  }
+
+  if (ms > THRESHOLD_MS) {
+    process.stderr.write(
+      `[licenses:check:budget] FAIL — wall-clock ${ms.toFixed(0)} ms exceeds ${THRESHOLD_MS} ms threshold.\n` +
+        `  Threshold is 250 ms below architecture.md §3.3's 1 s test-latency ceiling. If a legitimate\n` +
+        `  metadata-set growth pushed the gate past 750 ms, ping @Murat (TEA) on the relevant\n` +
+        `  story DS issue to renegotiate within the §3.3 1 s ceiling. Do NOT raise the threshold\n` +
+        `  silently — the budget posture is explicit per Sage Round-1 P3-06 / Hermes F1.\n`,
+    );
+    process.exit(EXIT_BUDGET);
+  }
+
+  process.stdout.write(
+    `[licenses:check:budget] OK — gate wall-clock ${ms.toFixed(0)} ms <= ${THRESHOLD_MS} ms threshold\n`,
+  );
   process.exit(0);
 }
-if (argv.length > 0) {
-  process.stderr.write(
-    `[licenses:check:budget] FAIL — unrecognised arg(s): ${JSON.stringify(argv)}\n` +
-      `  usage: node scripts/check-licenses-budget.mjs [--help|-h]\n`,
-  );
-  process.exit(EXIT_BUDGET);
+
+// Entry-point guard (Story 2.3 Round-1 follow-up / DEE-140 / mirrors build-licenses.mjs:431).
+// Importing this module from the test harness MUST NOT trigger CLI behaviour; only run
+// `runGate(...)` when this file is invoked as a Node entry point.
+export function isMain() {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  return import.meta.url === pathToFileURL(path.resolve(entry)).href;
 }
 
-const startNs = process.hrtime.bigint();
-const r = spawnSync(process.execPath, [TARGET, "--check"], { stdio: "inherit" });
-const ms = Number(process.hrtime.bigint() - startNs) / 1e6;
-
-// Spawn-failure path (Copilot inline #1 on PR #36): if the spawn itself fails (e.g.
-// missing target script, OS-level spawn error) `r.error` is set and `r.status === null`.
-// `r.signal` is set when the child exits via signal (e.g. SIGKILL on timeout). Neither
-// case must be allowed to fall through to `process.exit(r.status)` — `process.exit(null)`
-// resolves to exit 0 and would falsely pass the gate.
-if (r.error || r.signal) {
-  const reason = r.error ? `spawn error: ${r.error.message}` : `terminated by signal ${r.signal}`;
-  process.stderr.write(
-    `[licenses:check:budget] FAIL — gate process did not exit cleanly (${reason}; wall-clock ${ms.toFixed(0)} ms before failure)\n`,
-  );
-  process.exit(EXIT_BUDGET);
+if (isMain()) {
+  runGate(process.argv.slice(2));
 }
-
-if (r.status !== 0) {
-  process.stderr.write(
-    `[licenses:check:budget] note — wall-clock ${ms.toFixed(0)} ms (gate exited ${r.status}; budget check skipped)\n`,
-  );
-  process.exit(r.status);
-}
-
-if (ms > THRESHOLD_MS) {
-  process.stderr.write(
-    `[licenses:check:budget] FAIL — wall-clock ${ms.toFixed(0)} ms exceeds ${THRESHOLD_MS} ms threshold.\n` +
-      `  Threshold is 250 ms below architecture.md §3.3's 1 s test-latency ceiling. If a legitimate\n` +
-      `  metadata-set growth pushed the gate past 750 ms, ping @Murat (TEA) on the relevant\n` +
-      `  story DS issue to renegotiate within the §3.3 1 s ceiling. Do NOT raise the threshold\n` +
-      `  silently — the budget posture is explicit per Sage Round-1 P3-06 / Hermes F1.\n`,
-  );
-  process.exit(EXIT_BUDGET);
-}
-
-process.stdout.write(
-  `[licenses:check:budget] OK — gate wall-clock ${ms.toFixed(0)} ms <= ${THRESHOLD_MS} ms threshold\n`,
-);
-process.exit(0);

@@ -272,6 +272,9 @@ test("loadEntries: I/O error → EXIT_IO", async () => {
   rmSync(tmp, { recursive: true, force: true });
   assert.equal(r.status, EXIT_IO);
   assert.match(r.stderr, /FAIL — I\/O error on main\/LICENSE\.yml/);
+  // P3-07 / Lydia F2 (DEE-140 fold-in): MODE-prefix correctness on the failIO half of
+  // P3-07. Dispatched with `--check`, so failIO MUST emit `[licenses:check]`.
+  assert.match(r.stderr, /^\[licenses:check\]/m);
 });
 
 // Branch 11: modeBuild — write error. Skipped on Windows (chmod semantics differ;
@@ -314,8 +317,47 @@ test(
     rmSync(tmp, { recursive: true, force: true });
     assert.equal(r.status, EXIT_IO);
     assert.match(r.stderr, /FAIL — I\/O error on LICENSES\.md/);
+    // P3-07 / Lydia F2 (DEE-140 fold-in): MODE-prefix correctness on the modeBuild
+    // failIO branch. Dispatched without `--check`, so failIO MUST emit `[licenses:build]`.
+    assert.match(r.stderr, /^\[licenses:build\]/m);
   },
 );
+
+// Branch 11.5 (P3-07 / Lydia F2 / DEE-140 fold-in): schema-fail spawned test under the
+// build dispatcher. Drives a malformed LICENSE.yml so the parser short-circuits via
+// failSchema. MUST emit `[licenses:build]` (NOT `[licenses:check]`) because the gate
+// runs without `--check`. Closes the failSchema half of P3-07 (companion to the
+// existing in-process Branch-1..9 captureOnFail asserts which can't observe MODE).
+test("modeBuild: schema-fail spawned → EXIT_SCHEMA + [licenses:build] prefix", async () => {
+  const { spawnSync } = await import("node:child_process");
+  const { copyFileSync, mkdirSync: mk } = await import("node:fs");
+  const tmp = mkdtempSync(path.join(tmpdir(), "build-licenses-schemafail-"));
+  const scriptDir = path.join(tmp, "scripts");
+  mk(scriptDir, { recursive: true });
+  copyFileSync(path.join(TEST_DIR, "build-licenses.mjs"), path.join(scriptDir, "build-licenses.mjs"));
+  // Minimal valid passthrough + util/font/tests, but main/util/LICENSE.yml has a row
+  // missing the required `name` field — parser triggers failSchema in modeBuild.
+  const validEntry = `- path: stub\n  name: stub\n  license: MIT\n  copyright: (c)\n  upstream_url: https://example.org\n`;
+  const passthroughEntry = `- path: /stub\n  name: stub\n  license: MIT\n  copyright: (c)\n  upstream_url: https://example.org\n`;
+  // Drop `name:` to trip "missing required field" in validateEntry.
+  const brokenEntry = `- path: stub\n  license: MIT\n  copyright: (c)\n  upstream_url: https://example.org\n`;
+  mk(path.join(tmp, "main"), { recursive: true });
+  mk(path.join(tmp, "main/util"), { recursive: true });
+  mk(path.join(tmp, "main/font"), { recursive: true });
+  mk(path.join(tmp, "tests/assets"), { recursive: true });
+  writeFileSync(path.join(tmp, "main/LICENSE.yml"), passthroughEntry);
+  writeFileSync(path.join(tmp, "main/util/LICENSE.yml"), brokenEntry);
+  writeFileSync(path.join(tmp, "main/font/LICENSE.yml"), validEntry);
+  writeFileSync(path.join(tmp, "tests/assets/LICENSE.yml"), validEntry);
+  const r = spawnSync(process.execPath, [path.join(scriptDir, "build-licenses.mjs")], {
+    encoding: "utf8",
+  });
+  rmSync(tmp, { recursive: true, force: true });
+  assert.equal(r.status, EXIT_SCHEMA);
+  assert.match(r.stderr, /missing required field `name`/);
+  assert.match(r.stderr, /^\[licenses:build\]/m);
+  assert.doesNotMatch(r.stderr, /^\[licenses:check\]/m);
+});
 
 // Branch 12: modeCheck — LICENSES.md missing (ENOENT).
 test("modeCheck: LICENSES.md missing → EXIT_DRIFT", async () => {
