@@ -1,12 +1,8 @@
 {
-  "captured_at": "2026-04-26T09:54:42Z",
+  "captured_at": "2026-04-27T05:43:51Z",
   "runner_cell": "ubuntu-22.04 / node-22.x",
-  "git_sha": "dfc88a784eec0b4f0fc2a39a5889938e83600cb7",
+  "git_sha": "bbdc8487f53803583860b5cf87a8d65318e5313c",
   "runs": [
-    {
-      "ms": 18433,
-      "exit_code": 0
-    },
     {
       "ms": 16478,
       "exit_code": 0
@@ -22,9 +18,13 @@
     {
       "ms": 13540,
       "exit_code": 0
+    },
+    {
+      "ms": 20000,
+      "exit_code": 0
     }
   ],
-  "rolling_mean_ms": 16746.6,
-  "stddev_ms": 3066.7,
+  "rolling_mean_ms": 17060.0,
+  "stddev_ms": 3294.6,
   "tolerance_pct": 20
 }
