@@ -58,7 +58,7 @@ If any single criterion fails, **`CHANGES` stands. No partial carve-outs.** If e
 
 ### 2.2 The 2 operational invariants
 
-Once a `severity.max=P1 → APPROVED-via-carve-out` verdict has been granted, the following invariants govern the in-flight window until merge.
+Once a `severity.max=P1 → APPROVED (via carve-out)` verdict has been granted, the following invariants govern the in-flight window until merge.
 
 6. **PR-head-SHA freeze.** The PR head SHA is **frozen** from carve-out grant until merge. Any commit destined for that branch — even doc-only — MUST hold or land on a fresh branch off `main`. Reason: criteria 3 + 4 are evaluated against the immutable head SHA; pushing changes the SHA and resets the approval stack (CI re-run + Copilot re-review + sign-off citations stale). Originating arbitration: PM [comment dcc82519](/DEE/issues/DEE-131#comment-dcc82519-25c8-4b53-8340-d7b935743555) ("doc-only = harmless") was wrong in carve-out context; Sage's quarantine call held; CTO arbitration [comment a44fac6a](/DEE/issues/DEE-131#comment-a44fac6a-8e42-42ab-bb32-928131dfd9d3) made the freeze the spec rule.
 
