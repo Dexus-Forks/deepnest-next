@@ -444,45 +444,104 @@ Option (i) parameter-pass instead of (ii) mutable export keeps the surface a sma
 
 ### Agent Model Used
 
-To be filled by Amelia (Dev) at DS time.
+Amelia (DS) — `claude_local` adapter, `claude-opus-4-7` (parent prompt cache hash `976240f3766f9fc2f3ac991306def5880d3508d8c1c033fb6a3ecc6971351234`). Heartbeat run `5d0f475c-d397-452a-86ef-dc0458fd52b5` (parked / external-prereq) + the resume run that landed this PR.
 
 ### Debug Log References
 
-To be filled by Amelia (Dev) at DS time. MUST include the verbatim drift-fail demonstration per AC-02.3.2.
+**Local clean-tree run (post-implementation):**
+
+```
+$ node scripts/build-licenses.mjs --check
+[licenses:check] OK — LICENSES.md matches regenerated output (0 drift, 5 ms wall)
+$ echo $?
+0
+
+$ node scripts/check-licenses-budget.mjs
+[licenses:check] OK — LICENSES.md matches regenerated output (0 drift, 4 ms wall)
+[licenses:check:budget] OK — gate wall-clock 68 ms <= 750 ms threshold
+$ echo $?
+0
+
+$ node --test scripts/build-licenses.test.mjs
+… 21/21 pass; duration_ms 754 (test runner overhead — individual tests sub-second)
+ℹ tests 21
+ℹ pass 21
+ℹ fail 0
+```
+
+**Drift-fail demonstration (verbatim stderr, per AC-02.3.2 fail-path requirement):**
+
+```
+$ cp LICENSES.md /tmp/LICENSES.md.orig
+$ sed -i 's/MIT/BLAH/' LICENSES.md
+$ node scripts/build-licenses.mjs --check
+[licenses:check] FAIL — LICENSES.md differs from regenerated output.
+
+First 10 of 10 differing line(s):
+@@ L5 @@
+-| /main | MIT | Copyright (c) 2015 Jack Qiao |
++| /main | BLAH | Copyright (c) 2015 Jack Qiao |
+@@ L6 @@
+-| /main/svgparser.js | MIT | Copyright (c) 2015 Jack Qiao (svgnest origin) |
++| /main/svgparser.js | BLAH | Copyright (c) 2015 Jack Qiao (svgnest origin) |
+@@ L10 @@
+-| /main/font/latolatinfonts.css | MIT | Copyright (c) 2015 Jack Qiao (svgnest origin); maintained by Deepnest contributors |
++| /main/font/latolatinfonts.css | BLAH | Copyright (c) 2015 Jack Qiao (svgnest origin); maintained by Deepnest contributors |
+… (10 of 10 differing lines shown; un-truncated banner — no `(…N more truncated)` clause)
+
+Re-derive via `npm run licenses:build` after a deliberate metadata edit; see
+  _bmad-output/planning-artifacts/architecture.md §5 ADR-008 (Schema reference + §271 out-of-tree clause).
+$ echo $?
+1
+$ cp /tmp/LICENSES.md.orig LICENSES.md
+$ git diff --stat LICENSES.md
+(empty — file restored byte-for-byte)
+```
+
+Mode prefix is `[licenses:check]` (not `[licenses:build]`) — verifies AC-02.3.6 (P3-07 / Copilot inline #4). Unified-diff `+`/`-` markers per AC-02.3.7. Banner `First 10 of 10 differing line(s):` un-truncated (un-truncated-shape branch of AC-02.3.7) — exit 1 per `EXIT_DRIFT`.
 
 ### Completion Notes List
 
-To be filled by Amelia (Dev) at DS time. MUST include:
-
-- **AC-02.3.1 wire-in choice** — (a) inline-and / (b) `pretest` hook + rationale.
-- **AC-02.3.3 `onFail` injection mechanism** — (i) parameter / (ii) module-level mutable + rationale.
-- **AC-02.3.3 harness placement** — (α) `node:test` / (β) Playwright + rationale.
-- **AC-02.3.4 wall-clock wrapper choice** — (a) standalone / (b) inline + rationale + Murat's confirmation comment ID if (b) was picked.
-- **AC-02.3.7 marker convention** — regenerated-as-`-` / committed-as-`+` (or inverse) + rationale.
-- **AC-02.3.8 `renderTable` polish** — implemented / waived; if waived, rationale.
-- **AC-02.3.9 cross-script follow-up issue identifier** — for the parallel `scripts/check-test-fixtures.mjs --help` fix.
-- **§16 anti-pattern audit** — 16/16 pass.
-- **NFR-01 wall-clock** — recorded vs `_bmad-output/planning-artifacts/nfr01-baseline.json`.
+- **AC-02.3.1 wire-in choice** — **(a) inline-and** in `package.json` `scripts.test`. Final shape: `node scripts/check-licenses-budget.mjs && npm run test:licenses && npm run test:fixtures:check && playwright test`. Matches Story 3.1 / PR #15 precedent and sprint plan §3 shared-edit-point #2 ordered merge point. Rationale: top-to-bottom readability; reviewer cognitive cost lowest; Bash `&&` short-circuit semantics already relied on. The budget wrapper substitutes for bare `npm run licenses:check` to fold AC-02.3.4 into the same ordered position (the wrapper internally spawns `node scripts/build-licenses.mjs --check`, so the gate runs identically and adds the wall-clock budget on top).
+- **AC-02.3.3 `onFail` injection mechanism** — **(ii) module-level mutable export** with `setOnFail(fn)`. Default `_onFail = defaultOnFail` (`process.stderr.write` + `process.exit`). Test harness imports `setOnFail` and swaps in a throwing callback; `setOnFail(null)` restores the default. Rationale: matches spec sketch verbatim; lower call-site churn than (i) parameter-pass (no signature changes to `failSchema` / `failIO` / `parseYaml` / `validateEntry`); harness import surface is one helper.
+- **AC-02.3.3 harness placement** — **(α) `node:test`** at `scripts/build-licenses.test.mjs`, wired via new `npm run test:licenses` (`node --test scripts/build-licenses.test.mjs`). Rationale: spec recommendation; zero-dep (Node-builtin since 18 LTS); 21 cases run in < 800 ms wall total (each individual case sub-second); avoids ~5 s Playwright/xvfb-run overhead. Mirrors the `scripts/check-test-fixtures.mjs` Node-stable + zero-dep + `.mjs` precedent. Establishes the build-tooling test pattern for future stories per Dev Notes §"Why `node:test` over Playwright".
+- **AC-02.3.3 harness coverage** — 21 `node:test` cases. The 13 AC-02.3.3 table branches (parser × 3, validate × 5, NEW Copilot #1 × 1, NEW Copilot #2 × 2, loadEntries I/O, modeBuild write, modeCheck missing, modeCheck drift) are all green; modeBuild write-error is platform-conditional (skipped on Windows per the spec note). Bonus cases: PASSTHROUGH_FILE absolute-path opt-out, truncation banner shape (25 differing → "First 20 of 25 (…5 more truncated)"), `--help` / `-h` / unrecognised-flag exit codes, `[licenses:check]` mode-prefix correctness, `isMain()` import-no-dispatch sanity.
+- **AC-02.3.4 wall-clock wrapper choice** — **(a) standalone wrapper** at `scripts/check-licenses-budget.mjs`. Threshold `THRESHOLD_MS = 750`. Rationale: spec recommendation; keeps `scripts.test` a single line of script names; budget logic isolated with comments; gate-correctness vs budget-correctness stay decoupled (a slow `licenses:check` is a separate failure mode from drift). Did **not** ping Murat (TEA) pre-commit — picked (a), so the spec's pre-commit ping requirement (only triggered for (b)) does not apply. Murat's trace pass on this story is the next checkpoint to confirm the 750 ms threshold matches the canonical CI cell. Local benchmark on developer laptop: 68 ms wall (well under threshold).
+- **AC-02.3.5 success log line** — emitted by `modeCheck` on the OK path: `[licenses:check] OK — LICENSES.md matches regenerated output (0 drift, ${ms} ms wall)`. Wall-clock captured via `process.hrtime.bigint()` around `buildOutput()` + `readFileSync` + comparison.
+- **AC-02.3.6 mode-prefix** — implemented via module-level `MODE` constant (default `licenses:build`; `dispatchCli` flips to `licenses:check` on `--check`). All `failSchema` / `failIO` / `emitDriftDiff` / `modeBuild` / `modeCheck` outputs use `[${MODE}] …`. Verified by the `dispatcher: --check failure prefix is [licenses:check]` test.
+- **AC-02.3.7 marker convention** — **`-${expected}` / `+${observed}`** (regenerated-as-`-`, committed-as-`+`). Rationale: matches spec sketch verbatim. Reads as "to make CI green, accept the `-` lines into LICENSES.md (run `npm run licenses:build` and stage the result)". Convention documented in the file-header comment of `scripts/build-licenses.mjs` so reviewers know how to read the output. Truncation: total drift counted across the whole file before the 20-line display cap; banner reads `First N of M differing line(s):` with `(…M-N more truncated)` only when truncated.
+- **AC-02.3.8 `renderTable` polish** — **IMPLEMENTED** (declined waiver). Single-pass `for-of` accumulation with `rowOf(e)` helper. Output is byte-identical to the prior `[...firstParty, ...thirdParty].map(rowOf).join("\n")` shape (verified by `git diff LICENSES.md` empty after `npm run licenses:build`). Rationale to NOT waive: the change is < 10 LoC, mechanically simple, and we are already deep-touching the file; folding the polish here keeps any future Story 2.4 docs PR clean of `scripts/build-licenses.mjs` edits.
+- **AC-02.3.9 cross-script follow-up issue** — **[DEE-126](/DEE/issues/DEE-126)** filed (priority `low`, status `todo`, parent: none, goal: shared with DEE-124). Issue covers `scripts/check-test-fixtures.mjs --help` exit-0 cross-script symmetry per Bundle 3 P3-05. Story 2.3 does NOT touch `scripts/check-test-fixtures.mjs` per FR-02 / FR-03 gate-decoupling.
+- **§16 anti-pattern audit — 16/16 PASS.** Verified via `git diff` on the final tree (see also `git diff --stat -- main/util/ main/font/fonts/ tests/assets/ scripts/check-test-fixtures.mjs eslint.config.mjs tsconfig.json` returns empty).
+  - §16.1 no `window.*` add — verified.
+  - §16.2/16.3 no new IPC channel — verified.
+  - §16.4 no new UI framework — verified.
+  - §16.5 no `main/util/*.{js,ts}` edit — verified (empty diff).
+  - §16.6 no `main/util/_unused/*` source edit — verified (empty diff).
+  - §16.7 strict-TS surface unchanged — verified (script + harness are `.mjs`).
+  - §16.8 no `// @ts-ignore` add — verified.
+  - §16.9 no `--no-verify` — DEE-98 Bundle 1 exception explicitly does NOT carry forward; this PR is code-and-test, pre-commit hook runs.
+  - §16.10 no `tests/assets/*.svg` re-encoding — verified.
+  - §16.11–16.16 N/A or verified.
+- **NFR-01 wall-clock** — incremental cost over Story 2.2 baseline measured locally: `licenses:check` ≈ 4–5 ms; `test:licenses` 21 cases ≈ 754 ms total (test-runner overhead; per-case sub-second); budget wrapper adds ≈ +5 ms wrapper overhead on top of the gate. Net incremental cost ≈ +800 ms vs the Story 2.2 baseline (`rolling_mean_ms = 16746.6 ± 20 % = [13397, 20096] ms`). Well within the ±20 % envelope. Murat (TEA) records the rolling-mean update on his trace pass on the merged PR.
 
 ### Bundle 3 Polish — Waiver
 
-(Only populated if AC-02.3.8 `renderTable` polish is waived. Other Bundle 3 ACs MUST be implemented per the spec contract.)
+(Empty — AC-02.3.8 `renderTable` polish was implemented, not waived. All other Bundle 3 ACs implemented per the spec contract.)
 
 ### File List
 
-To be filled by Amelia (Dev) at DS time. Expected shape:
-
 **New files:**
 
-- `scripts/build-licenses.test.mjs` (if (α)) OR `tests/build-licenses.spec.ts` (if (β)).
-- `scripts/check-licenses-budget.mjs` (if (a) AC-02.3.4).
+- `scripts/build-licenses.test.mjs` — `node:test` smoke harness for the parser/drift fail-fast branches (21 cases). 380 lines.
+- `scripts/check-licenses-budget.mjs` — 750 ms wall-clock CI guard wrapper around `node scripts/build-licenses.mjs --check`. 70 lines.
 
 **Modified files:**
 
-- `scripts/build-licenses.mjs` — `onFail` refactor + 2 new schema branches + `MODE` prefix + `emitDriftDiff` enhancements + (optional) `renderTable` polish + `--help` exit-0 + module-shape entry-point guard.
-- `package.json` — wire `licenses:check` into `scripts.test`; add `test:licenses`; optionally add `test:licenses:budget`.
-- `_bmad-output/implementation-artifacts/sprint-status.yaml` — `2-3-…: ready-for-dev → done`; `last_updated:` refreshed.
-- `_bmad-output/implementation-artifacts/2-3-wire-licenses-check-into-npm-test-ci-drift-gate.md` (this file — populated DS-side per the standard Dev-Agent-Record block).
+- `scripts/build-licenses.mjs` — `onFail` injection (Story 2.3 / P2-04) + module-level `MODE` constant for diagnostic prefix (P3-07 / Copilot inline #4) + `notes:string` schema branch (Copilot inline #1) + per-folder absolute-path / `..` rejection (Copilot inline #2) + unified-diff drift output with truncation honesty (P3-03 / Copilot inline #3) + single-pass `renderTable` (P3-04, implemented) + `--help` / `-h` exit-0 (P3-05) + `isMain()` entry-point guard for module importability + named exports for the testable surface (`parseYaml`, `parseValue`, `validateEntry`, `loadEntries`, `deriveUnit`, `renderTable`, `modeBuild`, `modeCheck`, `emitDriftDiff`, `EXIT_*`, `MODE`, `setMode`, `defaultOnFail`, `setOnFail`, `dispatchCli`, `isMain`). +195 / -61 lines.
+- `package.json` — `scripts.test` rewired to `node scripts/check-licenses-budget.mjs && npm run test:licenses && npm run test:fixtures:check && playwright test`; new `scripts.test:licenses` entry. +2 / -1 lines.
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — `2-3-…: ready-for-dev → done`; `last_updated:` refreshed (file-header comment + YAML body).
+- `_bmad-output/implementation-artifacts/2-3-wire-licenses-check-into-npm-test-ci-drift-gate.md` (this file) — Dev Agent Record + Change Log + waiver block populated.
 
 **Untouched (verified by `git diff`):** `scripts/check-test-fixtures.mjs`, `LICENSES.md`, all `LICENSE.yml` files, `package-lock.json`, `eslint.config.mjs`, `tsconfig.json`, `.github/`, all `main/util/*.{js,ts}`, all `main/util/_unused/*` source files, all `main/font/fonts/*`, all `tests/assets/*.{svg,woff,woff2}`, `main.js`, `index.d.ts`.
 
@@ -491,3 +550,4 @@ To be filled by Amelia (Dev) at DS time. Expected shape:
 | Date | Change | Author |
 |---|---|---|
 | 2026-04-26 | Story created (`bmad-create-story`, [DEE-122](/DEE/issues/DEE-122) — CS follow-up to [DEE-98](/DEE/issues/DEE-98) Bundle 2). Bundle 2 (P2-04 + P3-06) folded as mandatory ACs (#3, #4); Bundle 3 (P3-03/04/05 + Copilot inline #3 + #4 / P3-07) folded as polish ACs (#6, #7, #8, #9) per DEE-98 DoD; AC-02.3.8 (`renderTable` allocation polish) flagged as the one AC eligible for waiver. Status: ready-for-dev. | John (PM, BMad) |
+| 2026-04-27 | Story implemented (`bmad-dev-story`, [DEE-124](/DEE/issues/DEE-124)). All 13 ACs satisfied. AC-02.3.8 implemented (waiver declined). AC-02.3.3 onFail = (ii) module-level mutable export. AC-02.3.3 harness = (α) `node:test` (21 cases, 21/21 pass). AC-02.3.4 = (a) standalone wrapper, threshold 750 ms (Murat to confirm on trace pass). AC-02.3.7 markers = `-${exp}` / `+${obs}` (regenerated-as-`-`). Cross-script `--help` exit-0 follow-up filed as [DEE-126](/DEE/issues/DEE-126). §16 anti-pattern audit 16/16 pass. NFR-01 within ±20 %. Status: ready-for-dev → done on PR merge. | Amelia (DS, BMad) |
