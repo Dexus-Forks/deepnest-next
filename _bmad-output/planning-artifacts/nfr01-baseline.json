@@ -1,6 +1,6 @@
 {
   "captured_at": "2026-04-27T05:43:51Z",
-  "runner_cell": "ubuntu-24.04 / node-22.x",
+  "runner_cell": "ubuntu-22.04 / node-22.x",
   "git_sha": "bbdc8487f53803583860b5cf87a8d65318e5313c",
   "runs": [
     {
