@@ -18,7 +18,7 @@
     "test": "node scripts/check-licenses-budget.mjs && npm run test:licenses && npm run test:fixtures:check && playwright test",
     "test:fixtures:check": "node scripts/check-test-fixtures.mjs",
     "test:fixtures:update": "node scripts/check-test-fixtures.mjs --update",
-    "test:licenses": "node --test scripts/build-licenses.test.mjs scripts/check-licenses-budget.test.mjs",
+    "test:licenses": "node --test scripts/build-licenses.test.mjs scripts/check-licenses-budget.test.mjs scripts/check-test-fixtures.test.mjs",
     "licenses:build": "node scripts/build-licenses.mjs",
     "licenses:check": "node scripts/build-licenses.mjs --check",
     "build": "tsc && electron-builder install-app-deps",
