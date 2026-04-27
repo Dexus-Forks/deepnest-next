@@ -96,6 +96,8 @@ export const defaultOnFail = (code, msg) => {
 
 let _onFail = defaultOnFail;
 
+// Aegis defense-in-depth (DEE-140 fold-in): test-only injection seam — production code
+// MUST NOT call setOnFail; only the .test.mjs harness swaps in a throwing callback.
 export function setOnFail(fn) {
   _onFail = fn ?? defaultOnFail;
 }
@@ -190,6 +192,11 @@ export function loadEntries() {
     const parsed = parseYaml(text, rel);
     for (const { entry, startLine } of parsed) {
       validateEntry(entry, rel, startLine);
+      // Aegis defense-in-depth (DEE-140 fold-in): `entry.path` here is a label-only
+      // string used to build the LICENSES.md Unit cell — no fs operation is performed
+      // on it. The path-traversal/absolute-prefix checks in validateEntry above are
+      // schema enforcement (ADR-008 §5), not runtime fs sanitation; the fs invariant
+      // (no readlink / open / unlink against `entry.path`) is assumed and held here.
       const unit = deriveUnit(rel, entry.path);
       all.push({
         unit,
