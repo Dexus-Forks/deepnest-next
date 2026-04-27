@@ -107,7 +107,7 @@ The amendment is anchored in the [DEE-131](/DEE/issues/DEE-131) board verdict �
 
 ### 4.1 The case in 4 sentences
 
-- **Finding F1** (Lydia, P1): regression-test gap on `scripts/check-licenses-budget.mjs:62` — the budget overrun branch lacked a unit test.
+- **Finding F1** (Lydia, P1): regression-test gap on `scripts/check-licenses-budget.mjs:62` — the spawn-failure guard (`r.error || r.signal`) lacked a unit test.
 - **Production status of F1**: the production hole was already closed on PR head `2379aeb` by Copilot inline #3 (`r.error || r.signal` ⇒ `EXIT_BUDGET = 3`). F1 was the **missing regression test for an already-closed hole**, not a live defect.
 - **Other findings**: F2 + F10 + Aegis defense-in-depth = hygiene / coverage / docs only; Bundle 2 + Bundle 3 closure 6/6 PASS at source level; CI 7/7 green on `2379aeb`.
 - **Outcome**: board converged on Path B (ACCEPT) with the 5+2 framework adopted as the explicit gate for the merge. Path B was approved as **proof-of-concept**, NOT as "P1-with-green-CI ⇒ merge."
