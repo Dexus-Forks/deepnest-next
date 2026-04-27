@@ -146,10 +146,18 @@ import { fileURLToPath } from "node:url";
 const TEST_DIR = path.dirname(fileURLToPath(import.meta.url));
 ```
 
-Two rules:
+Three rules:
 
 1. **`fileURLToPath`, not `URL.pathname`.** On Windows `URL.pathname` returns `/C:/path/to/file.mjs` — the leading slash makes `path.join`-derived results garbage. On any platform a path containing spaces or non-ASCII characters comes back percent-encoded. `fileURLToPath` handles both.
 2. **Module-scope `const TEST_DIR`, computed once.** Don't re-derive at every call site. The reference DS implementation removed 8 ad-hoc derivations in favour of one constant (Copilot inline #3 fix on PR #36).
+3. **Spawn-driven harnesses derive a paired `SCRIPT` const at module scope.** When the harness drives the script-under-test via `child_process.spawnSync` (Pattern 5 rule 2), the spawn argv needs the absolute script path repeatedly. Compute it once next to `TEST_DIR`, don't recompute at each `spawnSync` call site. Reference: `scripts/check-licenses-budget.test.mjs:40-41` ([DEE-141](/DEE/issues/DEE-141), `a75a963` on `main`):
+
+   ```js
+   const TEST_DIR = path.dirname(fileURLToPath(import.meta.url));
+   const BUDGET_SCRIPT = path.join(TEST_DIR, "check-licenses-budget.mjs");
+   ```
+
+   Naming convention: `<MODULE>_SCRIPT` (uppercase, suffixed `_SCRIPT`) so it reads as "the absolute path to the script-under-test" wherever it appears in the file. Mirrors rule 2 (DRY).
 
 ## Pattern 5 — Branch-table coverage discipline
 
@@ -180,6 +188,40 @@ The pattern applies whenever a build-tooling script in `scripts/*.mjs` warrants 
 
 [DEE-141](/DEE/issues/DEE-141) (`scripts/check-licenses-budget.test.mjs` — Murat / TEA scope) is the first "spawn-driven" application of Pattern 5 rule 2; deviations from this SOP discovered there should be flagged on this issue thread for SOP refinement.
 
+## Appendix — Spawn-isolation pattern
+
+When a test needs to substitute a fixture for a sibling script that the script-under-test spawns, copy the script-under-test into an isolated tmpdir alongside the fixture. Don't monkey-patch production paths or reach for `mock-fs`.
+
+The script-under-test resolves the sibling via `path.join(SCRIPT_DIR, '<sibling>.mjs')` — relative to its own location. Copying the script into a fresh tmpdir means the test controls what its sibling resolves to without touching the production checkout.
+
+Reference: `scripts/check-licenses-budget.test.mjs:47-59` ([DEE-141](/DEE/issues/DEE-141), `a75a963` on `main`):
+
+```js
+import { mkdtempSync, mkdirSync, writeFileSync, copyFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+
+function setupTmpScripts(fixtureSource) {
+  const tmp = mkdtempSync(path.join(tmpdir(), "check-licenses-budget-"));
+  const scriptDir = path.join(tmp, "scripts");
+  mkdirSync(scriptDir, { recursive: true });
+  copyFileSync(BUDGET_SCRIPT, path.join(scriptDir, "check-licenses-budget.mjs"));
+  writeFileSync(path.join(scriptDir, "build-licenses.mjs"), fixtureSource);
+  return { tmp, budgetCopy: path.join(scriptDir, "check-licenses-budget.mjs") };
+}
+
+function cleanup(tmp) {
+  rmSync(tmp, { recursive: true, force: true });
+}
+```
+
+Three rules:
+
+1. **`mkdtempSync(path.join(tmpdir(), "<script>-"))`** — unique per-test directory so parallel runs don't collide.
+2. **Mirror the relative layout the script-under-test expects.** `check-licenses-budget.mjs` resolves its sibling via `path.join(SCRIPT_DIR, "build-licenses.mjs")`, so the tmpdir layout is `<tmp>/scripts/{check-licenses-budget.mjs, build-licenses.mjs}`. Read the script's own resolution code first; don't guess the layout.
+3. **Per-test cleanup via `rmSync(tmp, { recursive: true, force: true })`.** Always call from the test body's `finally` (or the test's own teardown hook) so a failed assertion doesn't leak tmp directories. The `force: true` flag tolerates already-deleted paths and read-only files.
+
+Returning a `{ tmp, budgetCopy }` (or analogous) tuple from the helper lets callers pass `budgetCopy` into `spawnSync` argv and `tmp` into `cleanup` without re-deriving paths.
+
 ## Out of scope
 
 - **Migrating existing `*.test.mjs` files** to the SOP shape. Each script's author owns the migration as a hygiene pass.
@@ -194,6 +236,16 @@ The pattern applies whenever a build-tooling script in `scripts/*.mjs` warrants 
 
 Amendments land as PRs against this file with a Change Log row at the bottom.
 
+### Triage workflow for observed deviations
+
+Observed deviations are triaged on the originating SOP issue thread (here: [DEE-143](/DEE/issues/DEE-143)) before an amendment PR opens. The custodian's triage names each deviation as one of:
+
+- **accept-now** — trivial DRY extensions, additive appendices, or working concrete patterns validated by shipped code on `main`. Land in the next amendment PR; PM gates cadence.
+- **defer-to-triple-rule** — codify when ≥3 independent observations of the same deviation exist. Two observations stay as thread-comments. Why: two scripts is the smallest dataset where you can name an archetype, but not enough to know its boundaries — a third sample either confirms the universal claim (codify) or surfaces a hybrid that reframes the matrix (avoid premature abstraction).
+- **defer-to-inline-doc** — when an in-tree comment in the test file captures the same intent (e.g. an honest gap-doc beside the affected branch), the inline doc is sufficient until the gap recurs.
+
+PM gates cadence on accept-now items: ship incremental amendment PRs (preferred — context decays faster than Change Log noise accrues) or batch with the next deferred trigger. Each PR adds one Change Log row citing the triggering thread.
+
 ## References
 
 - ADR-008 §3.3 (`_bmad-output/planning-artifacts/architecture.md` §5 step 3) — build-time gate latency rule (1 s ceiling).
@@ -207,3 +259,4 @@ Amendments land as PRs against this file with a Change Log row at the bottom.
 | Date | Change | Author |
 |---|---|---|
 | 2026-04-27 | Initial SOP authored from `scripts/build-licenses.test.mjs` reference implementation per [DEE-143](/DEE/issues/DEE-143). | Amelia (DS) |
+| 2026-04-27 | Pattern 4 rule 3 (paired `<MODULE>_SCRIPT` const for spawn-driven harnesses) + new "Spawn-isolation pattern" appendix (`mkdtempSync` + sibling-fixture layout + per-test cleanup) + "Triage workflow for observed deviations" subsection (accept-now / defer-to-triple-rule / defer-to-inline-doc). Trigger: Murat's audit of `scripts/check-licenses-budget.test.mjs` ([DEE-141](/DEE/issues/DEE-141), `a75a963` on `main`) against the merged SOP — see [DEE-143 comment 773cf773](/DEE/issues/DEE-143#comment-773cf773-c1bd-4a25-9aff-95a80069df36) (4 deviations + bonus), [Amelia's triage 9e50b2f0](/DEE/issues/DEE-143#comment-9e50b2f0-ff66-4e44-b0b1-feb63f7aaa81), and [John's PM-gate decision d83391e6](/DEE/issues/DEE-143#comment-d83391e6-ff0b-4233-bc98-977789f3ddf9) (accept D4 + Bonus + triple-rule formalisation; defer D1/D2 to triple-rule trigger; defer D3 to inline-doc). | Amelia (DS) |
