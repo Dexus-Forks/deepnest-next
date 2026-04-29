@@ -280,14 +280,26 @@ function modeUpdate() {
   process.exit(EXIT_OK);
 }
 
+function emitUsage(stream) {
+  stream.write(
+    `usage: node scripts/check-test-fixtures.mjs [--check | --update | --help | -h]\n` +
+      `  (no flag) | --check  verify tests/assets/.fixture-manifest.json against the live fixture set + spec literals; exit 1 on drift\n` +
+      `  --update             regenerate tests/assets/.fixture-manifest.json from the current fixtures + spec\n` +
+      `  --help / -h          print this usage and exit 0\n`,
+  );
+}
+
 const argv = process.argv.slice(2);
-if (argv.includes("--update")) {
+// DEE-126 / Bundle 3 P3-05 cross-script symmetry (mirrors DEE-124 fix on
+// scripts/build-licenses.mjs): POSIX-conventional exit 0 on --help / -h.
+if (argv.length === 1 && (argv[0] === "--help" || argv[0] === "-h")) {
+  emitUsage(process.stdout);
+  process.exit(EXIT_OK);
+} else if (argv.includes("--update")) {
   modeUpdate();
 } else if (argv.length === 0 || argv[0] === "--check") {
   modeCheck();
 } else {
-  process.stderr.write(
-    `usage: node scripts/check-test-fixtures.mjs [--check|--update]\n`,
-  );
+  emitUsage(process.stderr);
   process.exit(EXIT_USAGE);
 }
