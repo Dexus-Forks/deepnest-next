@@ -38,7 +38,7 @@ so that **a kill-during-nest does not leak orphaned scratch dirs under `os.tmpdi
 
 8. **AC-04.1.8 — Sentinel-race comment present at the declaration site.** Per architecture overlay §7 risk note (sentinel race during in-flight `background-stop` immediately followed by `before-quit`), the implementation MUST include a single-line comment at the sentinel declaration noting the race is bounded by single-process EventLoop ordering — no extra synchronisation needed. Recommended wording: `// fr-04: bounded by single-process EventLoop ordering — no atomics/locks needed (ADR-009 §risks)`.
 
-9. **AC-04.1.9 — `npm test` is green on the PR (NFR-01 regression check).** Same as Story 1.1 / Story 2.1: CI run wall-clock within ±20 % of `_bmad-output/planning-artifacts/nfr01-baseline.json` `rolling_mean_ms` (16 746.6 ms ± 20 % = [13 397, 20 096] ms) on the canonical CI cell. Placement count remains `54/54`. No new flakiness (per AC-04.5).
+9. **AC-04.1.9 — `npm test` is green on the PR (NFR-01 regression check).** Same as Story 1.1 / Story 2.1: CI run wall-clock within ±20 % of `_bmad-output/planning-artifacts/nfr01-baseline.json` `rolling_mean_ms` (17 060.0 ms ± 20 % = [13 648, 20 472] ms) on the canonical CI cell. Placement count remains `54/54`. No new flakiness (per AC-04.5).
 
 10. **AC-04.1.10 — `project-context.md` §16 anti-patterns hold.** No new `window` global (§16.1), no new IPC channel (§16.2/§16.3), no new `// @ts-ignore` (§16.8 — `main.js` is `.js` so this is non-applicable but stays in the audit map for completeness), no edits to vendored utilities (§16.5), no edits to `_unused/` (§16.6), no `--no-verify` (§16.9), no edits to `tests/assets/` (§16.10).
 
@@ -263,7 +263,7 @@ Before editing `main.js`, the implementing agent **must** have read:
 - [Source: `_bmad-output/planning-artifacts/architecture.md` §3.1 row FR-04 + §4 §"FR-04" + §5 §"ADR-009" + §6 Open Q2 + §7 risks]
 - [Source: `_bmad-output/planning-artifacts/prd.md` §FR-04 (AC-04.1..AC-04.5) + §NFR-02]
 - [Source: `_bmad-output/project-context.md` §3 (process/window topology), §6 (IPC contract), §8.4 (scratch-dir cleanup), §8.5 (listener cap), §16 (anti-patterns), §17 (brownfield caveats)]
-- [Source: `_bmad-output/planning-artifacts/nfr01-baseline.json` — `rolling_mean_ms = 16746.6`, `tolerance_pct = 20`]
+- [Source: `_bmad-output/planning-artifacts/nfr01-baseline.json` — `rolling_mean_ms = 17060.0`, `tolerance_pct = 20`]
 - [Parent issue: DEE-83 (CS batch-2 follow-up to DEE-82 standup)]
 - [Sprint label: MVP-1; Sprint-Start gate OPEN per CTO sign-off in DEE-53]
 - [Predecessor PRs: #6 (Story 6.1), #7 (Story 3.1), #8 (Story 1.1), #15 (Story 3.1 hardening DEE-69) — all merged, Board-APPROVED]
