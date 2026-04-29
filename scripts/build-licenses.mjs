@@ -382,9 +382,14 @@ export function emitDriftDiff(expected, observed) {
     totalDrift > diffs.length
       ? `First ${diffs.length} of ${totalDrift} differing line(s) (…${totalDrift - diffs.length} more truncated):`
       : `First ${diffs.length} of ${totalDrift} differing line(s):`;
+  // Vitra F8 (Round-1 P3, DEE-144 fold-in): inline marker legend above the diff body so
+  // a contributor reading the CI log without opening the source does not read the diff
+  // with standard `diff(1)` semantics and paste the wrong direction back into LICENSES.md.
+  const legend =
+    `('-' lines = expected (run \`npm run licenses:build\`); '+' lines = committed in ${OUTPUT_FILE})`;
   process.stderr.write(
     `[${MODE}] FAIL — ${OUTPUT_FILE} differs from regenerated output.\n\n` +
-      `${banner}\n${body}\n\n` +
+      `${banner}\n${legend}\n${body}\n\n` +
       `Re-derive via \`npm run licenses:build\` after a deliberate metadata edit; see\n` +
       `  ${DOCS_POINTER}.\n` +
       `Story 2.4 (A5) lands the contributor-facing "add a new vendored library" workflow\n` +

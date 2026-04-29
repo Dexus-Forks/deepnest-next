@@ -17,10 +17,19 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync, chmodSync, rmSync } from "node:fs";
+import {
+  copyFileSync,
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  chmodSync,
+  rmSync,
+  statSync,
+} from "node:fs";
+import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import * as path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 // Resolve the directory containing this test file. Use `fileURLToPath` (not
 // `new URL(import.meta.url).pathname`) — the latter is not a safe filesystem path on
@@ -36,7 +45,54 @@ import {
   parseYaml,
   parseValue,
   validateEntry,
+  renderTable,
 } from "./build-licenses.mjs";
+
+// Lydia F4 (Round-1 P3, DEE-144 fold-in): tmp-repo fixture builder. Five tests
+// previously inlined ~30 lines of identical boilerplate (mkdir × 4 + writeFile × 4
+// + copyFileSync of build-licenses.mjs). Helper returns { tmp, scriptPath }; the
+// caller seeds whichever LICENSE.yml bodies it needs via the named params (each
+// `undefined` skips that file — Branch 10 leaves all four LICENSE.yml absent to
+// trip the loadEntries I/O path). Cleanup stays per-test via `rmSync(tmp, ...)`.
+const STUB_PER_FOLDER =
+  `- path: stub\n  name: stub\n  license: MIT\n  copyright: (c)\n  upstream_url: https://example.org\n`;
+const STUB_PASSTHROUGH =
+  `- path: /stub\n  name: stub\n  license: MIT\n  copyright: (c)\n  upstream_url: https://example.org\n`;
+
+function setupTmpRepo({
+  prefix = "build-licenses-",
+  passthrough,
+  perFolderUtil,
+  perFolderFont,
+  perFolderAssets,
+  licensesMd,
+} = {}) {
+  const tmp = mkdtempSync(path.join(tmpdir(), prefix));
+  const scriptDir = path.join(tmp, "scripts");
+  mkdirSync(scriptDir, { recursive: true });
+  const scriptPath = path.join(scriptDir, "build-licenses.mjs");
+  copyFileSync(path.join(TEST_DIR, "build-licenses.mjs"), scriptPath);
+  if (passthrough !== undefined) {
+    mkdirSync(path.join(tmp, "main"), { recursive: true });
+    writeFileSync(path.join(tmp, "main/LICENSE.yml"), passthrough);
+  }
+  if (perFolderUtil !== undefined) {
+    mkdirSync(path.join(tmp, "main/util"), { recursive: true });
+    writeFileSync(path.join(tmp, "main/util/LICENSE.yml"), perFolderUtil);
+  }
+  if (perFolderFont !== undefined) {
+    mkdirSync(path.join(tmp, "main/font"), { recursive: true });
+    writeFileSync(path.join(tmp, "main/font/LICENSE.yml"), perFolderFont);
+  }
+  if (perFolderAssets !== undefined) {
+    mkdirSync(path.join(tmp, "tests/assets"), { recursive: true });
+    writeFileSync(path.join(tmp, "tests/assets/LICENSE.yml"), perFolderAssets);
+  }
+  if (licensesMd !== undefined) {
+    writeFileSync(path.join(tmp, "LICENSES.md"), licensesMd);
+  }
+  return { tmp, scriptPath };
+}
 
 class TestExit extends Error {
   constructor(code, msg) {
@@ -252,23 +308,13 @@ test("validate: PASSTHROUGH_FILE absolute path is ALLOWED", () => {
 // file. Test the underlying contract: failIO is called with EXIT_IO from outside-the-
 // repo context. Use a dynamic import + custom CWD to drive loadEntries against a
 // missing file.
-test("loadEntries: I/O error → EXIT_IO", async () => {
+test("loadEntries: I/O error → EXIT_IO", () => {
   // Run a child Node process pointed at a temp REPO_ROOT lacking LICENSE.yml files.
   // We can't override REPO_ROOT post-import (it's resolved relative to SCRIPT_DIR).
-  // Spawn the script from a tmp dir with no main/LICENSE.yml; modeBuild loads will fail.
-  const { spawnSync } = await import("node:child_process");
-  const tmp = mkdtempSync(path.join(tmpdir(), "build-licenses-io-"));
-  const scriptDir = path.join(tmp, "scripts");
-  mkdirSync(scriptDir, { recursive: true });
-  // Re-resolve the script source relative to this test file. Both files live in
-  // <repo>/scripts; we copy build-licenses.mjs into the temp scripts/ dir so its
-  // SCRIPT_DIR/REPO_ROOT resolution picks up the (empty-of-LICENSE.yml) tmp REPO_ROOT.
-  const { copyFileSync } = await import("node:fs");
-  const thisDir = TEST_DIR;
-  copyFileSync(path.join(thisDir, "build-licenses.mjs"), path.join(scriptDir, "build-licenses.mjs"));
-  const r = spawnSync(process.execPath, [path.join(scriptDir, "build-licenses.mjs"), "--check"], {
-    encoding: "utf8",
-  });
+  // setupTmpRepo() with no overrides leaves all four LICENSE.yml files absent;
+  // modeCheck loads will fail on the first ENOENT (main/LICENSE.yml).
+  const { tmp, scriptPath } = setupTmpRepo({ prefix: "build-licenses-io-" });
+  const r = spawnSync(process.execPath, [scriptPath, "--check"], { encoding: "utf8" });
   rmSync(tmp, { recursive: true, force: true });
   assert.equal(r.status, EXIT_IO);
   assert.match(r.stderr, /FAIL — I\/O error on main\/LICENSE\.yml/);
@@ -282,37 +328,19 @@ test("loadEntries: I/O error → EXIT_IO", async () => {
 test(
   "modeBuild: write error → EXIT_IO",
   { skip: process.platform === "win32" ? "windows chmod semantics" : false },
-  async () => {
-    const { spawnSync } = await import("node:child_process");
-    const { copyFileSync, mkdirSync: mk } = await import("node:fs");
-    const tmp = mkdtempSync(path.join(tmpdir(), "build-licenses-write-"));
+  () => {
     // Recreate a minimal valid REPO_ROOT layout so loadEntries succeeds and modeBuild
     // reaches the writeFileSync. Then chmod the REPO_ROOT to 0o555 (read+execute only)
     // so writing LICENSES.md fails with EACCES.
-    const scriptDir = path.join(tmp, "scripts");
-    mk(scriptDir, { recursive: true });
-    const thisDir = TEST_DIR;
-    copyFileSync(
-      path.join(thisDir, "build-licenses.mjs"),
-      path.join(scriptDir, "build-licenses.mjs"),
-    );
-    // Minimal LICENSE.yml stack — main/, main/util/, main/font/, tests/assets/.
-    const validEntry = (folder) =>
-      `- path: stub\n  name: stub\n  license: MIT\n  copyright: (c)\n  upstream_url: https://example.org\n`;
-    const passthroughEntry =
-      `- path: /stub\n  name: stub\n  license: MIT\n  copyright: (c)\n  upstream_url: https://example.org\n`;
-    mk(path.join(tmp, "main"), { recursive: true });
-    mk(path.join(tmp, "main/util"), { recursive: true });
-    mk(path.join(tmp, "main/font"), { recursive: true });
-    mk(path.join(tmp, "tests/assets"), { recursive: true });
-    writeFileSync(path.join(tmp, "main/LICENSE.yml"), passthroughEntry);
-    writeFileSync(path.join(tmp, "main/util/LICENSE.yml"), validEntry("main/util"));
-    writeFileSync(path.join(tmp, "main/font/LICENSE.yml"), validEntry("main/font"));
-    writeFileSync(path.join(tmp, "tests/assets/LICENSE.yml"), validEntry("tests/assets"));
-    chmodSync(tmp, 0o555);
-    const r = spawnSync(process.execPath, [path.join(scriptDir, "build-licenses.mjs")], {
-      encoding: "utf8",
+    const { tmp, scriptPath } = setupTmpRepo({
+      prefix: "build-licenses-write-",
+      passthrough: STUB_PASSTHROUGH,
+      perFolderUtil: STUB_PER_FOLDER,
+      perFolderFont: STUB_PER_FOLDER,
+      perFolderAssets: STUB_PER_FOLDER,
     });
+    chmodSync(tmp, 0o555);
+    const r = spawnSync(process.execPath, [scriptPath], { encoding: "utf8" });
     chmodSync(tmp, 0o755);
     rmSync(tmp, { recursive: true, force: true });
     assert.equal(r.status, EXIT_IO);
@@ -328,30 +356,17 @@ test(
 // failSchema. MUST emit `[licenses:build]` (NOT `[licenses:check]`) because the gate
 // runs without `--check`. Closes the failSchema half of P3-07 (companion to the
 // existing in-process Branch-1..9 captureOnFail asserts which can't observe MODE).
-test("modeBuild: schema-fail spawned → EXIT_SCHEMA + [licenses:build] prefix", async () => {
-  const { spawnSync } = await import("node:child_process");
-  const { copyFileSync, mkdirSync: mk } = await import("node:fs");
-  const tmp = mkdtempSync(path.join(tmpdir(), "build-licenses-schemafail-"));
-  const scriptDir = path.join(tmp, "scripts");
-  mk(scriptDir, { recursive: true });
-  copyFileSync(path.join(TEST_DIR, "build-licenses.mjs"), path.join(scriptDir, "build-licenses.mjs"));
-  // Minimal valid passthrough + util/font/tests, but main/util/LICENSE.yml has a row
-  // missing the required `name` field — parser triggers failSchema in modeBuild.
-  const validEntry = `- path: stub\n  name: stub\n  license: MIT\n  copyright: (c)\n  upstream_url: https://example.org\n`;
-  const passthroughEntry = `- path: /stub\n  name: stub\n  license: MIT\n  copyright: (c)\n  upstream_url: https://example.org\n`;
+test("modeBuild: schema-fail spawned → EXIT_SCHEMA + [licenses:build] prefix", () => {
   // Drop `name:` to trip "missing required field" in validateEntry.
   const brokenEntry = `- path: stub\n  license: MIT\n  copyright: (c)\n  upstream_url: https://example.org\n`;
-  mk(path.join(tmp, "main"), { recursive: true });
-  mk(path.join(tmp, "main/util"), { recursive: true });
-  mk(path.join(tmp, "main/font"), { recursive: true });
-  mk(path.join(tmp, "tests/assets"), { recursive: true });
-  writeFileSync(path.join(tmp, "main/LICENSE.yml"), passthroughEntry);
-  writeFileSync(path.join(tmp, "main/util/LICENSE.yml"), brokenEntry);
-  writeFileSync(path.join(tmp, "main/font/LICENSE.yml"), validEntry);
-  writeFileSync(path.join(tmp, "tests/assets/LICENSE.yml"), validEntry);
-  const r = spawnSync(process.execPath, [path.join(scriptDir, "build-licenses.mjs")], {
-    encoding: "utf8",
+  const { tmp, scriptPath } = setupTmpRepo({
+    prefix: "build-licenses-schemafail-",
+    passthrough: STUB_PASSTHROUGH,
+    perFolderUtil: brokenEntry,
+    perFolderFont: STUB_PER_FOLDER,
+    perFolderAssets: STUB_PER_FOLDER,
   });
+  const r = spawnSync(process.execPath, [scriptPath], { encoding: "utf8" });
   rmSync(tmp, { recursive: true, force: true });
   assert.equal(r.status, EXIT_SCHEMA);
   assert.match(r.stderr, /missing required field `name`/);
@@ -360,57 +375,33 @@ test("modeBuild: schema-fail spawned → EXIT_SCHEMA + [licenses:build] prefix",
 });
 
 // Branch 12: modeCheck — LICENSES.md missing (ENOENT).
-test("modeCheck: LICENSES.md missing → EXIT_DRIFT", async () => {
-  const { spawnSync } = await import("node:child_process");
-  const { copyFileSync, mkdirSync: mk } = await import("node:fs");
-  const tmp = mkdtempSync(path.join(tmpdir(), "build-licenses-missing-"));
-  const scriptDir = path.join(tmp, "scripts");
-  mk(scriptDir, { recursive: true });
-  const thisDir = TEST_DIR;
-  copyFileSync(path.join(thisDir, "build-licenses.mjs"), path.join(scriptDir, "build-licenses.mjs"));
-  const validEntry = `- path: stub\n  name: stub\n  license: MIT\n  copyright: (c)\n  upstream_url: https://example.org\n`;
-  const passthroughEntry = `- path: /stub\n  name: stub\n  license: MIT\n  copyright: (c)\n  upstream_url: https://example.org\n`;
-  mk(path.join(tmp, "main"), { recursive: true });
-  mk(path.join(tmp, "main/util"), { recursive: true });
-  mk(path.join(tmp, "main/font"), { recursive: true });
-  mk(path.join(tmp, "tests/assets"), { recursive: true });
-  writeFileSync(path.join(tmp, "main/LICENSE.yml"), passthroughEntry);
-  writeFileSync(path.join(tmp, "main/util/LICENSE.yml"), validEntry);
-  writeFileSync(path.join(tmp, "main/font/LICENSE.yml"), validEntry);
-  writeFileSync(path.join(tmp, "tests/assets/LICENSE.yml"), validEntry);
-  // Deliberately do NOT seed LICENSES.md.
-  const r = spawnSync(process.execPath, [path.join(scriptDir, "build-licenses.mjs"), "--check"], {
-    encoding: "utf8",
+test("modeCheck: LICENSES.md missing → EXIT_DRIFT", () => {
+  // Deliberately do NOT seed LICENSES.md (licensesMd undefined → not written).
+  const { tmp, scriptPath } = setupTmpRepo({
+    prefix: "build-licenses-missing-",
+    passthrough: STUB_PASSTHROUGH,
+    perFolderUtil: STUB_PER_FOLDER,
+    perFolderFont: STUB_PER_FOLDER,
+    perFolderAssets: STUB_PER_FOLDER,
   });
+  const r = spawnSync(process.execPath, [scriptPath, "--check"], { encoding: "utf8" });
   rmSync(tmp, { recursive: true, force: true });
   assert.equal(r.status, EXIT_DRIFT);
   assert.match(r.stderr, /LICENSES\.md not found/);
 });
 
 // Branch 13: modeCheck — content drift.
-test("modeCheck: content drift → EXIT_DRIFT", async () => {
-  const { spawnSync } = await import("node:child_process");
-  const { copyFileSync, mkdirSync: mk } = await import("node:fs");
-  const tmp = mkdtempSync(path.join(tmpdir(), "build-licenses-drift-"));
-  const scriptDir = path.join(tmp, "scripts");
-  mk(scriptDir, { recursive: true });
-  const thisDir = TEST_DIR;
-  copyFileSync(path.join(thisDir, "build-licenses.mjs"), path.join(scriptDir, "build-licenses.mjs"));
-  const validEntry = `- path: stub\n  name: stub\n  license: MIT\n  copyright: (c)\n  upstream_url: https://example.org\n`;
-  const passthroughEntry = `- path: /stub\n  name: stub\n  license: MIT\n  copyright: (c)\n  upstream_url: https://example.org\n`;
-  mk(path.join(tmp, "main"), { recursive: true });
-  mk(path.join(tmp, "main/util"), { recursive: true });
-  mk(path.join(tmp, "main/font"), { recursive: true });
-  mk(path.join(tmp, "tests/assets"), { recursive: true });
-  writeFileSync(path.join(tmp, "main/LICENSE.yml"), passthroughEntry);
-  writeFileSync(path.join(tmp, "main/util/LICENSE.yml"), validEntry);
-  writeFileSync(path.join(tmp, "main/font/LICENSE.yml"), validEntry);
-  writeFileSync(path.join(tmp, "tests/assets/LICENSE.yml"), validEntry);
+test("modeCheck: content drift → EXIT_DRIFT", () => {
   // Seed LICENSES.md with a deliberately wrong body so --check detects drift.
-  writeFileSync(path.join(tmp, "LICENSES.md"), "wrong contents\n");
-  const r = spawnSync(process.execPath, [path.join(scriptDir, "build-licenses.mjs"), "--check"], {
-    encoding: "utf8",
+  const { tmp, scriptPath } = setupTmpRepo({
+    prefix: "build-licenses-drift-",
+    passthrough: STUB_PASSTHROUGH,
+    perFolderUtil: STUB_PER_FOLDER,
+    perFolderFont: STUB_PER_FOLDER,
+    perFolderAssets: STUB_PER_FOLDER,
+    licensesMd: "wrong contents\n",
   });
+  const r = spawnSync(process.execPath, [scriptPath, "--check"], { encoding: "utf8" });
   rmSync(tmp, { recursive: true, force: true });
   assert.equal(r.status, EXIT_DRIFT);
   assert.match(r.stderr, /differs from regenerated output/);
@@ -429,14 +420,7 @@ test("modeCheck: content drift → EXIT_DRIFT", async () => {
 
 // Truncation honesty (Story 2.3 / P3-03): emitDriftDiff caps display at 20 entries
 // AND reports the total. Exercise via a tall drift (25 differing lines).
-test("modeCheck: truncation honesty → 'First 20 of 25 differing line(s) (…5 more truncated):'", async () => {
-  const { spawnSync } = await import("node:child_process");
-  const { copyFileSync, mkdirSync: mk } = await import("node:fs");
-  const tmp = mkdtempSync(path.join(tmpdir(), "build-licenses-trunc-"));
-  const scriptDir = path.join(tmp, "scripts");
-  mk(scriptDir, { recursive: true });
-  const thisDir = TEST_DIR;
-  copyFileSync(path.join(thisDir, "build-licenses.mjs"), path.join(scriptDir, "build-licenses.mjs"));
+test("modeCheck: truncation honesty → 'First 20 of 25 differing line(s) (…5 more truncated):'", () => {
   // Build a large LICENSE.yml stack so the regenerated LICENSES.md spans > 25 rows.
   // 25 distinct entries spread across the per-folder files.
   let perFolderUtil = "";
@@ -444,26 +428,18 @@ test("modeCheck: truncation honesty → 'First 20 of 25 differing line(s) (…5 
     perFolderUtil +=
       `- path: stub${i}\n  name: stub${i}\n  license: MIT\n  copyright: (c) ${i}\n  upstream_url: https://example.org/${i}\n`;
   }
-  const passthrough =
-    `- path: /stub-passthrough\n  name: stub\n  license: MIT\n  copyright: (c)\n  upstream_url: https://example.org\n`;
   const stub =
     `- path: stub-folder\n  name: stub-folder\n  license: MIT\n  copyright: (c)\n  upstream_url: https://example.org\n`;
-  mk(path.join(tmp, "main"), { recursive: true });
-  mk(path.join(tmp, "main/util"), { recursive: true });
-  mk(path.join(tmp, "main/font"), { recursive: true });
-  mk(path.join(tmp, "tests/assets"), { recursive: true });
-  writeFileSync(path.join(tmp, "main/LICENSE.yml"), passthrough);
-  writeFileSync(path.join(tmp, "main/util/LICENSE.yml"), perFolderUtil);
-  writeFileSync(path.join(tmp, "main/font/LICENSE.yml"), stub);
-  writeFileSync(path.join(tmp, "tests/assets/LICENSE.yml"), stub);
-  // Seed the committed LICENSES.md with an entirely wrong body so every line drifts.
-  writeFileSync(
-    path.join(tmp, "LICENSES.md"),
-    Array.from({ length: 30 }, (_, i) => `wrong line ${i}`).join("\n") + "\n",
-  );
-  const r = spawnSync(process.execPath, [path.join(scriptDir, "build-licenses.mjs"), "--check"], {
-    encoding: "utf8",
+  const { tmp, scriptPath } = setupTmpRepo({
+    prefix: "build-licenses-trunc-",
+    passthrough: `- path: /stub-passthrough\n  name: stub\n  license: MIT\n  copyright: (c)\n  upstream_url: https://example.org\n`,
+    perFolderUtil,
+    perFolderFont: stub,
+    perFolderAssets: stub,
+    // Seed the committed LICENSES.md with an entirely wrong body so every line drifts.
+    licensesMd: Array.from({ length: 30 }, (_, i) => `wrong line ${i}`).join("\n") + "\n",
   });
+  const r = spawnSync(process.execPath, [scriptPath, "--check"], { encoding: "utf8" });
   rmSync(tmp, { recursive: true, force: true });
   assert.equal(r.status, EXIT_DRIFT);
   // The total drift count depends on the regenerated output's exact length; we assert
@@ -479,24 +455,20 @@ test("modeCheck: truncation honesty → 'First 20 of 25 differing line(s) (…5 
 });
 
 // --help / -h exit-0 (Story 2.3 / P3-05).
-test("dispatcher: --help → exit 0 with usage on stdout", async () => {
-  const { spawnSync } = await import("node:child_process");
-  const thisDir = TEST_DIR;
+test("dispatcher: --help → exit 0 with usage on stdout", () => {
   const r = spawnSync(
     process.execPath,
-    [path.join(thisDir, "build-licenses.mjs"), "--help"],
+    [path.join(TEST_DIR, "build-licenses.mjs"), "--help"],
     { encoding: "utf8" },
   );
   assert.equal(r.status, 0);
   assert.match(r.stdout, /usage: node scripts\/build-licenses\.mjs/);
 });
 
-test("dispatcher: -h → exit 0 with usage on stdout", async () => {
-  const { spawnSync } = await import("node:child_process");
-  const thisDir = TEST_DIR;
+test("dispatcher: -h → exit 0 with usage on stdout", () => {
   const r = spawnSync(
     process.execPath,
-    [path.join(thisDir, "build-licenses.mjs"), "-h"],
+    [path.join(TEST_DIR, "build-licenses.mjs"), "-h"],
     { encoding: "utf8" },
   );
   assert.equal(r.status, 0);
@@ -504,12 +476,10 @@ test("dispatcher: -h → exit 0 with usage on stdout", async () => {
 });
 
 // Unrecognised flag → EXIT_USAGE (regression guard for the --help branch).
-test("dispatcher: unrecognised flag → EXIT_USAGE", async () => {
-  const { spawnSync } = await import("node:child_process");
-  const thisDir = TEST_DIR;
+test("dispatcher: unrecognised flag → EXIT_USAGE", () => {
   const r = spawnSync(
     process.execPath,
-    [path.join(thisDir, "build-licenses.mjs"), "--bogus"],
+    [path.join(TEST_DIR, "build-licenses.mjs"), "--bogus"],
     { encoding: "utf8" },
   );
   assert.equal(r.status, 3);
@@ -518,38 +488,89 @@ test("dispatcher: unrecognised flag → EXIT_USAGE", async () => {
 
 // Mode-prefix correctness (Story 2.3 / P3-07 / Copilot inline #4): a `--check` failure
 // emits `[licenses:check]`, not `[licenses:build]`. Drive a missing-LICENSES.md case.
-test("dispatcher: --check failure prefix is [licenses:check] (not [licenses:build])", async () => {
-  const { spawnSync } = await import("node:child_process");
-  const { copyFileSync, mkdirSync: mk } = await import("node:fs");
-  const tmp = mkdtempSync(path.join(tmpdir(), "build-licenses-modepfx-"));
-  const scriptDir = path.join(tmp, "scripts");
-  mk(scriptDir, { recursive: true });
-  const thisDir = TEST_DIR;
-  copyFileSync(path.join(thisDir, "build-licenses.mjs"), path.join(scriptDir, "build-licenses.mjs"));
-  const validEntry = `- path: stub\n  name: stub\n  license: MIT\n  copyright: (c)\n  upstream_url: https://example.org\n`;
-  const passthroughEntry = `- path: /stub\n  name: stub\n  license: MIT\n  copyright: (c)\n  upstream_url: https://example.org\n`;
-  mk(path.join(tmp, "main"), { recursive: true });
-  mk(path.join(tmp, "main/util"), { recursive: true });
-  mk(path.join(tmp, "main/font"), { recursive: true });
-  mk(path.join(tmp, "tests/assets"), { recursive: true });
-  writeFileSync(path.join(tmp, "main/LICENSE.yml"), passthroughEntry);
-  writeFileSync(path.join(tmp, "main/util/LICENSE.yml"), validEntry);
-  writeFileSync(path.join(tmp, "main/font/LICENSE.yml"), validEntry);
-  writeFileSync(path.join(tmp, "tests/assets/LICENSE.yml"), validEntry);
-  const r = spawnSync(process.execPath, [path.join(scriptDir, "build-licenses.mjs"), "--check"], {
-    encoding: "utf8",
+test("dispatcher: --check failure prefix is [licenses:check] (not [licenses:build])", () => {
+  const { tmp, scriptPath } = setupTmpRepo({
+    prefix: "build-licenses-modepfx-",
+    passthrough: STUB_PASSTHROUGH,
+    perFolderUtil: STUB_PER_FOLDER,
+    perFolderFont: STUB_PER_FOLDER,
+    perFolderAssets: STUB_PER_FOLDER,
   });
+  const r = spawnSync(process.execPath, [scriptPath, "--check"], { encoding: "utf8" });
   rmSync(tmp, { recursive: true, force: true });
   assert.equal(r.status, EXIT_DRIFT);
   assert.match(r.stderr, /^\[licenses:check\]/m);
   assert.doesNotMatch(r.stderr, /^\[licenses:build\]/m);
 });
 
-// Importability sanity: importing the module must NOT trigger CLI dispatch. If it did,
-// loading this test file (which imports build-licenses.mjs) would itself spawn modeBuild
-// and the test runner would fail or hang. The fact that we reach this assertion proves
-// the isMain() guard works as intended.
+// Importability sanity (Lydia F5 — Round-1 P3, DEE-144 fold-in): importing the module
+// must NOT trigger CLI dispatch. The original test landed `assert.ok(true)` and relied
+// solely on this file's top-level import not having spawned modeBuild as the implicit
+// proof. Strengthen by spawning a fresh Node that imports the module and serialises
+// `Object.keys(...)` to stdout — assert (a) clean exit 0, (b) no LICENSES.md was
+// written to the spawn CWD, (c) the exported-surface keys include the documented
+// public API (`setOnFail`, `renderTable`, `EXIT_DRIFT`, `MODE`).
 test("module shape: import does not trigger CLI dispatch (isMain guard)", () => {
-  // No-op assertion — reaching this line demonstrates the guard.
-  assert.ok(true);
+  const targetUrl = pathToFileURL(path.join(TEST_DIR, "build-licenses.mjs")).href;
+  const cwdTmp = mkdtempSync(path.join(tmpdir(), "build-licenses-import-"));
+  const r = spawnSync(
+    process.execPath,
+    [
+      "-e",
+      `import(${JSON.stringify(targetUrl)})` +
+        `.then(m => process.stdout.write(JSON.stringify(Object.keys(m))))`,
+    ],
+    { cwd: cwdTmp, encoding: "utf8" },
+  );
+  let licensesMdExisted = false;
+  try {
+    statSync(path.join(cwdTmp, "LICENSES.md"));
+    licensesMdExisted = true;
+  } catch {
+    // expected — import must not have written LICENSES.md to CWD
+  }
+  rmSync(cwdTmp, { recursive: true, force: true });
+  assert.equal(r.status, 0, `expected clean exit; got status=${r.status} stderr=${r.stderr}`);
+  assert.equal(licensesMdExisted, false, "import must not write LICENSES.md to CWD");
+  const exported = JSON.parse(r.stdout);
+  for (const key of ["setOnFail", "renderTable", "EXIT_DRIFT", "MODE"]) {
+    assert.ok(exported.includes(key), `missing exported member \`${key}\`; got ${r.stdout}`);
+  }
+});
+
+// Lydia F6 (Round-1 P3, DEE-144 fold-in): renderTable byte-identity is currently
+// guarded only transitively (via the production licenses:check gate against the
+// committed LICENSES.md). Add a direct snapshot test on a small fixture asserting
+// (a) header line, (b) first-party row precedes the third-party block, (c) third-
+// party rows ordered by ASCII byte order (reverse-alpha input → sorted output), and
+// (d) trailing newline.
+test("renderTable: byte-identical to fixture (header + ordering + trailing newline)", () => {
+  const entries = [
+    {
+      unit: "/main",
+      license: "MIT",
+      copyright: "Copyright (c) 2015 Jack Qiao",
+      firstParty: true,
+    },
+    {
+      unit: "/main/util/zlib.js",
+      license: "Zlib",
+      copyright: "Copyright (c) Jean-loup Gailly and Mark Adler",
+      firstParty: false,
+    },
+    {
+      unit: "/main/util/clipper.js",
+      license: "MIT",
+      copyright: "Copyright (c) 2014 Angus Johnson",
+      firstParty: false,
+    },
+  ];
+  const expected =
+    "This software contains different units with different licenses, copyrights and authors.\n\n" +
+    "| Unit | License | Copyright |\n" +
+    "| - | - | - |\n" +
+    "| /main | MIT | Copyright (c) 2015 Jack Qiao |\n" +
+    "| /main/util/clipper.js | MIT | Copyright (c) 2014 Angus Johnson |\n" +
+    "| /main/util/zlib.js | Zlib | Copyright (c) Jean-loup Gailly and Mark Adler |\n";
+  assert.equal(renderTable(entries), expected);
 });
