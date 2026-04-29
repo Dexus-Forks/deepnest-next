@@ -275,22 +275,37 @@ Before editing `main.js`, the implementing agent **must** have read:
 
 ### Agent Model Used
 
-_(Populated by the implementing Dev agent at story execution time.)_
+Amelia (Dev) — `claude-opus-4-7` via `claude_local` adapter. Round 1 DS executed 2026-04-29 in run `3a41c23d-6ed5-41cb-a88f-7bf68d70e22a` after DEE-212 unblock (DEE-181 cancelled).
 
 ### Debug Log References
 
-_(Populated by the implementing Dev agent.)_
+- Pre-flight grep: `// todo:` matched at `main.js:315` (background-response) and `main.js:329` (background-progress) before edits — both replaced with `// fr-04: …` per AC-04.1.3 / AC-04.1.4.
+- Line numbers in spec verified pre-edit (no drift since 2026-04-26): `app.on("before-quit"` at 289, `ipcMain.on("background-response"` at 313, `ipcMain.on("background-progress"` at 328, `ipcMain.on("background-stop"` at 337, `createBackgroundWindows` at 218, `winCount = 0` at 213, `winCount < 1` at 218.
+- Post-edit grep: `// todo:` returns 0 matches in `main.js`. `appShuttingDown` declared at line 12, set at 293 (before-quit), checked at 318 (background-response) and 334 (background-progress). `background-stop` (343) and `createBackgroundWindows` (218) untouched.
+- Cheap gates green: `node --check main.js` SYNTAX OK; `node scripts/check-licenses-budget.mjs` OK (7 ms drift, 76 ms gate); `npm run test:licenses` 30/30 pass (2431 ms); `npm run test:fixtures:check` exit 0.
+- Playwright (`npm test` final stage) **not run locally** per Task 8.2 — Paperclip-isolated worktree has no Electron / desktop host. CI run on push covers NFR-01 wall-clock vs `nfr01-baseline.json` (rolling_mean = 16746.6 ms, ±20 % band [13397, 20096] ms).
 
 ### Completion Notes List
 
-_(Populated by the implementing Dev agent.)_
+- **Sentinel placement.** Declared between line 9 (`require("events")…defaultMaxListeners = 30`) and the existing `app.on('render-process-gone', …)` at line 14 — i.e. after the `require()` block, before any handler bindings. Comment-line + decl-line + blank-line; no other reordering. AC-04.1.1 + AC-04.1.8 satisfied.
+- **`before-quit` early-set.** `appShuttingDown = true;` is the first statement of the existing handler; the existing `nfpcache` purge runs after the sentinel set, byte-for-byte preserved. AC-04.1.2 satisfied.
+- **`background-response` guard.** `if (appShuttingDown) return;` is the first statement of the callback (before the `for` loop). The original `// todo: …` comment on line 315 is replaced with `// fr-04: appShuttingDown sentinel guards this loop during shutdown (ADR-009)`. Inner `try`/`catch` boundary preserved verbatim — both layers intentional per ADR-009 Decision item 4. AC-04.1.3 satisfied.
+- **`background-progress` guard.** `if (appShuttingDown) return;` is the first statement of the callback (before the `try` block). The original `// todo: …` comment on line 329 is replaced with `// fr-04: appShuttingDown sentinel guards this send during shutdown (ADR-009)`. Inner `try`/`catch` preserved. AC-04.1.4 satisfied.
+- **`background-stop` not touched.** Verified by `git diff` — no edits between current lines 343–355 (handler shifted +6 lines from spec's 336–348 because the sentinel decl + early-set + guards added 6 lines above). AC-04.1.5 satisfied.
+- **FR-07 boundary preserved.** `createBackgroundWindows()`, `winCount = 0`, `winCount < 1`, `background-start` round-robin all unchanged. AC-04.1.6 satisfied.
+- **No new IPC channel.** `git diff main/ui/types/index.ts` empty. AC-04.1.7 satisfied.
+- **Anti-pattern audit (project-context.md §16) — 16/16 pass.** No `window.appShuttingDown` global; no `read-config`/`write-config` outside `config.service.ts`; no new `background-*` handler; no UI-framework change; no `main/util/` edit; no `_unused/` import; no `.ts` decorator transform; `main.js` is `.js` so `@ts-ignore` is N/A; no `--no-verify` plan; no `tests/assets/*.svg` re-encoded; no mm/inch double-convert; no external-URL `BrowserWindow`; no HTTP/telemetry/DB; no Windows-clean assumption; no `eslint.config.mjs` change; no spinner glyph. AC-04.1.10 satisfied.
+- **Story 4.2 (NFR-02 evidence) routing.** This PR ships **code only**. Manual 15/15 trials × 3 exit paths are **not feasible** in a Paperclip-isolated worktree without Electron / desktop host (Task 8.2). PR description forwards the NFR-02 evidence work to Story 4.2 / B4 (Murat / TEA). AC-04.1.11 satisfied.
+- **NFR-01 wall-clock (AC-04.1.9).** Local Playwright run skipped (no host). CI Playwright run gated on push; rolling-mean delta vs `nfr01-baseline.json` recorded post-CI in PR description.
 
 ### File List
 
-_(Populated by the implementing Dev agent.)_
+- `main.js` — sentinel decl, `before-quit` early-set, `background-response` guard + comment swap, `background-progress` guard + comment swap. **+8 / −2** lines net, 4 sites touched.
+- `_bmad-output/implementation-artifacts/4-1-implement-app-shuttingdown-sentinel-bounded-try-catch-boundary-in-main-js.md` — Dev Agent Record populated (this section).
 
 ### Change Log
 
 | Date | Change | Author |
 |---|---|---|
 | 2026-04-26 | Story created (`bmad-create-story` batch-2, DEE-83). Status: ready-for-dev. | John (PM, BMad) |
+| 2026-04-29 | Round 1 DS — sentinel + bounded try/catch boundary applied to `main.js`. Cheap gates green; Playwright deferred to CI. Status: in-review (pending CR + Sage Board). | Amelia (Dev, BMad) |
