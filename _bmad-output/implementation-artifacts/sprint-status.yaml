@@ -81,7 +81,7 @@ development_status:
   # Epic 6 — Anti-pattern preservation rails (FR-06, IR Pre-condition #7 mitigation)
   epic-6: in-progress
   6-1-add-github-pull-request-template-md-anchored-on-project-context-md-16: done
-  6-2-document-the-cite-the-16-item-number-reviewer-workflow-in-docs-development-guide-md: ready-for-dev
+  6-2-document-the-cite-the-16-item-number-reviewer-workflow-in-docs-development-guide-md: review
   epic-6-retrospective: optional
 
 # Sprint risks — surfaced via Daily Standup (DEE-82, 2026-04-26; DEE-127, 2026-04-27; DEE-149, 2026-04-29).
