@@ -85,6 +85,22 @@ Copy the recorded test into `tests/` and prune the boilerplate.
 
 - Anything below the UI: NFP cache, SVG parsing, GA fitness scoring, IPC payload shapes. These are reachable only via E2E today. Treat as a coverage debt.
 
+## Re-deriving the test-fixture literals after a `tests/assets/` change
+
+The Playwright spec (`tests/index.spec.ts`) asserts two literal counts derived from `tests/assets/`: the `#importsnav li` rendered count (one per `.svg` fixture in `tests/assets/` — the import step filters by extension) and the `"N/M"` parts-placed text that the nesting UI writes to `id=nestinfo h1` after a run. The FR-03 gate is in two layers, each closing a distinct drift hazard:
+
+- **UI-count drift** — a fixture is added or removed but the spec's `toHaveCount(N)` / `toHaveText("N/M")` literals are not updated. Playwright would fail loudly here, but only after launching Electron; `scripts/check-test-fixtures.mjs` (run via `npm run test:fixtures:check`, also chained from `npm test`) catches the literal mismatch in sub-second wall-clock and points at this section.
+- **Content drift** — a fixture is replaced or re-encoded so its bytes change but the rendered counts do not. Playwright would *silently* pass on the wrong artifact (the Marco-the-Maintainer hazard called out in `_bmad-output/project-context.md` §17 / FR-03 motivation). The SHA-256 manifest at `tests/assets/.fixture-manifest.json` closes this path: the gate reads every file in `tests/assets/` and compares hash + size + path against the manifest entry.
+
+When the gate fires, follow the procedure below.
+
+1. **Inspect the new fixture set.** `ls tests/assets/` — confirm the file you added / removed / renamed / re-encoded is exactly what you intended; nothing else should have moved. If the change adds a *new* fixture, also extend `tests/assets/LICENSE.yml` (the FR-02 provenance manifest from Story 2.1) so attribution lands in the same PR as the fixture itself.
+2. **Re-derive the spec literals.** `npm run pw:codegen` (alias for `node helper_scripts/playwright_codegen.js`) — record the new `#importsnav li` count and the `"N/M"` text on `id=nestinfo h1` from a manual run, then update the matching literals in `tests/index.spec.ts`. The gate's regexes anchor on `expect(...#importsnav li...).toHaveCount(N)` and `.toHaveText|toContainText("N/M")`, so keep that surface intact.
+3. **Regenerate the manifest.** `npm run test:fixtures:update` — re-emits `tests/assets/.fixture-manifest.json` with the updated SHA-256 hashes and the new counts read straight from the spec. The script does not rewrite the spec; it only captures whatever literals are already there, so Step 2 must land first.
+4. **Commit all the changes together as a single PR.** Stage with `git add -A tests/assets tests/index.spec.ts`. The `-A` form on a pathspec covers adds / edits / deletes / renames inside `tests/assets/` in one go — it picks up the modified fixtures from Step 1, `tests/assets/LICENSE.yml` if Step 1 extended provenance, and the regenerated `tests/assets/.fixture-manifest.json` from Step 3. Splitting the changes across PRs leaves the gate red on whichever commit lands first; one PR keeps `npm test` green at every revision on `main`.
+
+After the four steps, `npm run test:fixtures:check && npm test` should both pass on the new commit. If either still fails, repeat from Step 1 — a count drift you didn't expect usually means a fixture changed that you didn't intend to touch.
+
 ## Linting & Formatting
 
 - **ESLint** flat config: `eslint.config.mjs` — typescript-eslint preset.
