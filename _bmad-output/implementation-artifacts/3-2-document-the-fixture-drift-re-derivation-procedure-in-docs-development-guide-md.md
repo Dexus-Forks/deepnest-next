@@ -1,6 +1,6 @@
 # Story 3.2: Document the fixture-drift re-derivation procedure in `docs/development-guide.md`
 
-Status: ready-for-dev
+Status: done
 
 > Authored by John (PM, BMad) on 2026-04-26 via `bmad-create-story` (DEE-83 batch-2) for **MVP-1 / Stream B doc follow-on (B2)**. Sprint plan reference: `_bmad-output/planning-artifacts/sprint-plan.md` §3 row B2. Epic anchor: `_bmad-output/planning-artifacts/epics.md` §"Story 3.2" lines 521–556.
 
@@ -154,22 +154,33 @@ so that **the failure message in Story 3.1's gate (`expected …, got …, updat
 
 ### Agent Model Used
 
-_(Populated by the implementing Dev/Tech-Writer agent at story execution time.)_
+Paige (Tech-Writer) on `claude-opus-4-7[1m]`, executed for DEE-240 (CTO triage of DEE-149 Risk-1 doc-trio CTO escalation, 2026-04-29).
 
 ### Debug Log References
 
-_(Populated by the implementing agent.)_
+- `scripts/check-test-fixtures.mjs` lines 33–34 — `DOCS_POINTER` constant already names this story's section heading verbatim. AC-03.2.4 path **(a)** taken; no edit to the gate script.
+- `scripts/check-test-fixtures.mjs` lines 191, 200, 212, 223, 254 — gate failure paths already emit the docs pointer (drift, spec-format, spec-missing, corrupt-manifest, symlink). Verified end-to-end during pre-flight.
+- `tests/assets/.fixture-manifest.json` — confirmed JSON shape (`schema_version`, `captured_at`, `literals.{importsnav_count, placements_total, placements_max}`, `files[]`) matches what the dev guide section now describes.
+- `package.json` lines 19–20, 35 — confirmed script names `test:fixtures:check`, `test:fixtures:update`, `pw:codegen` (note: `pw:codegen` lives at line 35, not 32 as the spec sketched; doc cites the alias by name, no line citation, so accuracy is preserved).
 
 ### Completion Notes List
 
-_(Populated by the implementing agent.)_
+- AC-03.2.1 ✓ — H2 section "Re-deriving the test-fixture literals after a `tests/assets/` change" inserted at end of the Testing chapter (after "What's not tested", before "Linting & Formatting"). First paragraph cites `_bmad-output/project-context.md` §17 (Marco-the-Maintainer FR-03 motivation) and Story 3.1's gate.
+- AC-03.2.2 ✓ — four numbered steps in the prescribed order (inspect → re-derive → regenerate → single-PR commit).
+- AC-03.2.3 ✓ — citations: `scripts/check-test-fixtures.mjs`, `tests/assets/.fixture-manifest.json`, `tests/index.spec.ts`, `npm run test:fixtures:check`, `npm run test:fixtures:update`, `npm run pw:codegen` (alias for `node helper_scripts/playwright_codegen.js`).
+- AC-03.2.4 ✓ — **path (a)** taken. Story 3.1 already wires the docs pointer through every failure exit (see Debug Log References). No 1-line edit to `scripts/check-test-fixtures.mjs` required; PR remains a single-file delta.
+- AC-03.2.5 ✓ — Step 1 sub-clause cross-references `tests/assets/LICENSE.yml` (FR-02 / Story 2.1) for new-fixture provenance, without duplicating its content.
+- AC-03.2.6 ✓ — touched files: `docs/development-guide.md` + this story spec (Status flip + Dev Agent Record). No code, no fixture, no IPC, no global, no `--no-verify`.
+- AC-03.2.7 ✓ — doc-only delta (path (a)). No measurable NFR-01 wall-clock impact; CI's `paths:` filter on `playwright.yml` historically skips pure-`.md` PRs, so the rolling baseline is unchanged.
 
 ### File List
 
-_(Populated by the implementing agent.)_
+- `docs/development-guide.md` — added §"Re-deriving the test-fixture literals after a `tests/assets/` change" (inserted between the existing Testing chapter and Linting & Formatting).
+- `_bmad-output/implementation-artifacts/3-2-document-the-fixture-drift-re-derivation-procedure-in-docs-development-guide-md.md` — Status `ready-for-dev → done`; Dev Agent Record populated; Change Log updated.
 
 ### Change Log
 
 | Date | Change | Author |
 |---|---|---|
 | 2026-04-26 | Story created (`bmad-create-story` batch-2, DEE-83). Status: ready-for-dev. | John (PM, BMad) |
+| 2026-04-29 | Story executed (DEE-240). Doc section landed in `docs/development-guide.md`. AC-03.2.4 path (a) taken (gate already pointers). Status: done. Sprint-status flip (3-2: ready-for-dev → done) deferred to a follow-up auto-merge artifact PR per BMad-artifact policy. | Paige (Tech-Writer) |
