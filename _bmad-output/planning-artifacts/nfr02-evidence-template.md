@@ -31,7 +31,10 @@ Three exit paths under test (FR-04 AC-04.1.1..AC-04.1.11; ADR-009 §Decision ite
 - Build: post-merge `main` at `1f4b05756c8cfddcf558000bd01b7c60cc493af5` (or later).
 - Host: Electron desktop with display (Linux+xvfb / macOS / Windows). **Paperclip-isolated worktrees
   cannot run this template** (no Electron/desktop host per Story 4.1 Task 8.2).
-- Fixture nest: same SVG + part-set across all 15 trials. Recommend `examples/two-rectangles.svg`.
+- Fixture nest: same SVG + part-set across all 15 trials. Use any reproducible
+  part-set SVG accepted by the importer; the in-repo `tests/assets/henny-penny.svg`
+  fixture is a viable default. Whatever fixture is chosen, hold it constant across
+  all 15 trials.
 - Scratch-dir watch: `os.tmpdir()/nfpcache` listed before each trial; expected empty
   after each trial (existing `before-quit` purge runs after the sentinel flips).
 
@@ -76,7 +79,10 @@ Wall-clock comparison (NFR-01 coupling): trial mean must be within ±20% of
 ### Path B — BG-window-error
 
 1. `npm run start`. Click **Start nest** on fixture SVG.
-2. From a separate terminal: `pkill -9 -f "deepnest.*background"` (kills one BG worker).
+2. From a separate terminal, kill one BG worker:
+   - **Linux / macOS**: `pkill -9 -f "deepnest.*background"`
+   - **Windows (PowerShell)**: `Get-Process | Where-Object { $_.MainWindowTitle -match 'deepnest.*background' -or $_.ProcessName -match 'deepnest' } | Select-Object -First 1 | Stop-Process -Force`
+   - **Windows (cmd)**: `for /f "tokens=2" %i in ('tasklist /fi "imagename eq deepnest.exe" /fo list ^| find "PID:"') do taskkill /PID %i /F`
 3. Allow remaining workers to finish; observe console for `Render process gone`
    handler firing (already at `main.js:14`). Quit normally.
 4. Observe: no second crash via the destroyed `webContents`; sentinel guards the
@@ -107,4 +113,4 @@ Wall-clock comparison (NFR-01 coupling): trial mean must be within ±20% of
 - Story spec: `_bmad-output/implementation-artifacts/4-1-implement-app-shuttingdown-sentinel-bounded-try-catch-boundary-in-main-js.md`
 - ADR: `_bmad-output/planning-artifacts/architecture.md` §5 ADR-009
 - NFR-01 baseline: `_bmad-output/planning-artifacts/nfr01-baseline.json`
-- Sprint plan §5 risk row: R4 (15/15 reach across host-OS variance)
+- Sprint plan §5 risk row: `_bmad-output/planning-artifacts/sprint-plan.md` §5 R4 (15/15 reach across host-OS variance)

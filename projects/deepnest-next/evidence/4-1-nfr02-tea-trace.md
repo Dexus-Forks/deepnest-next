@@ -19,8 +19,9 @@
 
 The Story 4.1 code is in spec and the cheap regression gate is green. The 15/15 manual
 exit-path 3 × 5 trial matrix cannot be executed from the TEA worktree (no Electron
-desktop host) and is the only DoD item not closed by this report. Per `sprint-plan.md`
-§5 R4, this routes to a host-capable runner (Story 4.2 / B4).
+desktop host) and is the only DoD item not closed by this report. Per
+`_bmad-output/planning-artifacts/sprint-plan.md` §5 R4, this routes to a host-capable
+runner (Story 4.2 / B4).
 
 ---
 
@@ -39,7 +40,7 @@ Verified on `main` at `1f4b05756c8cfddcf558000bd01b7c60cc493af5` via `grep -n` a
 | AC-04.1.7 | No new IPC channel — `main/ui/types/index.ts` not edited | `git show --stat 1f4b057` lists only `main.js` + planning artifacts; no `main/ui/types/index.ts` line | **PASS** |
 | AC-04.1.8 | Sentinel-race comment present at the declaration site | `main.js:11` (`// fr-04: bounded by single-process EventLoop ordering — no atomics/locks needed (ADR-009 §risks)`) | **PASS** |
 | AC-04.1.9 | `npm test` green; CI wall-clock within ±20 % of baseline rolling-mean | See §3 below | **PASS** |
-| AC-04.1.10 | `project-context.md` §16 anti-patterns hold (no new `window` global, no new IPC, no `// @ts-ignore`, no vendored edits, no `_unused/`, no `--no-verify`, no `tests/assets/` edit) | `git show 1f4b057` diff is `+8 / −2` lines on `main.js` only; commit message confirms no `--no-verify`; CODEOWNERS-protected paths untouched | **PASS** |
+| AC-04.1.10 | `_bmad-output/project-context.md` §16 anti-patterns hold (no new `window` global, no new IPC, no `// @ts-ignore`, no vendored edits, no `_unused/`, no `--no-verify`, no `tests/assets/` edit) | `git show 1f4b057` diff is `+8 / −2` lines on `main.js` only; commit message confirms no `--no-verify`; CODEOWNERS-protected paths untouched | **PASS** |
 
 Static-trace verdict for AC-04.1.1..AC-04.1.10: **10/10 PASS**.
 
@@ -97,7 +98,7 @@ state is in tolerance and consistent with the baseline distribution (stddev = 3 
 +11.9 % is well inside 1σ).
 
 Verdict for NFR-01 wall-clock: **PASS** for the post-merge code path. No mid-sprint
-NFR-01 escalation per `sprint-plan.md` §5 R1.
+NFR-01 escalation per `_bmad-output/planning-artifacts/sprint-plan.md` §5 R1.
 
 ---
 
@@ -141,7 +142,7 @@ direct execution from this TEA worktree infeasible:
 | Item | Owner | Action |
 |---|---|---|
 | Run 3 × 5 trials on Linux+xvfb (closest analog to CI runner) | Story 4.2 / B4 dispatched agent | Use `_bmad-output/planning-artifacts/nfr02-evidence-template.md`; re-commit a filled copy to `projects/deepnest-next/evidence/4-2-nfr02-evidence-15x.md`. |
-| Run on macOS + Windows for OS variance check | TEA backlog (R4 fallback) | If any single-OS batch fails to converge after 3 retries, escalate via `bmad-correct-course` per `sprint-plan.md` §5 R4 fallback (CTO scope-cut allowed). |
+| Run on macOS + Windows for OS variance check | TEA backlog (R4 fallback) | If any single-OS batch fails to converge after 3 retries, escalate via `bmad-correct-course` per `_bmad-output/planning-artifacts/sprint-plan.md` §5 R4 fallback (CTO scope-cut allowed). |
 | Sage Board Round 2 close-out for [DEE-147](/DEE/issues/DEE-147) | CTO | Awaits the filled-in 15/15 evidence file before final post-merge gate close. |
 
 ---
