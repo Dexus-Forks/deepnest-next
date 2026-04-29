@@ -8,6 +8,9 @@ const { loadPresets, savePreset, deletePreset } = require("./presets");
 const NotificationService = require('./notification-service');
 require("events").EventEmitter.defaultMaxListeners = 30;
 
+// fr-04: bounded by single-process EventLoop ordering — no atomics/locks needed (ADR-009 §risks)
+let appShuttingDown = false;
+
 app.on('render-process-gone', (event, webContents, details) => { console.error('Render process gone:', event, webContents, details); });
 
 remote.initialize();
@@ -287,6 +290,7 @@ app.on("activate", function () {
 });
 
 app.on("before-quit", function () {
+  appShuttingDown = true;
   var p = path.join(__dirname, "./nfpcache");
   if (fs.existsSync(p)) {
     fs.readdirSync(p).forEach(function (file, index) {
@@ -311,8 +315,9 @@ ipcMain.on("background-start", function (event, payload) {
 });
 
 ipcMain.on("background-response", function (event, payload) {
+  if (appShuttingDown) return;
   for (var i = 0; i < backgroundWindows.length; i++) {
-    // todo: hack to fix errors on app closing - should instead close workers when window is closed
+    // fr-04: appShuttingDown sentinel guards this loop during shutdown (ADR-009)
     try {
       if (backgroundWindows[i].webContents == event.sender) {
         mainWindow.webContents.send("background-response", payload);
@@ -326,7 +331,8 @@ ipcMain.on("background-response", function (event, payload) {
 });
 
 ipcMain.on("background-progress", function (event, payload) {
-  // todo: hack to fix errors on app closing - should instead close workers when window is closed
+  if (appShuttingDown) return;
+  // fr-04: appShuttingDown sentinel guards this send during shutdown (ADR-009)
   try {
     mainWindow.webContents.send("background-progress", payload);
   } catch (ex) {
