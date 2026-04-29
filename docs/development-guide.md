@@ -165,7 +165,7 @@ A failing `npm run build` on Linux is almost always a missing `libboost-dev` or 
 
 When a reviewer cites `§16.X — <short label>` on your PR (e.g. `§16.1 — no new globals on window`), they're pointing at a specific item in `_bmad-output/project-context.md` §16 (the canonical anti-pattern list). The number `X` and the short label are the canonical handle — use them when discussing the flag, and resolve the violation rather than negotiate it. NFR-03 makes any ticked-as-violated checkbox a request-changes signal.
 
-The PR template (`.github/pull_request_template.md`, shipped in Story 6.1) names the §16 self-check inline as a checklist; the reviewer's flag points at one of those items. If your PR was opened before Story 6.1 shipped and your description does not include the checklist, rebase to pick up the template (or paste the §16 self-check inline).
+The PR template (`.github/pull_request_template.md`, shipped in Story 6.1) names the §16 self-check inline as a checklist; the reviewer's flag points at one of those items. If your PR was opened before Story 6.1 shipped and your description does not include the checklist, **edit the PR description on GitHub and paste the §16 self-check from `.github/pull_request_template.md`** (rebasing does not retro-inject the template — GitHub only inserts it at PR creation).
 
 ### Examples
 

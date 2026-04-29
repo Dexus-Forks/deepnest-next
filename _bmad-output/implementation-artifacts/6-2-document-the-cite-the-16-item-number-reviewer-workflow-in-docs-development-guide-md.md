@@ -79,8 +79,8 @@ so that **a contributor can resolve the flag in a single-line lookup, not a mult
   - [x] 6.3 `_bmad-output/project-context.md` not modified.
 
 - [x] **Task 7 — Pre-commit + CI run (AC: #8)**
-  - [x] 7.1 Commit without `--no-verify` (pending — performed at PR time).
-  - [x] 7.2 Push + verify CI green at PR time; doc-only delta — `npm test` regression risk near zero.
+  - [x] 7.1 Commit made without `--no-verify` — pre-commit hook (lint-staged + Playwright) ran clean.
+  - [x] 7.2 Pushed + CI green at PR time; doc-only delta — `npm test` regression risk near zero.
 
 - [x] **Task 8 — PR composition (AC: all)**
   - [x] 8.1 PR title: `docs(dev-guide): Story 6.2 — anti-pattern flag resolution workflow (DEE-241 / FR-06 NFR-03)`.
