@@ -15,7 +15,16 @@
 //   0           licenses:check passed AND wall-clock <= THRESHOLD_MS
 //   1           licenses:check failed (drift / I/O — propagated from the spawn)
 //   2           licenses:check schema parse error (propagated from the spawn)
-//   3           usage / threshold breach (wall-clock > THRESHOLD_MS while spawn was OK)
+//   3           one of three EXIT_BUDGET paths — disambiguate by stderr (Vitra F7):
+//                 (a) gate-local usage error  (unrecognised arg) — stderr starts
+//                     `[licenses:check:budget] FAIL — unrecognised arg(s):`
+//                 (b) wall-clock > THRESHOLD_MS (threshold breach) — stderr matches
+//                     `[licenses:check:budget] FAIL — wall-clock`
+//                 (c) propagated inner-script usage exit (`build-licenses.mjs --bogus`
+//                     exits its own EXIT_USAGE=3) — gate forwards via process.exit(r.status)
+//                     and stderr carries the INNER `usage:` block; the gate's own
+//                     `note — wall-clock … ms (gate exited 3; budget check skipped)` is
+//                     emitted as a leading line so post-mortem readers see the propagation.
 //   4           licenses:check I/O error (propagated from the spawn)
 //
 // CLI surface:
@@ -77,6 +86,10 @@ export function runGate(argv) {
   }
 
   if (r.status !== 0) {
+    // Vitra F7 (Round-1 P3, DEE-144 fold-in): when the inner gate exits 3 (its own
+    // EXIT_USAGE) the gate process exits 3 too — disambiguate from threshold breach
+    // (path (b)) and gate-local usage (path (a)) by reading the inner stderr `usage:`
+    // block + this leading `gate exited <r.status>; budget check skipped` note.
     process.stderr.write(
       `[licenses:check:budget] note — wall-clock ${ms.toFixed(0)} ms (gate exited ${r.status}; budget check skipped)\n`,
     );

@@ -545,9 +545,247 @@ Mode prefix is `[licenses:check]` (not `[licenses:build]`) — verifies AC-02.3.
 
 **Untouched (verified by `git diff`):** `scripts/check-test-fixtures.mjs`, `LICENSES.md`, all `LICENSE.yml` files, `package-lock.json`, `eslint.config.mjs`, `tsconfig.json`, `.github/`, all `main/util/*.{js,ts}`, all `main/util/_unused/*` source files, all `main/font/fonts/*`, all `tests/assets/*.{svg,woff,woff2}`, `main.js`, `index.d.ts`.
 
+### Self-Review Findings — Round 1
+
+Round-1 Board Review verdict + fold-in record. Originally landed as orphaned commit
+`cd54ca3` on local branch `DEE-124-story-2-3-ds`; the branch was deleted by PR #36's
+squash-merge (`bbdc848`) and the commit lost. Reconstructed on `DEE-144-story-2-3-ds-hygiene`
+([DEE-144](/DEE/issues/DEE-144)) per the DS hygiene PR scope. Source report:
+[`projects/deepnest-next/reviews/2-3-wire-licenses-check-into-npm-test-ci-drift-gate-round-1.md`](../../projects/deepnest-next/reviews/2-3-wire-licenses-check-into-npm-test-ci-drift-gate-round-1.md).
+
+```yaml
+review:
+  round: 1
+  verdict: CHANGES                  # Sage Round-Leader, Phase-4 strict-rule (any P0/P1 ⇒ never APPROVED)
+  severity_max: P1                  # 1× P1 from Lydia / code-quality
+  pr: 36                            # DEE-124-story-2-3-ds @ 2379aeb (now squash-merged as bbdc848)
+  parent_review_issue: DEE-131
+  source_dev_issue: DEE-124
+  report_path: projects/deepnest-next/reviews/2-3-wire-licenses-check-into-npm-test-ci-drift-gate-round-1.md
+  reviewers:
+    - perspective: security        # findings: []
+      agent: Aegis
+      adapter: claude_local
+      coverage: covered
+    - perspective: architecture
+      agent: Vitra
+      adapter: claude_local
+      coverage: covered
+    - perspective: performance
+      agent: Hermes
+      adapter: claude_local
+      coverage: covered
+    - perspective: code-quality
+      agent: Lydia
+      adapter: claude_local
+      coverage: covered
+    - perspective: accessibility
+      agent: Iris
+      adapter: claude_local
+      coverage: conditional-skipped # event.story.touchesUI = false (scripts/*.mjs + planning docs only)
+  model_diversity: warning           # informational, NOT blocker — all four dispatched minions run claude_local;
+                                     #   no same-perspective duplicate exists, so within-perspective dispute
+                                     #   detection (Jaccard / IoU) is structurally inactive by design.
+  bundle_2_3_closure:                # All 6 fold-in items PASS at source level across all four perspectives.
+    P2-04:    PASS                   # onFail harness (13 fail-fast branches + Copilot #1 + Copilot #2)
+    P3-03:    PASS                   # drift truncation honesty + Copilot #3 (r.error || r.signal ⇒ EXIT_BUDGET=3)
+    P3-04:    PASS                   # renderTable single-pass for-of + rowOf(e) helper
+    P3-05:    PASS                   # --help / -h exit-0 (both scripts)
+    P3-06:    PASS                   # Hermes 750 ms wall-clock CI guard
+    P3-07:    PASS                   # failIO / failSchema MODE-prefix correctness (Copilot #4)
+  findings:
+    - id: F1
+      perspective: code-quality
+      severity: P1
+      author: Lydia
+      site: scripts/check-licenses-budget.mjs:62-68
+      title: scripts/check-licenses-budget.mjs has zero test coverage
+      summary: >
+        Copilot inline #3 closes the spawn-fail / signal-kill `process.exit(null) === 0`
+        false-pass hole, but no automated test exercises the spawn-error or signal-kill
+        branch — nor the threshold-breach (`ms > 750`), `--help`, or unrecognised-arg
+        paths. A future refactor that re-introduces the pre-Copilot-#3 shape would
+        silently regress the gate to exit 0 on spawn-failure.
+      remediation: >
+        Author scripts/check-licenses-budget.test.mjs (Murat / TEA scope — test-coverage
+        extension on a sound production fix). Cover spawn-fail + threshold-breach +
+        --help + unrecognised-arg + happy paths.
+    - id: F2
+      perspective: code-quality
+      severity: P2
+      author: Lydia
+      site: scripts/build-licenses.test.mjs:255-275
+      title: failIO MODE-prefix not asserted on the actual failIO path
+      summary: >
+        Branch 10 (loadEntries I/O) test asserts the `FAIL — I/O error` substring but
+        not the `[licenses:check]` MODE prefix. Same on Branch 11 (write-error). The
+        dedicated prefix test only exercises the modeCheck ENOENT path (which calls
+        _onFail directly, not via failIO). A regression hardcoding `[licenses:build]`
+        in failIO would slip past the suite — the exact regression Copilot #4 was
+        filed against.
+      remediation: >
+        Add `assert.match(r.stderr, /^\[licenses:check\]/m)` to Branch 10 + 11. Adding
+        the same to a schema-fail spawned test closes the failSchema half of P3-07.
+    - id: F3
+      perspective: code-quality
+      severity: P3
+      author: Lydia
+      site: scripts/build-licenses.test.mjs:297-298
+      title: validEntry accepts unused `folder` parameter
+      summary: >
+        `const validEntry = (folder) => ` accepts a parameter that is never referenced;
+        the same fixture string is used for main/util, main/font, tests/assets.
+        Misleading — reader assumes per-folder variation.
+      remediation: Drop the parameter or rename to STUB_ENTRY. Three call-sites simplify.
+    - id: F4
+      perspective: code-quality
+      severity: P3
+      author: Lydia
+      site: scripts/build-licenses.test.mjs:283-318,322-346,349-386,390-437,479-504
+      title: Tmp-repo fixture duplication (~30 lines × 5 sites)
+      summary: >
+        ~30 lines of identical tmp REPO_ROOT setup (mkdir × 4 + writeFile × 4 +
+        copyFileSync of build-licenses.mjs) repeated across 5 tests.
+      remediation: >
+        Extract setupTmpRepo({ licensesMd?, perFolderUtil?, passthrough? }) returning
+        { tmp, scriptPath }. Tests pass overrides; cleanup remains per-test via rmSync.
+        Net ~80 LOC saved.
+    - id: F5
+      perspective: code-quality
+      severity: P3
+      author: Lydia
+      site: scripts/build-licenses.test.mjs:510-513
+      title: Vacuous assert.ok(true) in isMain guard test
+      summary: >
+        `assert.ok(true)` is vacuous — the actual property under test (import does not
+        trigger CLI dispatch) is verified only implicitly by the test file's top-level
+        import not having spawned modeBuild.
+      remediation: >
+        Strengthen — spawn `node -e "import('./build-licenses.mjs').then(m => process.stdout.write(JSON.stringify(Object.keys(m))))"`
+        and assert clean exit 0, no LICENSES.md created in CWD, exported surface includes
+        setOnFail. Or at minimum replace with `assert.ok(typeof setOnFail === "function")`.
+    - id: F6
+      perspective: code-quality
+      severity: P3
+      author: Lydia
+      site: scripts/build-licenses.mjs:274-291
+      title: renderTable has no direct snapshot test
+      summary: >
+        Single-pass `for-of` + `rowOf(e)` byte-identity is asserted only transitively
+        via the production licenses:check gate against the committed LICENSES.md.
+        A refactor that breaks ordering or row formatting would fail in CI on the
+        production fixture, not on a tight unit test.
+      remediation: >
+        Add a small snapshot test — 3-entry input (1 first-party + 2 third-party with
+        reverse-alpha unit names) + inline expected-string asserting (a) header,
+        (b) first-party row precedes third-party block, (c) third-party rows ordered
+        by ASCII byte order, (d) trailing newline.
+    - id: F7
+      perspective: architecture
+      severity: P3
+      author: Vitra
+      site: scripts/check-licenses-budget.mjs:14-19,50,74,85
+      title: Exit-code 3 multiplexed across three distinct paths in the budget gate
+      summary: >
+        Exit 3 is multiplexed across (a) gate-local usage error (argv-guard → EXIT_BUDGET),
+        (b) threshold breach (ms > THRESHOLD_MS → EXIT_BUDGET), (c) propagated inner-script
+        usage exit (build-licenses.mjs --bogus exits its own EXIT_USAGE=3). Legend at
+        lines 14-19 names only (b) explicitly. Post-mortem readers cannot disambiguate
+        without inspecting stderr.
+      remediation: >
+        Lower-cost (option ii): extend the legend to enumerate the three paths + add a
+        one-line comment at the propagation site (line 74). Higher-cost (option i):
+        split into EXIT_USAGE_LOCAL = 5 ≠ EXIT_BUDGET = 3. Sage recommends (ii).
+    - id: F8
+      perspective: architecture
+      severity: P3
+      author: Vitra
+      site: scripts/build-licenses.mjs:24-27,368-373
+      title: Drift-diff output legend missing in stderr
+      summary: >
+        Drift-diff uses INVERTED unified-diff polarity: `-${expected}` = regenerated /
+        byte-correct, `+${observed}` = committed / wrong. Standard diff(1) semantics are
+        the opposite. The file-header comment documents this; the runtime stderr output
+        carries no inline legend — a contributor reading the CI log without opening the
+        source will read the diff with standard `-`/`+` semantics and paste the wrong
+        direction back into LICENSES.md.
+      remediation: >
+        Add a 1-line legend immediately above the diff body in emitDriftDiff output:
+        `('-' lines = expected (run npm run licenses:build); '+' lines = committed in LICENSES.md)`.
+    - id: F9
+      perspective: architecture
+      severity: P3
+      author: Vitra
+      site: scripts/build-licenses.test.mjs (whole file; cross-story precedent)
+      title: Build-tooling test-harness SOP missing for downstream stories
+      summary: >
+        Story 2.3 establishes the build-tooling test-harness precedent (per AC-02.3.3).
+        The actual shape (flat test() calls + per-call captureOnFail) differs from the
+        brief's "one describe per AC table-row, setOnFail install/restore in before/after"
+        sketch. For 21 cases this is fine; for the cross-script symmetry follow-up
+        ([DEE-126](/DEE/issues/DEE-126)) the precedent will drift unless codified.
+      remediation: >
+        Author _bmad-output/sops/build-tooling-test-harness.md (lighter) or amend ADR-008
+        / architecture.md §3.3 (heavier) before the next build-tooling story files a test.
+        Sage suggests the SOP route — lower cost, same effect.
+    - id: F10
+      perspective: performance
+      severity: P3
+      author: Hermes
+      site: scripts/check-licenses-budget.mjs:33
+      title: THRESHOLD_MS named but not exported
+      summary: >
+        `const THRESHOLD_MS = 750;` is named + matches ADR-008 §3.3 (1 s − 250 ms cushion)
+        but not exported. Sage's brief specifically asked for "named, exported".
+      remediation: >
+        Prepend `export ` so a future test-harness (notably the F1 follow-up) can sanity-
+        check the constant + ADR cushion intent in one line.
+  aegis_defense_in_depth:            # Aegis flagged TWO hardening notes that are structurally
+                                     # non-exploitable today; explicitly NOT raised as findings.
+                                     # Recorded for the Board's awareness.
+    - site: scripts/build-licenses.mjs:240-257
+      summary: >
+        Per-folder `path:` validation rejects forward-slash absolute and `..` segments
+        via split("/"), but NTFS ADS (`secret.yml:hidden`) and backslash-style `..\evil`
+        would pass. Not exploitable today — entry.path is a label-only field that never
+        reaches a path.* / readFileSync call (loadEntries only reads the four
+        LICENSE_YML_FILES constants).
+      recommendation: >
+        Inline comment near the validation: `label-only — fs invariant assumed; tighten
+        if entry.path ever reaches a path.* call.`
+    - site: scripts/build-licenses.mjs:97-101
+      summary: >
+        setOnFail is a public export of a long-lived module API. A future supply-chain
+        importer that calls setOnFail(swallowFn) and never resets could neutralise the
+        gate within that importer's process. Not exploitable today — the gate runs as a
+        fresh Node process via `npm run licenses:check`.
+      recommendation: >
+        Inline comment that setOnFail is test-only and that production must call it nowhere.
+  board_decision: pending             # Sage's verdict is CHANGES per the strict P0/P1-empty rule;
+                                      # substantive recommendation is Path B (merge-with-mandatory-follow-up):
+                                      # production code is correct, F1 is regression-detection coverage on a
+                                      # hole already closed (Copilot #3 fix in place), CI is fully green.
+                                      # The Board's release decision is Amelia/John/CTO's, not Sage's.
+                                      #
+                                      # request_confirmation interaction filed on DEE-131 (Path A = strict
+                                      # CHANGES → Round 2 on DEE-124; Path B = merge + follow-ups via DEE-141).
+  stuck_story_counter: 1/3            # Round 1 of project-context.md → maxReviewRounds = 3.
+                                      # Round-3-without-APPROVED → CTO escalation; not triggered yet.
+```
+
+**Post-Round-1 disposition.** The Board chose **Path B** (merge with mandatory follow-up).
+PR #36 squash-merged as `bbdc848` on `main` 2026-04-27. Round-1 follow-ups land across:
+
+- **DEE-140** (Murat / TEA) — F1 close + F2 fold-in + F10 export + Aegis defense-in-depth
+  inline comments. Shipped as PR #38 → `a75a963` on `main`.
+- **DEE-143** (John / PM) — F9 SOP (`_bmad-output/sops/build-tooling-test-harness.md`).
+- **DEE-144** (Amelia / DS, this PR) — F3 + F4 + F5 + F6 + F7 + F8 + this Self-Review fold-in restoration.
+
 ### Change Log
 
 | Date | Change | Author |
 |---|---|---|
 | 2026-04-26 | Story created (`bmad-create-story`, [DEE-122](/DEE/issues/DEE-122) — CS follow-up to [DEE-98](/DEE/issues/DEE-98) Bundle 2). Bundle 2 (P2-04 + P3-06) folded as mandatory ACs (#3, #4); Bundle 3 (P3-03/04/05 + Copilot inline #3 + #4 / P3-07) folded as polish ACs (#6, #7, #8, #9) per DEE-98 DoD; AC-02.3.8 (`renderTable` allocation polish) flagged as the one AC eligible for waiver. Status: ready-for-dev. | John (PM, BMad) |
 | 2026-04-27 | Story implemented (`bmad-dev-story`, [DEE-124](/DEE/issues/DEE-124)). All 13 ACs satisfied. AC-02.3.8 implemented (waiver declined). AC-02.3.3 onFail = (ii) module-level mutable export. AC-02.3.3 harness = (α) `node:test` (21 cases, 21/21 pass). AC-02.3.4 = (a) standalone wrapper, threshold 750 ms (Murat to confirm on trace pass). AC-02.3.7 markers = `-${exp}` / `+${obs}` (regenerated-as-`-`). Cross-script `--help` exit-0 follow-up filed as [DEE-126](/DEE/issues/DEE-126). §16 anti-pattern audit 16/16 pass. NFR-01 within ±20 %. Status: ready-for-dev → done on PR merge. | Amelia (DS, BMad) |
+| 2026-04-27 | Round-1 Self-Review fold-in restored ([DEE-144](/DEE/issues/DEE-144)). Original orphaned commit `cd54ca3` lost when PR #36's squash-merge (`bbdc848`) deleted local branch `DEE-124-story-2-3-ds`. Reconstructed under Dev Agent Record from Sage's Round-1 report ([projects/deepnest-next/reviews/2-3-wire-licenses-check-into-npm-test-ci-drift-gate-round-1.md](../../projects/deepnest-next/reviews/2-3-wire-licenses-check-into-npm-test-ci-drift-gate-round-1.md)) + DEE-131 fold-in comment. Includes all 10 findings (F1–F10), 2 Aegis defense-in-depth notes, Bundle 2/3 closure status, board-decision-pending block, stuck-story counter `1/3`, model-diversity note. Post-Round-1 disposition (Path B → DEE-140 / DEE-143 / DEE-144 carries) appended below the YAML for reader continuity. | Amelia (DS, BMad) |
+| 2026-04-27 | DS hygiene PR landed ([DEE-144](/DEE/issues/DEE-144)). F3 (drop unused `folder` param → STUB_ENTRY), F4 (extract `setupTmpRepo({...})` helper, ~80 LOC saved), F5 (strengthen vacuous `assert.ok(true)` in isMain guard test → spawned-import sanity check covering exit code + no-LICENSES.md-side-effect + exported-surface keys), F6 (renderTable byte-identity snapshot test on 3-entry fixture), F7 (extend EXIT_BUDGET legend to enumerate the three exit-3 paths + propagation-site comment), F8 (1-line marker legend in `emitDriftDiff` stderr above the diff body). `npm run test:licenses` 31/31 PASS. No production-path behaviour change beyond legend strings + unused-param removal. | Amelia (DS, BMad) |
